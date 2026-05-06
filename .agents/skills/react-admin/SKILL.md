@@ -57,6 +57,7 @@ Use the established stack for data and state. **Do not introduce alternative lib
 - **Usage**: Prioritize using Shadcn components over building custom UI primitives from scratch.
 - **Customization**: When you need a component to behave differently, customize the Shadcn component within `src/components/ui` or compose them together. Do not edit Shadcn primitives unless absolutely necessary.
 - **Accessibility**: Shadcn is built on Radix UI. Ensure that any modifications maintain full accessibility (a11y) standards, keyboard navigation, and ARIA attributes.
+- **Password Inputs**: All password fields must have a "peek password" (show/hide) toggle. Use a dedicated `PasswordInput` component wrapping the standard `Input`.
 
 ## 7. TypeScript & Code Quality
 

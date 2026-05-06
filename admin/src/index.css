@@ -255,4 +255,8 @@ code {
   body {
     @apply bg-background text-foreground;}
   html {
-    @apply font-sans;}}
+    @apply font-sans;}
+  ::selection {
+    @apply bg-primary text-primary-foreground;
+  }
+}

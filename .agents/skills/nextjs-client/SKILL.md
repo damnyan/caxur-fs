@@ -50,6 +50,7 @@ src/
 - **Usage**: Prioritize using Shadcn components over building custom UI primitives from scratch.
 - **Customization**: Customize the Shadcn component within `src/components/ui` or compose them together. Do not edit Shadcn primitives unless necessary.
 - **Client Components**: Remember that many interactive Shadcn components require `'use client'`. Ensure they are imported and used correctly within server or client components.
+- **Password Inputs**: All password fields must have a "peek password" (show/hide) toggle. Use a dedicated `PasswordInput` component wrapping the standard `Input`.
 
 ## 7. TypeScript & Code Quality
 
