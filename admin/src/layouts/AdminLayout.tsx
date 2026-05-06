@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Outlet, Navigate, NavLink, Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { LayoutDashboard, Users, Shield, UserCircle, LogOut } from 'lucide-react';
@@ -5,7 +6,43 @@ import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { apiClient } from '@/lib/api';
 
 export default function AdminLayout() {
-  const { isAuthenticated, user, logout, refreshToken } = useAuthStore();
+  const { isAuthenticated, user, updateUser, logout, refreshToken } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      apiClient.get('/admin/my/profile')
+        .then((response) => {
+          const profileAttrs = response.data.data.attributes;
+          const profileId = response.data.data.id;
+          
+          let roles: any[] = [];
+          if (response.data.included) {
+            roles = response.data.included
+              .filter((inc: any) => inc.type === 'roles')
+              .map((role: any) => ({
+                id: role.id,
+                name: role.attributes.name,
+              }));
+          }
+
+          updateUser({
+            id: profileId,
+            email: profileAttrs.email,
+            firstName: profileAttrs.firstName,
+            middleName: profileAttrs.middleName,
+            lastName: profileAttrs.lastName,
+            suffix: profileAttrs.suffix,
+            contactNumber: profileAttrs.contactNumber,
+            roles,
+          });
+        })
+        .catch((error) => {
+          console.error('Failed to fetch profile', error);
+          // Don't logout here to avoid infinite loops if it's a temporary error,
+          // but if it's 401/403, the interceptor will handle the logout anyway.
+        });
+    }
+  }, [isAuthenticated, updateUser]);
 
   const handleLogout = async () => {
     if (refreshToken) {
@@ -32,7 +69,7 @@ export default function AdminLayout() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex">
+    <div className="h-screen overflow-hidden bg-gray-100 dark:bg-gray-900 flex">
       {/* Sidebar */}
       <aside className="w-64 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 flex flex-col hidden md:flex">
         <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-800">
@@ -67,11 +104,16 @@ export default function AdminLayout() {
           <div className="flex items-center w-full">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                {user?.name}
+                {user ? ([user.firstName, user.lastName].filter(Boolean).join(' ') || (user as any).name || 'Administrator') : ''}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                 {user?.email}
               </p>
+              {user?.roles && user.roles.length > 0 && (
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate uppercase tracking-wider mt-0.5 font-semibold">
+                  {user.roles.map((r) => r.name).join(', ')}
+                </p>
+              )}
             </div>
             <button
               onClick={handleLogout}

@@ -43,14 +43,33 @@ export default function LoginPage() {
       const accessToken = attributes.accessToken;
       const refreshToken = attributes.refreshToken;
       
-      // We don't get the user details from the login response in JSON:API by default yet,
-      // but let's mock the user object or fetch it if there is a /me endpoint.
-      // For now, we just set a default admin user structure as we only care about the token.
+      // Temporarily set tokens to use apiClient for fetching profile
+      useAuthStore.getState().setToken(accessToken, refreshToken);
+
+      // Fetch actual user profile
+      const profileResponse = await apiClient.get('/admin/my/profile');
+      const profileAttrs = profileResponse.data.data.attributes;
+      const profileId = profileResponse.data.data.id;
+      
+      let roles: any[] = [];
+      if (profileResponse.data.included) {
+        roles = profileResponse.data.included
+          .filter((inc: any) => inc.type === 'roles')
+          .map((role: any) => ({
+            id: role.id,
+            name: role.attributes.name,
+          }));
+      }
+
       const user = {
-        id: '1',
-        email: data.email,
-        name: 'Administrator',
-        role: 'admin',
+        id: profileId,
+        email: profileAttrs.email,
+        firstName: profileAttrs.firstName,
+        middleName: profileAttrs.middleName,
+        lastName: profileAttrs.lastName,
+        suffix: profileAttrs.suffix,
+        contactNumber: profileAttrs.contactNumber,
+        roles,
       };
       
       login(user, accessToken, refreshToken);

@@ -95,7 +95,7 @@ impl From<Administrator> for AdministratorResource {
     tag = "Admin / Administrator Management"
 )]
 
-fn build_admin_resource(admin: Administrator, include_roles: bool) -> (JsonApiResource<AdministratorResource>, Vec<serde_json::Value>) {
+pub fn build_admin_resource(admin: Administrator, include_roles: bool) -> (JsonApiResource<AdministratorResource>, Vec<serde_json::Value>) {
     let mut included = Vec::new();
     let mut rels = std::collections::HashMap::new();
 

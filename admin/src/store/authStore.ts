@@ -4,8 +4,12 @@ import { persist } from 'zustand/middleware';
 export interface User {
   id: string;
   email: string;
-  name: string;
-  role: string;
+  firstName: string;
+  middleName: string | null;
+  lastName: string;
+  suffix: string | null;
+  contactNumber: string | null;
+  roles: { id: string; name: string }[];
 }
 
 interface AuthState {

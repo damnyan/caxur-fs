@@ -8,3 +8,5 @@ pub mod revoke;
 pub mod restore;
 pub mod resend_verification;
 pub mod verify;
+pub mod update_my_profile;
+pub mod update_my_password;
