@@ -27,6 +27,6 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .route_layer(middleware::from_fn_with_state(state, check_permissions))
         .route_layer(Extension(RequiredPermissions {
             user_type: "admin",
-            permissions: vec![Permission::RoleManagement],
+            permissions: vec![Permission::RoleManagement, Permission::AdministratorManagement],
         }))
 }

@@ -6,6 +6,8 @@ import AuthLayout from './layouts/AuthLayout';
 import AdminLayout from './layouts/AdminLayout';
 import ErrorPage from './components/ErrorPage';
 
+import ProtectedRoute from './components/ProtectedRoute';
+
 import LoginPage from './features/auth/components/LoginPage';
 import SetPasswordPage from './features/auth/components/SetPasswordPage';
 import DashboardPage from './features/dashboard/components/DashboardPage';
@@ -27,12 +29,22 @@ const router = createBrowserRouter([
         element: <DashboardPage />,
       },
       {
-        path: 'administrators',
-        element: <AdministratorsPage />,
+        element: <ProtectedRoute requiredPermission="administrator_management" />,
+        children: [
+          {
+            path: 'administrators',
+            element: <AdministratorsPage />,
+          },
+        ],
       },
       {
-        path: 'roles',
-        element: <RolesPage />,
+        element: <ProtectedRoute requiredPermission="role_management" />,
+        children: [
+          {
+            path: 'roles',
+            element: <RolesPage />,
+          },
+        ],
       },
       {
         path: 'profile',

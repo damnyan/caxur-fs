@@ -1,13 +1,14 @@
 use crate::application::administrators::get::GetAdministratorUseCase;
 use crate::application::administrators::update_my_profile::{UpdateMyProfileRequest, UpdateMyProfileUseCase};
 use crate::application::administrators::update_my_password::{UpdateMyPasswordRequest, UpdateMyPasswordUseCase};
+use crate::domain::administrators::AdministratorRepository;
 use crate::infrastructure::db::DbPool;
 use crate::infrastructure::password::PasswordService;
 use crate::infrastructure::repositories::administrators::PostgresAdministratorRepository;
 use crate::presentation::admin::handlers::administrators::{build_admin_resource, AdministratorResource};
 use crate::presentation::extractors::AuthUser;
 use crate::shared::error::{AppError, ErrorResponse};
-use crate::shared::response::{JsonApiResponse, JsonApiResource};
+use crate::shared::response::{JsonApiResponse, JsonApiResource, JsonApiMeta};
 use crate::shared::validation::ValidatedJson;
 use axum::{
     extract::State,
@@ -36,7 +37,7 @@ pub async fn get_my_profile(
     auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let repo = Arc::new(PostgresAdministratorRepository::new(pool));
-    let use_case = GetAdministratorUseCase::new(repo);
+    let use_case = GetAdministratorUseCase::new(repo.clone());
 
     let user_id = uuid::Uuid::parse_str(&auth.claims.sub)
         .map_err(|_| AppError::Unauthorized("Invalid user ID".to_string()))?;
@@ -44,8 +45,13 @@ pub async fn get_my_profile(
 
     match admin {
         Some(admin) => {
+            let permissions = repo.get_permissions(user_id).await.unwrap_or_default();
+            let permissions_str: Vec<String> = permissions.into_iter().map(|p| p.to_string()).collect();
+
             let (resource, included) = build_admin_resource(admin, true);
-            let mut response = JsonApiResponse::new(resource);
+            let meta = JsonApiMeta::new().with_extra(json!({ "permissions": permissions_str }));
+
+            let mut response = JsonApiResponse::new(resource).with_meta(meta);
             if !included.is_empty() {
                 response = response.with_included(included);
             }

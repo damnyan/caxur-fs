@@ -61,6 +61,8 @@ export default function LoginPage() {
           }));
       }
 
+      const permissions = profileResponse.data.meta?.permissions || [];
+
       const user = {
         id: profileId,
         email: profileAttrs.email,
@@ -70,6 +72,7 @@ export default function LoginPage() {
         suffix: profileAttrs.suffix,
         contactNumber: profileAttrs.contactNumber,
         roles,
+        permissions,
       };
       
       login(user, accessToken, refreshToken);

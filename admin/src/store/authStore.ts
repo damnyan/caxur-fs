@@ -10,6 +10,7 @@ export interface User {
   suffix: string | null;
   contactNumber: string | null;
   roles: { id: string; name: string }[];
+  permissions: string[];
 }
 
 interface AuthState {

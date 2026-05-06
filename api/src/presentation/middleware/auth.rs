@@ -21,7 +21,7 @@ pub async fn check_permissions(
     State(state): State<AppState>,
     axum::Extension(config): axum::Extension<RequiredPermissions>,
     auth_user: AuthUser,
-    request: Request,
+    mut request: Request,
     next: Next,
 ) -> Result<Response, AppError> {
     let user_id = auth_user
@@ -63,6 +63,9 @@ pub async fn check_permissions(
         if !has_permission {
             return Err(AppError::Forbidden("Insufficient permissions".to_string()));
         }
+
+        // Insert permissions into request extensions so handlers can access them
+        request.extensions_mut().insert(permissions);
     } else {
         // For other user types, implement logic as needed (e.g. merchant scopes)
         // Currently fail open/closed depending on design. Fails closed here for safety.

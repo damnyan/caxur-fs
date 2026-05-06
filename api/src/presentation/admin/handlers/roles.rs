@@ -82,8 +82,11 @@ pub struct ListRolesQuery {
 )]
 pub async fn create_role(
     State(pool): State<DbPool>,
+    axum::Extension(permissions): axum::Extension<Vec<Permission>>,
     ValidatedJson(req): ValidatedJson<CreateRoleRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    require_role_management(&permissions)?;
+
     let repo = Arc::new(PostgresRoleRepository::new(pool));
     let use_case = CreateRoleUseCase::new(repo);
 
@@ -197,9 +200,12 @@ pub async fn list_roles(
 )]
 pub async fn update_role(
     State(pool): State<DbPool>,
+    axum::Extension(permissions): axum::Extension<Vec<Permission>>,
     Path(id): Path<Uuid>,
     ValidatedJson(req): ValidatedJson<UpdateRoleRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    require_role_management(&permissions)?;
+
     let repo = Arc::new(PostgresRoleRepository::new(pool));
     let use_case = UpdateRoleUseCase::new(repo);
 
@@ -227,8 +233,11 @@ pub async fn update_role(
 )]
 pub async fn delete_role(
     State(pool): State<DbPool>,
+    axum::Extension(permissions): axum::Extension<Vec<Permission>>,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
+    require_role_management(&permissions)?;
+
     let repo = Arc::new(PostgresRoleRepository::new(pool));
     let use_case = DeleteRoleUseCase::new(repo);
 
@@ -260,9 +269,12 @@ pub async fn delete_role(
 )]
 pub async fn attach_permission(
     State(pool): State<DbPool>,
+    axum::Extension(permissions): axum::Extension<Vec<Permission>>,
     Path(id): Path<Uuid>,
     Json(req): Json<AttachPermissionRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    require_role_management(&permissions)?;
+
     let repo = Arc::new(PostgresRoleRepository::new(pool));
     let use_case = AttachPermissionUseCase::new(repo);
 
@@ -295,9 +307,12 @@ pub async fn attach_permission(
 )]
 pub async fn detach_permission(
     State(pool): State<DbPool>,
+    axum::Extension(permissions): axum::Extension<Vec<Permission>>,
     Path(id): Path<Uuid>,
     Json(req): Json<DetachPermissionRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    require_role_management(&permissions)?;
+
     let repo = Arc::new(PostgresRoleRepository::new(pool));
     let use_case = DetachPermissionUseCase::new(repo);
 
@@ -353,4 +368,12 @@ pub async fn get_role_permissions(
     let permissions: Vec<PermissionDto> = permissions.into_iter().map(|p| p.into()).collect();
 
     Ok((StatusCode::OK, Json(JsonApiResponse::new(permissions))))
+}
+
+fn require_role_management(permissions: &[Permission]) -> Result<(), AppError> {
+    if permissions.contains(&Permission::Wildcard) || permissions.contains(&Permission::RoleManagement) {
+        Ok(())
+    } else {
+        Err(AppError::Forbidden("Insufficient permissions".to_string()))
+    }
 }

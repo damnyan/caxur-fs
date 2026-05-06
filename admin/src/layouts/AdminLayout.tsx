@@ -14,6 +14,7 @@ export default function AdminLayout() {
         .then((response) => {
           const profileAttrs = response.data.data.attributes;
           const profileId = response.data.data.id;
+          const permissions = response.data.meta?.permissions || [];
           
           let roles: any[] = [];
           if (response.data.included) {
@@ -34,6 +35,7 @@ export default function AdminLayout() {
             suffix: profileAttrs.suffix,
             contactNumber: profileAttrs.contactNumber,
             roles,
+            permissions,
           });
         })
         .catch((error) => {
@@ -63,10 +65,16 @@ export default function AdminLayout() {
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Administrators', path: '/administrators', icon: Users },
-    { name: 'Roles', path: '/roles', icon: Shield },
+    { name: 'Administrators', path: '/administrators', icon: Users, permission: 'administrator_management' },
+    { name: 'Roles', path: '/roles', icon: Shield, permission: 'role_management' },
     { name: 'Profile', path: '/profile', icon: UserCircle },
   ];
+
+  const hasPermission = (permission?: string) => {
+    if (!permission) return true;
+    if (!user) return false;
+    return user.permissions?.includes('*') || user.permissions?.includes(permission);
+  };
 
   return (
     <div className="h-screen overflow-hidden bg-gray-100 dark:bg-gray-900 flex">
@@ -79,7 +87,7 @@ export default function AdminLayout() {
         </div>
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="px-3 space-y-1">
-            {navItems.map((item) => {
+            {navItems.filter(item => hasPermission(item.permission)).map((item) => {
               const Icon = item.icon;
               return (
                 <NavLink
