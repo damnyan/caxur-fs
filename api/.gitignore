@@ -50,3 +50,7 @@ coverage/
 
 #Docker image files
 /postgres_data
+
+# Scratch files
+scratch
+scratch.rs
