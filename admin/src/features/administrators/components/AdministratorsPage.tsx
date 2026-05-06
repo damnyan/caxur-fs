@@ -1,0 +1,517 @@
+import { useState, useEffect } from 'react';
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { UserPlus, Pencil, Trash2, Mail, ShieldAlert, ShieldCheck, MoreHorizontal } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getRoles } from '@/features/roles/api/roles';
+import { administratorsApi } from '../api/administrators';
+import { Checkbox } from '@/components/ui/checkbox';
+
+import { 
+  useAdministrators, 
+  useCreateAdministrator, 
+  useUpdateAdministrator,
+  useDeleteAdministrator, 
+  useRevokeAdministrator, 
+  useRestoreAdministrator, 
+  useResendVerification,
+  administratorsKeys
+} from '../api/queries';
+import { handleApiValidationErrors } from '@/lib/api';
+
+const baseSchema = {
+  firstName: z.string().min(1, 'First name is required'),
+  middleName: z.string().optional(),
+  lastName: z.string().min(1, 'Last name is required'),
+  suffix: z.string().optional(),
+  contactNumber: z.string().optional(),
+  email: z.string().email('Invalid email address'),
+  roleIds: z.array(z.string()).optional(),
+};
+
+const createSchema = z.object(baseSchema);
+const updateSchema = z.object({
+  ...baseSchema,
+  email: z.string().email('Invalid email address').optional(),
+});
+
+type CreateFormValues = z.infer<typeof createSchema>;
+type UpdateFormValues = z.infer<typeof updateSchema>;
+
+export default function AdministratorsPage() {
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editAdmin, setEditAdmin] = useState<any | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{type: 'restore'|'revoke'|'delete', id: string} | null>(null);
+
+  const queryClient = useQueryClient();
+  const { data: response, isLoading } = useAdministrators();
+  const administrators = response?.data || [];
+  
+  // Fetch roles for selection
+  const { data: rolesResp, isLoading: isLoadingRoles } = useQuery({
+    queryKey: ['roles', 'all'],
+    queryFn: () => getRoles(1, 100),
+    enabled: isAddOpen || !!editAdmin,
+  });
+  const rolesList = rolesResp?.data || [];
+
+  const createMutation = useCreateAdministrator();
+  const updateMutation = useUpdateAdministrator();
+  const deleteMutation = useDeleteAdministrator();
+  const revokeMutation = useRevokeAdministrator();
+  const restoreMutation = useRestoreAdministrator();
+  const resendMutation = useResendVerification();
+
+  const { control: controlCreate, register: registerCreate, handleSubmit: handleCreateSubmit, reset: resetCreate, setError: setCreateError, formState: { errors: createErrors } } = useForm<CreateFormValues>({
+    resolver: zodResolver(createSchema),
+    defaultValues: { firstName: '', middleName: '', lastName: '', suffix: '', contactNumber: '', email: '', roleIds: [] },
+  });
+
+  const { control: controlEdit, register: registerEdit, handleSubmit: handleEditSubmit, reset: resetEdit, setError: setEditError, formState: { errors: editErrors } } = useForm<UpdateFormValues>({
+    resolver: zodResolver(updateSchema),
+  });
+
+  useEffect(() => {
+    if (editAdmin) {
+      resetEdit({
+        firstName: editAdmin.firstName,
+        middleName: editAdmin.middleName || '',
+        lastName: editAdmin.lastName,
+        suffix: editAdmin.suffix || '',
+        contactNumber: editAdmin.contactNumber || '',
+        email: editAdmin.email,
+        roleIds: rolesList.filter((r: any) => editAdmin.roles?.includes(r.attributes.name)).map((r: any) => r.id),
+      });
+    }
+  }, [editAdmin, resetEdit, rolesList]);
+
+  const onCreateSubmit = async (data: CreateFormValues) => {
+    const { roleIds, ...adminData } = data;
+    createMutation.mutate(adminData, {
+      onSuccess: async (createdAdmin) => {
+        if (roleIds && roleIds.length > 0) {
+          try {
+            await administratorsApi.attachRoles(createdAdmin.id, { roleIds });
+            queryClient.invalidateQueries({ queryKey: administratorsKeys.lists() });
+          } catch (e) {
+            toast.error('Admin created but failed to attach roles.');
+          }
+        }
+        toast.success('Administrator created successfully. A verification email has been sent.');
+        setIsAddOpen(false);
+        resetCreate();
+      },
+      onError: (error) => {
+        const handled = handleApiValidationErrors(error, setCreateError);
+        if (!handled) {
+          toast.error('Failed to create administrator');
+        }
+      }
+    });
+  };
+
+  const onEditSubmit = (data: UpdateFormValues) => {
+    if (!editAdmin) return;
+    const { roleIds, ...adminData } = data;
+    updateMutation.mutate({ id: editAdmin.id, data: adminData as any }, {
+      onSuccess: async () => {
+        if (roleIds) {
+          try {
+            const existingRoles = rolesList.filter((r: any) => editAdmin.roles?.includes(r.attributes.name)).map((r: any) => r.id);
+            const toAttach = roleIds.filter(id => !existingRoles.includes(id));
+            const toDetach = existingRoles.filter(id => !roleIds.includes(id));
+            
+            if (toDetach.length > 0) await administratorsApi.detachRoles(editAdmin.id, { roleIds: toDetach });
+            if (toAttach.length > 0) await administratorsApi.attachRoles(editAdmin.id, { roleIds: toAttach });
+            queryClient.invalidateQueries({ queryKey: administratorsKeys.lists() });
+          } catch (e) {
+            toast.error('Admin updated but failed to sync roles.');
+          }
+        }
+        toast.success('Administrator updated successfully.');
+        setEditAdmin(null);
+      },
+      onError: (error) => {
+        const handled = handleApiValidationErrors(error, setEditError);
+        if (!handled) {
+          toast.error('Failed to update administrator');
+        }
+      }
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Administrators</h1>
+          <p className="text-gray-500 dark:text-gray-400">
+            Manage your portal administrators.
+          </p>
+        </div>
+        
+        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+          <DialogTrigger 
+            render={
+              <Button>
+                <UserPlus className="mr-2 h-4 w-4" /> Add Administrator
+              </Button>
+            }
+          />
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Administrator</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreateSubmit(onCreateSubmit)} className="space-y-4 pt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input id="firstName" {...registerCreate('firstName')} />
+                  {createErrors.firstName && <p className="text-sm text-red-500">{createErrors.firstName.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="middleName">Middle Name (optional)</Label>
+                  <Input id="middleName" {...registerCreate('middleName')} />
+                  {createErrors.middleName && <p className="text-sm text-red-500">{createErrors.middleName.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input id="lastName" {...registerCreate('lastName')} />
+                  {createErrors.lastName && <p className="text-sm text-red-500">{createErrors.lastName.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="suffix">Suffix (optional)</Label>
+                  <Input id="suffix" {...registerCreate('suffix')} />
+                  {createErrors.suffix && <p className="text-sm text-red-500">{createErrors.suffix.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" {...registerCreate('email')} />
+                  {createErrors.email && <p className="text-sm text-red-500">{createErrors.email.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contactNumber">Contact Number (optional)</Label>
+                  <Input id="contactNumber" {...registerCreate('contactNumber')} />
+                  {createErrors.contactNumber && <p className="text-sm text-red-500">{createErrors.contactNumber.message}</p>}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Roles (optional)</Label>
+                <div className="grid grid-cols-2 gap-2 border p-3 rounded-md max-h-32 overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
+                  <Controller
+                    control={controlCreate}
+                    name="roleIds"
+                    render={({ field }) => (
+                      <>
+                        {isLoadingRoles ? (
+                          <span className="text-gray-500 italic text-sm">Loading roles...</span>
+                        ) : rolesList.map((role: any) => (
+                          <label key={role.id} className="flex items-center space-x-2 text-sm cursor-pointer">
+                            <Checkbox 
+                              checked={field.value?.includes(role.id)}
+                              onCheckedChange={(checked) => {
+                                const current = field.value || [];
+                                const updated = checked
+                                  ? [...current, role.id]
+                                  : current.filter((id: string) => id !== role.id);
+                                field.onChange(updated);
+                              }}
+                            />
+                            <span>{role.attributes.name}</span>
+                          </label>
+                        ))}
+                        {!isLoadingRoles && rolesList.length === 0 && <span className="text-gray-500 italic text-sm">No roles available</span>}
+                      </>
+                    )}
+                  />
+                </div>
+              </div>
+              <Button type="submit" className="w-full" disabled={createMutation.isPending}>
+                {createMutation.isPending ? 'Adding...' : 'Add Administrator'}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <Dialog open={!!editAdmin} onOpenChange={(open) => !open && setEditAdmin(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Administrator</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit(onEditSubmit)} className="space-y-4 pt-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editFirstName">First Name</Label>
+                <Input id="editFirstName" {...registerEdit('firstName')} />
+                {editErrors.firstName && <p className="text-sm text-red-500">{editErrors.firstName.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editMiddleName">Middle Name (optional)</Label>
+                <Input id="editMiddleName" {...registerEdit('middleName')} />
+                {editErrors.middleName && <p className="text-sm text-red-500">{editErrors.middleName.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editLastName">Last Name</Label>
+                <Input id="editLastName" {...registerEdit('lastName')} />
+                {editErrors.lastName && <p className="text-sm text-red-500">{editErrors.lastName.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editSuffix">Suffix (optional)</Label>
+                <Input id="editSuffix" {...registerEdit('suffix')} />
+                {editErrors.suffix && <p className="text-sm text-red-500">{editErrors.suffix.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editEmail">Email</Label>
+                <Input id="editEmail" type="email" {...registerEdit('email')} disabled={!!editAdmin?.emailVerifiedAt} className={!!editAdmin?.emailVerifiedAt ? "bg-gray-100" : ""} title={!!editAdmin?.emailVerifiedAt ? "Email cannot be changed after verification" : ""} />
+                {editErrors.email && <p className="text-sm text-red-500">{editErrors.email.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editContactNumber">Contact Number (optional)</Label>
+                <Input id="editContactNumber" {...registerEdit('contactNumber')} />
+                {editErrors.contactNumber && <p className="text-sm text-red-500">{editErrors.contactNumber.message}</p>}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Roles (optional)</Label>
+              <div className="grid grid-cols-2 gap-2 border p-3 rounded-md max-h-32 overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
+                <Controller
+                  control={controlEdit}
+                  name="roleIds"
+                  render={({ field }) => (
+                    <>
+                      {isLoadingRoles ? (
+                        <span className="text-gray-500 italic text-sm">Loading roles...</span>
+                      ) : rolesList.map((role: any) => (
+                        <label key={role.id} className="flex items-center space-x-2 text-sm cursor-pointer">
+                          <Checkbox 
+                            checked={field.value?.includes(role.id)}
+                            onCheckedChange={(checked) => {
+                              const current = field.value || [];
+                              const updated = checked
+                                ? [...current, role.id]
+                                : current.filter((id: string) => id !== role.id);
+                              field.onChange(updated);
+                            }}
+                          />
+                          <span>{role.attributes.name}</span>
+                        </label>
+                      ))}
+                    </>
+                  )}
+                />
+              </div>
+            </div>
+            <Button type="submit" className="w-full" disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <div className="border rounded-md bg-white dark:bg-gray-950">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Roles</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                  Loading administrators...
+                </TableCell>
+              </TableRow>
+            ) : administrators.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                  No administrators found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              administrators.map((admin: any) => {
+                const isVerified = !!admin.emailVerifiedAt;
+                const isRevoked = !!admin.revokedAt;
+                
+                return (
+                  <TableRow key={admin.id} className={isRevoked ? "opacity-60 bg-red-50 dark:bg-red-950/20" : ""}>
+                    <TableCell className="font-medium">
+                      {admin.firstName} {admin.middleName ? admin.middleName + ' ' : ''}{admin.lastName} {admin.suffix ? admin.suffix : ''}
+                    </TableCell>
+                    <TableCell>
+                      {admin.roles && admin.roles.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {admin.roles.map((r: string) => (
+                            <span key={r} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
+                              {r}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs italic">No roles</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{admin.email}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {isRevoked ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200 w-fit">
+                            Revoked
+                          </span>
+                        ) : isVerified ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200 w-fit">
+                            Verified
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200 w-fit">
+                            Unverified
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger 
+                          render={
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          }
+                        />
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuGroup>
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => setEditAdmin(admin)}>
+                              <Pencil className="mr-2 h-4 w-4" /> Edit
+                            </DropdownMenuItem>
+                            
+                            {!isVerified && (
+                              <DropdownMenuItem 
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  toast.promise(resendMutation.mutateAsync(admin.id), {
+                                    loading: 'Sending verification email...',
+                                    success: 'Verification email sent!',
+                                    error: 'Failed to send verification email'
+                                  });
+                                }}
+                              >
+                                <Mail className="mr-2 h-4 w-4" /> Resend Verification
+                              </DropdownMenuItem>
+                            )}
+                            
+                            <DropdownMenuSeparator />
+                            
+                            {isRevoked ? (
+                              <DropdownMenuItem 
+                                className="text-green-600 focus:text-green-600"
+                                onClick={() => setConfirmAction({ type: 'restore', id: admin.id })}
+                              >
+                                <ShieldCheck className="mr-2 h-4 w-4" /> Restore Access
+                              </DropdownMenuItem>
+                            ) : (
+                              isVerified && (
+                                <DropdownMenuItem 
+                                  className="text-orange-600 focus:text-orange-600"
+                                  onClick={() => setConfirmAction({ type: 'revoke', id: admin.id })}
+                                >
+                                  <ShieldAlert className="mr-2 h-4 w-4" /> Revoke Access
+                                </DropdownMenuItem>
+                              )
+                            )}
+                            
+                            <DropdownMenuItem 
+                              className="text-red-600 focus:text-red-600"
+                              onClick={() => setConfirmAction({ type: 'delete', id: admin.id })}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      {/* Confirmation Dialog */}
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction?.type === 'restore' && 'Restore Administrator'}
+              {confirmAction?.type === 'revoke' && 'Revoke Access'}
+              {confirmAction?.type === 'delete' && 'Delete Administrator'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction?.type === 'restore' && 'Are you sure you want to restore access for this administrator?'}
+              {confirmAction?.type === 'revoke' && 'Are you sure you want to revoke access? The administrator will no longer be able to log in.'}
+              {confirmAction?.type === 'delete' && 'Are you sure you want to permanently delete this administrator? This action cannot be undone.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={
+                confirmAction?.type === 'delete' ? 'bg-red-600 hover:bg-red-700 focus:ring-red-600' :
+                confirmAction?.type === 'revoke' ? 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-600' :
+                'bg-green-600 hover:bg-green-700 focus:ring-green-600'
+              }
+              onClick={() => {
+                if (!confirmAction) return;
+                switch (confirmAction.type) {
+                  case 'restore':
+                    restoreMutation.mutate(confirmAction.id, {
+                      onSuccess: () => toast.success('Administrator restored')
+                    });
+                    break;
+                  case 'revoke':
+                    revokeMutation.mutate(confirmAction.id, {
+                      onSuccess: () => toast.success('Administrator revoked')
+                    });
+                    break;
+                  case 'delete':
+                    deleteMutation.mutate(confirmAction.id, {
+                      onSuccess: () => toast.success('Administrator deleted')
+                    });
+                    break;
+                }
+                setConfirmAction(null);
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

@@ -3,3 +3,4 @@ pub mod db;
 pub mod password;
 pub mod repositories;
 pub mod state;
+pub mod email;

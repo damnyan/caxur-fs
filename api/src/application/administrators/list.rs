@@ -32,6 +32,10 @@ pub struct ListAdministratorsRequest {
     /// Example: "created_at" or "-created_at,email"
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sort: Option<String>,
+    /// Included resources (comma-separated)
+    /// Example: "roles"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include: Option<String>,
 }
 
 impl Default for PageParams {

@@ -48,6 +48,21 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+    // Auto-logout if the account is revoked
+    if (error.response?.status === 403) {
+      const isRevoked = (error.response.data as any)?.errors?.some(
+        (err: any) => err.code === 'account_revoked'
+      );
+      if (isRevoked) {
+        const authStore = useAuthStore.getState();
+        authStore.logout();
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+    }
+
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {

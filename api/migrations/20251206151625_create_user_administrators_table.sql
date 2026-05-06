@@ -7,6 +7,8 @@ CREATE TABLE user_administrators (
     contact_number TEXT,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    email_verified_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

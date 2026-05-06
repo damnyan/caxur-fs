@@ -7,8 +7,9 @@ import AdminLayout from './layouts/AdminLayout';
 import ErrorPage from './components/ErrorPage';
 
 import LoginPage from './features/auth/components/LoginPage';
+import SetPasswordPage from './features/auth/components/SetPasswordPage';
 import DashboardPage from './features/dashboard/components/DashboardPage';
-import UsersPage from './features/users/components/UsersPage';
+import AdministratorsPage from './features/administrators/components/AdministratorsPage';
 import RolesPage from './features/roles/components/RolesPage';
 import ProfilePage from './features/profile/components/ProfilePage';
 
@@ -26,8 +27,8 @@ const router = createBrowserRouter([
         element: <DashboardPage />,
       },
       {
-        path: 'users',
-        element: <UsersPage />,
+        path: 'administrators',
+        element: <AdministratorsPage />,
       },
       {
         path: 'roles',
@@ -46,6 +47,10 @@ const router = createBrowserRouter([
       {
         path: 'login',
         element: <LoginPage />,
+      },
+      {
+        path: 'set-password',
+        element: <SetPasswordPage />,
       },
     ],
   },

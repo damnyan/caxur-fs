@@ -26,7 +26,7 @@ export default function AdminLayout() {
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Users', path: '/users', icon: Users },
+    { name: 'Administrators', path: '/administrators', icon: Users },
     { name: 'Roles', path: '/roles', icon: Shield },
     { name: 'Profile', path: '/profile', icon: UserCircle },
   ];

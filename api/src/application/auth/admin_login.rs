@@ -65,6 +65,16 @@ impl AdminLoginUseCase {
                 AppError::Unauthorized("Invalid credentials".to_string())
             })?;
 
+        if admin.revoked_at.is_some() {
+            tracing::warn!("Login attempt for revoked administrator: {}", admin.email);
+            return Err(AppError::AccountRevoked("Account revoked".to_string()));
+        }
+
+        if admin.email_verified_at.is_none() {
+            tracing::warn!("Login attempt for unverified administrator: {}", admin.email);
+            return Err(AppError::Unauthorized("Email not verified".to_string()));
+        }
+
         tracing::info!(
             "Administrator found: {} (ID: {}). Verifying password...",
             admin.email,

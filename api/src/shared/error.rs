@@ -122,6 +122,8 @@ pub enum AppError {
     Unauthorized(String),
     #[error("Forbidden: {0}")]
     Forbidden(String),
+    #[error("Account revoked: {0}")]
+    AccountRevoked(String),
     #[error("Unprocessable Entity: {0}")]
     UnprocessableEntity(String),
     #[error("Internal server error: {0}")]
@@ -266,6 +268,17 @@ impl IntoResponse for AppError {
             AppError::Forbidden(msg) => {
                 let error = JsonApiError::new(StatusCode::FORBIDDEN, "Forbidden", msg)
                     .with_code("forbidden");
+                (
+                    StatusCode::FORBIDDEN,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
+            AppError::AccountRevoked(msg) => {
+                let error = JsonApiError::new(StatusCode::FORBIDDEN, "Forbidden", msg)
+                    .with_code("account_revoked");
                 (
                     StatusCode::FORBIDDEN,
                     Json(ErrorResponse {

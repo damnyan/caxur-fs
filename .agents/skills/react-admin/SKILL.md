@@ -43,6 +43,7 @@ Use the established stack for data and state. **Do not introduce alternative lib
 - **Zustand**: Use for *global client state* (e.g., UI toggles, user session details, theme).
 - **React Query (TanStack Query)**: Use exclusively for *server state*, data fetching, caching, and mutations.
 - **React Hook Form + Zod**: Use for all form state management and schema validation. Do not manage form inputs manually with simple state unless it is a trivial 1-field input.
+  - **Form Fields**: Always mark optional fields with `(optional)` in the label to reduce visual noise. Avoid using asterisks (`*`) for required fields unless requested, as marking optional fields is the modern industry standard.
 - **React Router v7**: Use for client-side routing.
 
 ## 5. Tailwind CSS v4 Standards
@@ -76,3 +77,4 @@ Use the established stack for data and state. **Do not introduce alternative lib
 ## 10. Helper Scripts
 - **Verification**: Run `scripts/verify.sh` to quickly lint and type-check the project.
 - **Setup**: Run `scripts/setup.sh` when initializing or restoring the project dependencies.
+- **No Native Alerts**: Do not use `window.alert` or `window.confirm`. Use standardized UI components (e.g., Shadcn Dialog, Alert Dialog, or Sonner Toasts) for all notifications and confirmations.

@@ -37,6 +37,17 @@ pub async fn check_permissions(
     // For admins, we check the DB for permissions
     if config.user_type == "admin" {
         let repo = PostgresAdministratorRepository::new(state.pool.clone());
+        
+        // Fetch the admin to ensure they exist and are not revoked
+        let admin = repo.find_by_id(user_id).await.map_err(|e| {
+            tracing::error!("Failed to fetch user {}: {}", user_id, e);
+            AppError::InternalServerError(e)
+        })?.ok_or_else(|| AppError::Unauthorized("User not found".to_string()))?;
+
+        if admin.revoked_at.is_some() {
+            return Err(AppError::AccountRevoked("Account revoked".to_string()));
+        }
+
         let permissions = repo.get_permissions(user_id).await.map_err(|e| {
             tracing::error!("Failed to fetch permissions for user {}: {}", user_id, e);
             AppError::InternalServerError(e)

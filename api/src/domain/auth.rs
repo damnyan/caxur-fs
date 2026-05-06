@@ -44,6 +44,17 @@ impl Claims {
         }
     }
 
+    pub fn new_verification_token(user_id: Uuid, user_type: String, expiry_seconds: i64) -> Self {
+        let now = OffsetDateTime::now_utc().unix_timestamp();
+        Self {
+            sub: user_id.to_string(),
+            user_type,
+            iat: now,
+            exp: now + expiry_seconds,
+            token_type: "verification".to_string(),
+        }
+    }
+
     pub fn user_id(&self) -> Result<Uuid> {
         Uuid::parse_str(&self.sub).map_err(|e| anyhow::anyhow!("Invalid user ID in claims: {}", e))
     }
@@ -96,6 +107,9 @@ pub trait AuthService: Send + Sync {
 
     /// Generate a refresh token for a user
     fn generate_refresh_token(&self, user_id: Uuid, user_type: String) -> Result<String>;
+
+    /// Generate a verification token for a user
+    fn generate_verification_token(&self, user_id: Uuid, user_type: String) -> Result<String>;
 
     /// Validate and decode a token
     fn validate_token(&self, token: &str) -> Result<Claims>;

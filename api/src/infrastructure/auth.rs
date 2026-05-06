@@ -51,6 +51,15 @@ impl AuthService for JwtAuthService {
             .map_err(|e| anyhow::anyhow!("Failed to generate refresh token: {}", e))
     }
 
+    fn generate_verification_token(&self, user_id: Uuid, user_type: String) -> Result<String> {
+        // Verification tokens expire in 24 hours (86400 seconds)
+        let claims = Claims::new_verification_token(user_id, user_type, 86400);
+        let header = Header::new(Algorithm::ES256);
+
+        encode(&header, &claims, &self.encoding_key)
+            .map_err(|e| anyhow::anyhow!("Failed to generate verification token: {}", e))
+    }
+
     fn validate_token(&self, token: &str) -> Result<Claims> {
         let mut validation = Validation::new(Algorithm::ES256);
         validation.validate_exp = true;

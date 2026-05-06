@@ -31,7 +31,11 @@ src/
 
 - **Server-First Approach**: Default to React Server Components (RSC). Use them for data fetching, backend logic, and static UI.
 - **Client Boundaries**: Only add the `'use client'` directive at the top of the file when interactivity, hooks (`useState`, `useEffect`), or browser APIs are required. Keep the client boundary as far down the component tree as possible.
-- **Data Fetching**: Use the native Next.js `fetch` API for server-side fetching. Utilize Server Actions for mutations. Do not use heavy client-side fetching libraries (like React Query) unless absolutely necessary for complex polling or infinite scrolling.
+- **Form Handling**:
+  - **React Hook Form + Zod**: Use for all form state management and schema validation. Do not manage form inputs manually with simple state unless it is a trivial 1-field input.
+  - **Form Fields**: Always mark optional fields with `(optional)` in the label to reduce visual noise. Avoid using asterisks (`*`) for required fields unless requested, as marking optional fields is the modern industry standard.
+- **Server Actions**: Next.js Server Actions are preferred for data mutations to reduce client-side JavaScript.
+- **Data Fetching**: Use the native Next.js `fetch` API for server-side fetching. Do not use heavy client-side fetching libraries (like React Query) unless absolutely necessary for complex polling or infinite scrolling.
 
 ## 4. State Management & i18n
 
@@ -69,3 +73,4 @@ src/
 ## 10. Helper Scripts
 - **Verification**: Run `scripts/verify.sh` to quickly run the Next.js build process (type-checks and lints).
 - **Setup**: Run `scripts/setup.sh` when initializing or restoring the project dependencies.
+- **No Native Alerts**: Do not use `window.alert` or `window.confirm`. Use standardized UI components (e.g., Shadcn Dialog, Alert Dialog, or Sonner Toasts) for all notifications and confirmations.

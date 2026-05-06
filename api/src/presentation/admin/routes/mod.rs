@@ -9,7 +9,7 @@ use axum::Router;
 
 pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
-        .nest("/administrators", administrators::routes())
+        .nest("/administrators", administrators::routes(state.clone()))
         .nest("/roles", roles::routes(state))
         .nest("/permissions", permissions::routes())
         .nest("/users", users::routes())

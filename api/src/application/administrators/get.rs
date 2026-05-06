@@ -1,7 +1,19 @@
 use crate::domain::administrators::{Administrator, AdministratorRepository};
 use crate::shared::error::AppError;
+use serde::Deserialize;
 use std::sync::Arc;
 use uuid::Uuid;
+
+use utoipa::{IntoParams, ToSchema};
+
+#[derive(Deserialize, IntoParams, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GetAdministratorRequest {
+    /// Included resources (comma-separated)
+    /// Example: "roles"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include: Option<String>,
+}
 
 pub struct GetAdministratorUseCase {
     repo: Arc<dyn AdministratorRepository>,

@@ -27,7 +27,7 @@ impl AdministratorRepository for PostgresAdministratorRepository {
                 first_name, middle_name, last_name, suffix, contact_number, email, password_hash
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING id, first_name, middle_name, last_name, suffix, contact_number, email, password_hash, created_at, updated_at
+            RETURNING id, first_name, middle_name, last_name, suffix, contact_number, email, password_hash, email_verified_at, revoked_at, created_at, updated_at, '[]'::jsonb as roles
             "#,
         )
         .bind(new_admin.first_name)
@@ -47,9 +47,13 @@ impl AdministratorRepository for PostgresAdministratorRepository {
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Administrator>, anyhow::Error> {
         let admin_db = sqlx::query_as::<_, AdministratorDbModel>(
             r#"
-            SELECT id, first_name, middle_name, last_name, suffix, contact_number, email, password_hash, created_at, updated_at
-            FROM user_administrators
-            WHERE id = $1
+            SELECT a.id, a.first_name, a.middle_name, a.last_name, a.suffix, a.contact_number, a.email, a.password_hash, a.email_verified_at, a.revoked_at, a.created_at, a.updated_at,
+                   COALESCE(jsonb_agg(jsonb_build_object('id', r.id, 'name', r.name)) FILTER (WHERE r.id IS NOT NULL), '[]'::jsonb) as roles
+            FROM user_administrators a
+            LEFT JOIN administrator_roles ar ON a.id = ar.administrator_id
+            LEFT JOIN roles r ON ar.role_id = r.id
+            WHERE a.id = $1
+            GROUP BY a.id
             "#,
         )
         .bind(id)
@@ -63,9 +67,13 @@ impl AdministratorRepository for PostgresAdministratorRepository {
     async fn find_by_email(&self, email: &str) -> Result<Option<Administrator>, anyhow::Error> {
         let admin_db = sqlx::query_as::<_, AdministratorDbModel>(
             r#"
-            SELECT id, first_name, middle_name, last_name, suffix, contact_number, email, password_hash, created_at, updated_at
-            FROM user_administrators
-            WHERE email = $1
+            SELECT a.id, a.first_name, a.middle_name, a.last_name, a.suffix, a.contact_number, a.email, a.password_hash, a.email_verified_at, a.revoked_at, a.created_at, a.updated_at,
+                   COALESCE(jsonb_agg(jsonb_build_object('id', r.id, 'name', r.name)) FILTER (WHERE r.id IS NOT NULL), '[]'::jsonb) as roles
+            FROM user_administrators a
+            LEFT JOIN administrator_roles ar ON a.id = ar.administrator_id
+            LEFT JOIN roles r ON ar.role_id = r.id
+            WHERE a.email = $1
+            GROUP BY a.id
             "#,
         )
         .bind(email)
@@ -79,9 +87,13 @@ impl AdministratorRepository for PostgresAdministratorRepository {
     async fn find_all(&self, limit: i64, offset: i64) -> Result<Vec<Administrator>, anyhow::Error> {
         let admins_db = sqlx::query_as::<_, AdministratorDbModel>(
             r#"
-            SELECT id, first_name, middle_name, last_name, suffix, contact_number, email, password_hash, created_at, updated_at
-            FROM user_administrators
-            ORDER BY created_at DESC
+            SELECT a.id, a.first_name, a.middle_name, a.last_name, a.suffix, a.contact_number, a.email, a.password_hash, a.email_verified_at, a.revoked_at, a.created_at, a.updated_at,
+                   COALESCE(jsonb_agg(jsonb_build_object('id', r.id, 'name', r.name)) FILTER (WHERE r.id IS NOT NULL), '[]'::jsonb) as roles
+            FROM user_administrators a
+            LEFT JOIN administrator_roles ar ON a.id = ar.administrator_id
+            LEFT JOIN roles r ON ar.role_id = r.id
+            GROUP BY a.id
+            ORDER BY a.created_at DESC
             LIMIT $1 OFFSET $2
             "#,
         )
@@ -145,6 +157,14 @@ impl AdministratorRepository for PostgresAdministratorRepository {
             updates.push(format!("password_hash = ${}", param_count));
             param_count += 1;
         }
+        if update.email_verified_at.is_some() {
+            updates.push(format!("email_verified_at = ${}", param_count));
+            param_count += 1;
+        }
+        if update.revoked_at.is_some() {
+            updates.push(format!("revoked_at = ${}", param_count));
+            param_count += 1;
+        }
 
         if updates.is_empty() {
             // Fetch and return the existing user if no updates are provided,
@@ -158,7 +178,7 @@ impl AdministratorRepository for PostgresAdministratorRepository {
         updates.push("updated_at = NOW()".to_string());
         query.push_str(&updates.join(", "));
         query.push_str(&format!(
-            " WHERE id = ${} RETURNING id, first_name, middle_name, last_name, suffix, contact_number, email, password_hash, created_at, updated_at",
+            " WHERE id = ${} RETURNING id, first_name, middle_name, last_name, suffix, contact_number, email, password_hash, email_verified_at, revoked_at, created_at, updated_at, (SELECT COALESCE(jsonb_agg(jsonb_build_object('id', r.id, 'name', r.name)), '[]'::jsonb) FROM administrator_roles ar JOIN roles r ON ar.role_id = r.id WHERE ar.administrator_id = user_administrators.id) as roles",
             param_count
         ));
 
@@ -184,6 +204,12 @@ impl AdministratorRepository for PostgresAdministratorRepository {
         }
         if let Some(password_hash) = update.password_hash {
             query_builder = query_builder.bind(password_hash);
+        }
+        if let Some(email_verified_at) = update.email_verified_at {
+            query_builder = query_builder.bind(email_verified_at);
+        }
+        if let Some(revoked_at) = update.revoked_at {
+            query_builder = query_builder.bind(revoked_at);
         }
         query_builder = query_builder.bind(id);
 

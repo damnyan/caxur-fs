@@ -90,7 +90,30 @@ async fn bootstrap(
         .map_err(|e| anyhow::anyhow!("Failed to initialize auth service: {}", e))?,
     );
 
-    let state = infrastructure::state::AppState::new(pool, auth_service);
+    let smtp_host = env::var("SMTP_HOST").context("SMTP_HOST must be set")?;
+    let smtp_port = env::var("SMTP_PORT")
+        .unwrap_or_else(|_| "2525".to_string())
+        .parse::<u16>()
+        .unwrap_or(2525);
+    let smtp_username = env::var("SMTP_USERNAME").context("SMTP_USERNAME must be set")?;
+    let smtp_password = env::var("SMTP_PASSWORD").context("SMTP_PASSWORD must be set")?;
+    let smtp_from = env::var("SMTP_FROM").unwrap_or_else(|_| "noreply@caxur.com".to_string());
+
+    let email_service = std::sync::Arc::new(
+        infrastructure::email::SmtpEmailService::new(
+            &smtp_host,
+            smtp_port,
+            &smtp_username,
+            &smtp_password,
+            smtp_from,
+        )
+        .map_err(|e| anyhow::anyhow!("Failed to initialize email service: {}", e))?,
+    );
+
+    let admin_url = env::var("ADMIN_URL").context("ADMIN_URL must be set")?;
+    let client_url = env::var("CLIENT_URL").context("CLIENT_URL must be set")?;
+
+    let state = infrastructure::state::AppState::new(pool, auth_service, email_service, admin_url, client_url);
     let app = presentation::router::app(state)?;
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));

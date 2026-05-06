@@ -18,8 +18,6 @@ pub struct CreateAdministratorRequest {
     pub contact_number: Option<String>,
     #[validate(email)]
     pub email: String,
-    #[validate(length(min = 8))]
-    pub password: String,
 }
 
 impl CreateAdministratorRequest {
@@ -41,16 +39,25 @@ impl CreateAdministratorRequest {
 pub struct CreateAdministratorUseCase {
     repo: Arc<dyn AdministratorRepository>,
     password_service: Arc<dyn PasswordHashingService>,
+    auth_service: Arc<dyn crate::domain::auth::AuthService>,
+    email_service: Arc<dyn crate::infrastructure::email::EmailService>,
+    admin_url: String,
 }
 
 impl CreateAdministratorUseCase {
     pub fn new(
         repo: Arc<dyn AdministratorRepository>,
         password_service: Arc<dyn PasswordHashingService>,
+        auth_service: Arc<dyn crate::domain::auth::AuthService>,
+        email_service: Arc<dyn crate::infrastructure::email::EmailService>,
+        admin_url: String,
     ) -> Self {
         Self {
             repo,
             password_service,
+            auth_service,
+            email_service,
+            admin_url,
         }
     }
 
@@ -61,9 +68,10 @@ impl CreateAdministratorUseCase {
         // Check if email already exists
         req.validate_unique_email(&self.repo).await?;
 
+        let random_password = uuid::Uuid::new_v4().to_string();
         let password_hash = self
             .password_service
-            .hash_password(&req.password)
+            .hash_password(&random_password)
             .map_err(AppError::InternalServerError)?;
 
         let new_admin = NewAdministrator {
@@ -72,7 +80,7 @@ impl CreateAdministratorUseCase {
             last_name: req.last_name,
             suffix: req.suffix,
             contact_number: req.contact_number,
-            email: req.email,
+            email: req.email.clone(),
             password_hash,
         };
 
@@ -81,6 +89,33 @@ impl CreateAdministratorUseCase {
             .create(new_admin)
             .await
             .map_err(AppError::InternalServerError)?;
+
+        let token = self
+            .auth_service
+            .generate_verification_token(admin.id, "admin".to_string())
+            .map_err(AppError::InternalServerError)?;
+
+        let set_password_link = format!("{}/set-password?token={}", self.admin_url, token);
+
+        let email_body = format!(
+            "Hello {},<br><br>Your administrator account has been created. Please click the link below to verify your email and set your password:<br><br><a href=\"{}\">{}</a>",
+            admin.first_name, set_password_link, set_password_link
+        );
+
+        // We spawn this or just await it. Awaiting is safer to ensure it's sent.
+        if let Err(e) = self
+            .email_service
+            .send_email(
+                &admin.email,
+                "Welcome to Caxur Admin - Set Your Password",
+                &email_body,
+            )
+            .await
+        {
+            tracing::error!("Failed to send verification email to {}: {:?}", admin.email, e);
+            // Optionally, we could return an error, but the user is already created.
+            // We just log it so they can use "Resend Verification" later.
+        }
 
         Ok(admin)
     }

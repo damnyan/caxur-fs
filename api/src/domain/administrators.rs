@@ -5,6 +5,13 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct AdministratorRole {
+    pub id: Uuid,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Administrator {
     pub id: Uuid,
     pub first_name: String,
@@ -15,6 +22,11 @@ pub struct Administrator {
     pub email: String,
     #[serde(skip)]
     pub password_hash: String,
+    pub roles: Option<Vec<AdministratorRole>>,
+    #[serde(with = "time::serde::iso8601::option")]
+    pub email_verified_at: Option<OffsetDateTime>,
+    #[serde(with = "time::serde::iso8601::option")]
+    pub revoked_at: Option<OffsetDateTime>,
     #[serde(with = "time::serde::iso8601")]
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::iso8601")]
@@ -43,6 +55,8 @@ pub struct UpdateAdministrator {
     pub contact_number: Option<String>,
     pub email: Option<String>,
     pub password_hash: Option<String>,
+    pub email_verified_at: Option<Option<OffsetDateTime>>,
+    pub revoked_at: Option<Option<OffsetDateTime>>,
 }
 
 #[async_trait]

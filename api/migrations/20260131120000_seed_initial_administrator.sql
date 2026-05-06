@@ -5,12 +5,15 @@ DECLARE
     v_role_id UUID;
 BEGIN
     -- 1. Insert or Get Administrator
-    INSERT INTO user_administrators (email, password_hash, first_name, last_name)
+    INSERT INTO user_administrators (email, password_hash, first_name, middle_name, last_name, suffix, email_verified_at)
     VALUES (
         'admin@email.com',
         '$argon2id$v=19$m=19456,t=2,p=1$SNdmdsg99eWhTp1gfhgQng$Ew5Zwb7you3ebqt849JzCR3+sKbzn8jW7DIsE3OMo7c', -- Password: "123123123"
+        'Super',
+        'Ace',
         'Admin',
-        'User'
+        'I',
+        NOW()
     )
     ON CONFLICT (email) DO UPDATE 
     SET updated_at = NOW() -- Dummy update to return ID
@@ -24,11 +27,11 @@ BEGIN
     -- 2. Insert or Get "Super Admin" Role
     -- Note: roles has unique index on (name, scope, coalesce(group_id...))
     SELECT id INTO v_role_id FROM roles 
-    WHERE name = 'Super Admin' AND scope = 'ADMINISTRATOR' AND group_id IS NULL;
+    WHERE name = 'Super Admin' AND scope = 'administrator' AND group_id IS NULL;
 
     IF v_role_id IS NULL THEN
         INSERT INTO roles (name, description, scope, group_id)
-        VALUES ('Super Admin', 'Initial super administrator role with full access', 'ADMINISTRATOR', NULL)
+        VALUES ('Super Admin', 'Initial super administrator role with full access', 'administrator', NULL)
         RETURNING id INTO v_role_id;
     END IF;
 

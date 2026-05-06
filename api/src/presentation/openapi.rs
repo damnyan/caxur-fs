@@ -3,6 +3,7 @@ use crate::application::auth::admin_login::AdminLoginRequest;
 use crate::application::auth::login::{LoginRequest, LoginResponse};
 use crate::application::auth::logout::LogoutRequest;
 use crate::application::auth::refresh::{RefreshTokenRequest, RefreshTokenResponse};
+use crate::application::administrators::verify::VerifyAndSetPasswordRequest;
 use crate::application::roles::create::CreateRoleRequest;
 use crate::application::roles::update::UpdateRoleRequest;
 use crate::application::users::list::ListUsersRequest;
@@ -42,6 +43,10 @@ use utoipa::OpenApi;
         crate::presentation::admin::handlers::administrators::delete_admin,
         crate::presentation::admin::handlers::administrators::attach_admin_roles,
         crate::presentation::admin::handlers::administrators::detach_admin_roles,
+        crate::presentation::admin::handlers::administrators::revoke_admin,
+        crate::presentation::admin::handlers::administrators::restore_admin,
+        crate::presentation::admin::handlers::administrators::resend_verification_admin,
+        crate::presentation::admin::handlers::administrators::verify_admin,
         crate::presentation::admin::handlers::roles::create_role,
         crate::presentation::admin::handlers::roles::get_role,
         crate::presentation::admin::handlers::roles::list_roles,
@@ -59,6 +64,7 @@ use utoipa::OpenApi;
 
             // Request DTOs
             ListUsersRequest,
+            VerifyAndSetPasswordRequest,
             CreateRoleRequest,
             UpdateRoleRequest,
             AttachPermissionRequest,

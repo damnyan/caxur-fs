@@ -99,6 +99,8 @@ impl UpdateAdministratorUseCase {
             contact_number: req.contact_number,
             email: req.email,
             password_hash,
+            email_verified_at: None,
+            revoked_at: None,
         };
 
         let admin = self

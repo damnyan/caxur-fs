@@ -4,3 +4,7 @@ pub mod get;
 pub mod list;
 pub mod roles;
 pub mod update;
+pub mod revoke;
+pub mod restore;
+pub mod resend_verification;
+pub mod verify;

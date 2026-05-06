@@ -56,8 +56,8 @@ export default function LoginPage() {
       login(user, accessToken, refreshToken);
       navigate('/');
     } catch (err) {
-      if (err instanceof AxiosError && err.response?.status === 401) {
-        setError('Invalid email or password');
+      if (err instanceof AxiosError && err.response?.data?.errors?.[0]?.detail) {
+        setError(err.response.data.errors[0].detail);
       } else {
         setError('An error occurred during login');
       }
