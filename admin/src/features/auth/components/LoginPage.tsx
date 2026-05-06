@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { apiClient } from '@/lib/api';
+import { AxiosError } from 'axios';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -35,24 +37,30 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
     try {
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await apiClient.post('/admin/auth/login', data);
       
-      if (data.email === 'admin@example.com' && data.password === 'password') {
-        const mockUser = {
-          id: '1',
-          email: 'admin@example.com',
-          name: 'Super Admin',
-          role: 'admin',
-        };
-        const mockToken = 'mock-jwt-token-xyz';
-        login(mockUser, mockToken);
-        navigate('/');
-      } else {
-        setError('Invalid credentials. Use admin@example.com / password');
-      }
+      const attributes = response.data.data.attributes;
+      const accessToken = attributes.accessToken;
+      const refreshToken = attributes.refreshToken;
+      
+      // We don't get the user details from the login response in JSON:API by default yet,
+      // but let's mock the user object or fetch it if there is a /me endpoint.
+      // For now, we just set a default admin user structure as we only care about the token.
+      const user = {
+        id: '1',
+        email: data.email,
+        name: 'Administrator',
+        role: 'admin',
+      };
+      
+      login(user, accessToken, refreshToken);
+      navigate('/');
     } catch (err) {
-      setError('An error occurred during login');
+      if (err instanceof AxiosError && err.response?.status === 401) {
+        setError('Invalid email or password');
+      } else {
+        setError('An error occurred during login');
+      }
     } finally {
       setIsLoading(false);
     }

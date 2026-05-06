@@ -1,17 +1,28 @@
 import { Outlet, Navigate, NavLink, Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { LayoutDashboard, Users, Shield, UserCircle, LogOut } from 'lucide-react';
+import { useIdleTimeout } from '@/hooks/useIdleTimeout';
+import { apiClient } from '@/lib/api';
 
 export default function AdminLayout() {
-  const { isAuthenticated, user, logout } = useAuthStore();
+  const { isAuthenticated, user, logout, refreshToken } = useAuthStore();
+
+  const handleLogout = async () => {
+    if (refreshToken) {
+      try {
+        await apiClient.post('/admin/auth/logout', { refreshToken });
+      } catch (error) {
+        console.error('Logout failed', error);
+      }
+    }
+    logout();
+  };
+
+  useIdleTimeout(handleLogout, 15 * 60 * 1000); // 15 minutes
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-
-  const handleLogout = () => {
-    logout();
-  };
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },

@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/sonner';
 
 import AuthLayout from './layouts/AuthLayout';
 import AdminLayout from './layouts/AdminLayout';
+import ErrorPage from './components/ErrorPage';
 
 import LoginPage from './features/auth/components/LoginPage';
 import DashboardPage from './features/dashboard/components/DashboardPage';
@@ -18,6 +19,7 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <AdminLayout />,
+    errorElement: <ErrorPage />,
     children: [
       {
         index: true,
@@ -39,6 +41,7 @@ const router = createBrowserRouter([
   },
   {
     element: <AuthLayout />,
+    errorElement: <ErrorPage />,
     children: [
       {
         path: 'login',

@@ -65,6 +65,14 @@ Use the established stack for data and state. **Do not introduce alternative lib
 - **Linting**: Address all ESLint and TypeScript compilation warnings (`tsc`). 
 - **Imports**: Organize imports logically. Prefer absolute imports (e.g., `@/components/`) if configured, or clean relative paths.
 
-## 8. Helper Scripts
+## 8. Formatting Standards
+
+- **Dates and Times**: Always display dates and datetimes in a standard, human-readable format across the application. Do not use raw ISO strings or default `.toString()`. If the backend response includes a time component (e.g., `createdAt`, `updatedAt`), you MUST use `formatDateTime` (e.g. Oct 24, 2026, 3:30 PM) to ensure the time is visible. Use `formatDate` (e.g. Oct 24, 2026) ONLY for strict date-only values (e.g. birth dates). These utility functions are provided in `src/lib/utils.ts`.
+
+## 9. Notifications
+
+- **Toast Notifications**: Use `sonner` for all user-facing success, error, and informational messages. Standardize on `toast.success("Message")` and `toast.error("Message")` for immediate feedback following API mutations or critical client-side actions. Do not use standard `console.log` or generic browser `alert` boxes for user feedback.
+
+## 10. Helper Scripts
 - **Verification**: Run `scripts/verify.sh` to quickly lint and type-check the project.
 - **Setup**: Run `scripts/setup.sh` when initializing or restoring the project dependencies.

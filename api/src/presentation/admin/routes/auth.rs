@@ -5,5 +5,8 @@ use crate::infrastructure::state::AppState;
 
 /// Admin Auth routes
 pub fn routes() -> Router<AppState> {
-    Router::new().route("/login", post(auth::admin_login))
+    Router::new()
+        .route("/login", post(auth::admin_login))
+        .route("/refresh", post(auth::refresh_token))
+        .route("/logout", post(auth::admin_logout))
 }

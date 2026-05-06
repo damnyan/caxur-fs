@@ -100,3 +100,27 @@ pub async fn refresh_token(
 
     Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
 }
+
+/// Logout handler
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/logout",
+    request_body = crate::application::auth::logout::LogoutRequest,
+    responses(
+        (status = 204, description = "Logout successful"),
+        (status = 422, description = "Validation error", body = ErrorResponse)
+    ),
+    tag = "Client / Auth"
+)]
+pub async fn logout(
+    State(state): State<AppState>,
+    ValidatedJson(req): ValidatedJson<crate::application::auth::logout::LogoutRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let refresh_token_repo = Arc::new(PostgresRefreshTokenRepository::new(state.pool));
+
+    // Execute use case
+    let use_case = crate::application::auth::logout::LogoutUseCase::new(refresh_token_repo);
+    use_case.execute(req).await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}

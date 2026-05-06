@@ -1,6 +1,7 @@
 #[allow(unused_imports)]
 use crate::application::auth::admin_login::AdminLoginRequest;
 use crate::application::auth::login::{LoginRequest, LoginResponse};
+use crate::application::auth::logout::LogoutRequest;
 use crate::application::auth::refresh::{RefreshTokenRequest, RefreshTokenResponse};
 use crate::application::roles::create::CreateRoleRequest;
 use crate::application::roles::update::UpdateRoleRequest;
@@ -28,8 +29,11 @@ use utoipa::OpenApi;
 
     paths(
         crate::presentation::client::handlers::auth::login,
-        crate::presentation::admin::handlers::auth::admin_login,
         crate::presentation::client::handlers::auth::refresh_token,
+        crate::presentation::client::handlers::auth::logout,
+        crate::presentation::admin::handlers::auth::admin_login,
+        crate::presentation::admin::handlers::auth::refresh_token,
+        crate::presentation::admin::handlers::auth::admin_logout,
         crate::presentation::admin::handlers::users::list_users,
         crate::presentation::admin::handlers::administrators::create_admin,
         crate::presentation::admin::handlers::administrators::get_admin,
@@ -64,6 +68,7 @@ use utoipa::OpenApi;
 
             AdminLoginRequest,
             LoginResponse,
+            LogoutRequest,
             RefreshTokenRequest,
             RefreshTokenResponse,
 

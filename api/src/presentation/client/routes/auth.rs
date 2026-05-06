@@ -8,4 +8,5 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/login", post(auth::login))
         .route("/refresh", post(auth::refresh_token))
+        .route("/logout", post(auth::logout))
 }
