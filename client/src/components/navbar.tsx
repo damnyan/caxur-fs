@@ -33,7 +33,19 @@ export function Navbar() {
   const isAuthPage = pathname === "/login" || pathname === "/register" || pathname.startsWith("/register/verify")
   const appName = config.appName
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const refreshToken = useAuthStore.getState().refreshToken;
+    if (refreshToken) {
+      try {
+        await fetch(`${config.apiUrl}/api/v1/auth/logout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken }),
+        });
+      } catch (error) {
+        console.error("Logout failed", error);
+      }
+    }
     logout()
     router.push("/")
   }

@@ -8,6 +8,7 @@ import Link from "next/link"
 import { useAuthStore } from "@/lib/auth-store"
 import { config } from "@/lib/config"
 import { useEffect, useState } from "react"
+import { fetchApi } from "@/lib/api-client"
 import { toast } from "sonner"
 
 export default function ProfilePage() {
@@ -19,11 +20,7 @@ export default function ProfilePage() {
       if (!token) return
       
       try {
-        const response = await fetch(`${config.apiUrl}/api/v1/my/profile`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        })
+        const response = await fetchApi(`${config.apiUrl}/api/v1/my/profile`)
 
         const data = await response.json()
 

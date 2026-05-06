@@ -15,6 +15,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { handleApiErrors } from "@/lib/utils/api-errors"
 
+import { fetchApi } from "@/lib/api-client"
+
 const profileSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   middleName: z.string().optional(),
@@ -66,12 +68,8 @@ export default function UpdateProfilePage() {
 
     setIsLoading(true)
     try {
-      const response = await fetch(`${config.apiUrl}/api/v1/profile`, {
+      const response = await fetchApi(`${config.apiUrl}/api/v1/profile`, {
         method: "PATCH",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
         body: JSON.stringify(values),
       })
 

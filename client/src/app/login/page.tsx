@@ -44,8 +44,8 @@ export default function LoginPage() {
         throw new Error(data.errors?.[0]?.detail || "Login failed")
       }
 
-      const { accessToken, user } = data.data.attributes
-      setToken(accessToken)
+      const { accessToken, refreshToken, user } = data.data.attributes
+      setToken(accessToken, refreshToken)
       setUser(user)
 
       toast.success("Welcome back!")

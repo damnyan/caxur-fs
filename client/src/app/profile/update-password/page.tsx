@@ -14,6 +14,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { handleApiErrors } from "@/lib/utils/api-errors"
+import { fetchApi } from "@/lib/api-client"
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -54,12 +55,8 @@ export default function UpdatePasswordPage() {
 
     setIsLoading(true)
     try {
-      const response = await fetch(`${config.apiUrl}/api/v1/profile`, {
+      const response = await fetchApi(`${config.apiUrl}/api/v1/profile`, {
         method: "PATCH",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
         body: JSON.stringify({ 
           currentPassword: values.currentPassword,
           password: values.password 
