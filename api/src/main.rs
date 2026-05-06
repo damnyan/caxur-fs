@@ -98,6 +98,7 @@ async fn bootstrap(
     let smtp_username = env::var("SMTP_USERNAME").context("SMTP_USERNAME must be set")?;
     let smtp_password = env::var("SMTP_PASSWORD").context("SMTP_PASSWORD must be set")?;
     let smtp_from = env::var("SMTP_FROM").unwrap_or_else(|_| "noreply@caxur.com".to_string());
+    let app_name = env::var("APP_NAME").unwrap_or_else(|_| "Caxur".to_string());
 
     let email_service = std::sync::Arc::new(
         infrastructure::email::SmtpEmailService::new(
@@ -106,6 +107,7 @@ async fn bootstrap(
             &smtp_username,
             &smtp_password,
             smtp_from,
+            app_name,
         )
         .map_err(|e| anyhow::anyhow!("Failed to initialize email service: {}", e))?,
     );

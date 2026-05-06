@@ -44,6 +44,11 @@ This skill governs development within the `api` project. It enforces strict adhe
   - EVERY endpoint must have a default rate limit. The rate limit per minute must be configurable via the `RATE_LIMIT_PER_MINUTE` environment variable, defaulting to `60` if not set.
 - **Code Style**:
   - **No Fully Qualified Names (FQN)**: Always import types, functions, and modules at the top of the file. (e.g., `use crate::domain::User;` instead of `crate::domain::User::new()`).
+- **Email Notifications**:
+  - ALL email notifications MUST use a uniform internal HTML template implemented in the `infrastructure` layer.
+  - Emails MUST include a Header (with branding), a Body (with a prominent CTA button), and a Footer.
+  - The Footer MUST include a "Fallback Link" section (e.g., "If the button doesn't work, copy this link...").
+  - The Application Name MUST NEVER be hardcoded; it MUST be configurable via the `APP_NAME` environment variable.
 
 ## 4. Implementation Workflow
 

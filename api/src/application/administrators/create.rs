@@ -97,24 +97,25 @@ impl CreateAdministratorUseCase {
 
         let set_password_link = format!("{}/set-password?token={}", self.admin_url, token);
 
-        let email_body = format!(
-            "Hello {},<br><br>Your administrator account has been created. Please click the link below to verify your email and set your password:<br><br><a href=\"{}\">{}</a>",
-            admin.first_name, set_password_link, set_password_link
+        let email_title = "Welcome to the Team!";
+        let email_content = format!(
+            "<p>Hello {} {},</p><p>Your administrator account has been created. To get started, please verify your email and set your password by clicking the button below.</p>",
+            admin.first_name, admin.last_name
         );
 
-        // We spawn this or just await it. Awaiting is safer to ensure it's sent.
         if let Err(e) = self
             .email_service
-            .send_email(
+            .send_templated_email(
                 &admin.email,
                 "Welcome to Caxur Admin - Set Your Password",
-                &email_body,
+                email_title,
+                &email_content,
+                Some("Set My Password"),
+                Some(&set_password_link),
             )
             .await
         {
             tracing::error!("Failed to send verification email to {}: {:?}", admin.email, e);
-            // Optionally, we could return an error, but the user is already created.
-            // We just log it so they can use "Resend Verification" later.
         }
 
         Ok(admin)

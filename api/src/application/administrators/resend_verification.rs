@@ -46,16 +46,20 @@ impl ResendVerificationUseCase {
 
         let set_password_link = format!("{}/set-password?token={}", self.admin_url, token);
 
-        let email_body = format!(
-            "Hello {},<br><br>Please click the link below to verify your email and set your password:<br><br><a href=\"{}\">{}</a>",
-            admin.first_name, set_password_link, set_password_link
+        let email_title = "Account Verification";
+        let email_content = format!(
+            "<p>Hello {} {},</p><p>Please verify your email and set your password by clicking the button below to gain access to your account.</p>",
+            admin.first_name, admin.last_name
         );
 
         self.email_service
-            .send_email(
+            .send_templated_email(
                 &admin.email,
                 "Caxur Admin - Verify Email and Set Password",
-                &email_body,
+                email_title,
+                &email_content,
+                Some("Verify and Set Password"),
+                Some(&set_password_link),
             )
             .await
             .map_err(|e| {

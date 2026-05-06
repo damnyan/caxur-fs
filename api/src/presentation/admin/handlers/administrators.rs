@@ -18,6 +18,7 @@ use crate::application::administrators::update::{
 };
 use crate::domain::administrators::Administrator;
 use crate::infrastructure::db::DbPool;
+use crate::infrastructure::state::AppState;
 use crate::infrastructure::password::PasswordService;
 use crate::infrastructure::repositories::administrators::PostgresAdministratorRepository;
 use crate::presentation::extractors::AuthUser;
@@ -143,27 +144,19 @@ pub fn build_admin_resource(admin: Administrator, include_roles: bool) -> (JsonA
     tag = "Admin / Administrator Management"
 )]
 pub async fn create_admin(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     _auth: AuthUser,
     ValidatedJson(req): ValidatedJson<CreateAdministratorRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let repo = Arc::new(PostgresAdministratorRepository::new(pool));
+    let repo = Arc::new(PostgresAdministratorRepository::new(state.pool));
     let hasher = Arc::new(PasswordService::new());
-    let auth_service = Arc::new(crate::infrastructure::auth::JwtAuthService::new(
-        &std::env::var("JWT_PRIVATE_KEY").unwrap_or_default(),
-        &std::env::var("JWT_PUBLIC_KEY").unwrap_or_default(),
-        std::env::var("JWT_ACCESS_TOKEN_EXPIRY").unwrap_or_else(|_| "900".to_string()).parse().unwrap_or(900),
-        std::env::var("JWT_REFRESH_TOKEN_EXPIRY").unwrap_or_else(|_| "604800".to_string()).parse().unwrap_or(604800),
-    ).unwrap());
-    let email_service = Arc::new(crate::infrastructure::email::SmtpEmailService::new(
-        &std::env::var("SMTP_HOST").unwrap_or_default(),
-        std::env::var("SMTP_PORT").unwrap_or_else(|_| "587".to_string()).parse().unwrap_or(587),
-        &std::env::var("SMTP_USERNAME").unwrap_or_default(),
-        &std::env::var("SMTP_PASSWORD").unwrap_or_default(),
-        std::env::var("SMTP_FROM").unwrap_or_else(|_| "noreply@caxur.com".to_string()),
-    ).unwrap());
-    let admin_url = std::env::var("ADMIN_URL").unwrap_or_else(|_| "http://localhost:3001".to_string());
-    let use_case = CreateAdministratorUseCase::new(repo, hasher, auth_service, email_service, admin_url);
+    let use_case = CreateAdministratorUseCase::new(
+        repo,
+        hasher,
+        state.auth_service,
+        state.email_service,
+        state.admin_url,
+    );
 
     let admin = use_case.execute(req).await?;
     let resource = JsonApiResource::new(
@@ -510,27 +503,17 @@ pub async fn restore_admin(
     tag = "Admin / Administrator Management"
 )]
 pub async fn resend_verification_admin(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Path(id): Path<Uuid>,
     _auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
-    let repo = Arc::new(PostgresAdministratorRepository::new(pool));
-    // Provide a mocked email service just like create does or inject properly
-    let email_service = Arc::new(crate::infrastructure::email::SmtpEmailService::new(
-        &std::env::var("SMTP_HOST").unwrap_or_default(),
-        std::env::var("SMTP_PORT").unwrap_or_else(|_| "587".to_string()).parse().unwrap_or(587),
-        &std::env::var("SMTP_USERNAME").unwrap_or_default(),
-        &std::env::var("SMTP_PASSWORD").unwrap_or_default(),
-        std::env::var("SMTP_FROM").unwrap_or_else(|_| "noreply@caxur.com".to_string()),
-    ).unwrap());
-    let admin_url = std::env::var("ADMIN_URL").unwrap_or_else(|_| "http://localhost:3001".to_string());
-    let auth_service = Arc::new(crate::infrastructure::auth::JwtAuthService::new(
-        &std::env::var("JWT_PRIVATE_KEY").unwrap_or_default(),
-        &std::env::var("JWT_PUBLIC_KEY").unwrap_or_default(),
-        std::env::var("JWT_ACCESS_TOKEN_EXPIRY").unwrap_or_else(|_| "900".to_string()).parse().unwrap_or(900),
-        std::env::var("JWT_REFRESH_TOKEN_EXPIRY").unwrap_or_else(|_| "604800".to_string()).parse().unwrap_or(604800),
-    ).unwrap());
-    let use_case = ResendVerificationUseCase::new(repo, auth_service, email_service, admin_url);
+    let repo = Arc::new(PostgresAdministratorRepository::new(state.pool));
+    let use_case = ResendVerificationUseCase::new(
+        repo,
+        state.auth_service,
+        state.email_service,
+        state.admin_url,
+    );
     use_case.execute(id).await?;
     Ok((StatusCode::OK, Json(JsonApiResponse::new(json!({ "success": true })))))
 }
@@ -548,18 +531,12 @@ pub async fn resend_verification_admin(
     tag = "Admin / Administrator Management"
 )]
 pub async fn verify_admin(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     ValidatedJson(req): ValidatedJson<VerifyAndSetPasswordRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let repo = Arc::new(PostgresAdministratorRepository::new(pool));
+    let repo = Arc::new(PostgresAdministratorRepository::new(state.pool));
     let hasher = Arc::new(PasswordService::new());
-    let auth_service = Arc::new(crate::infrastructure::auth::JwtAuthService::new(
-        &std::env::var("JWT_PRIVATE_KEY").unwrap_or_default(),
-        &std::env::var("JWT_PUBLIC_KEY").unwrap_or_default(),
-        std::env::var("JWT_ACCESS_TOKEN_EXPIRY").unwrap_or_else(|_| "900".to_string()).parse().unwrap_or(900),
-        std::env::var("JWT_REFRESH_TOKEN_EXPIRY").unwrap_or_else(|_| "604800".to_string()).parse().unwrap_or(604800),
-    ).unwrap());
-    let use_case = VerifyAndSetPasswordUseCase::new(repo, auth_service, hasher);
+    let use_case = VerifyAndSetPasswordUseCase::new(repo, state.auth_service, hasher);
     use_case.execute(req).await?;
     Ok((StatusCode::OK, Json(JsonApiResponse::new(json!({ "success": true })))))
 }
