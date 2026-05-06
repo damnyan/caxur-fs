@@ -10,6 +10,10 @@ pub struct User {
     pub email: String,
     #[serde(skip)]
     pub password_hash: String,
+    pub first_name: Option<String>,
+    pub middle_name: Option<String>,
+    pub last_name: Option<String>,
+    pub suffix: Option<String>,
 
     #[serde(with = "time::serde::iso8601")]
     pub created_at: OffsetDateTime,
@@ -21,12 +25,20 @@ pub struct User {
 pub struct NewUser {
     pub email: String,
     pub password_hash: String,
+    pub first_name: Option<String>,
+    pub middle_name: Option<String>,
+    pub last_name: Option<String>,
+    pub suffix: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct UpdateUser {
     pub email: Option<String>,
     pub password_hash: Option<String>,
+    pub first_name: Option<String>,
+    pub middle_name: Option<String>,
+    pub last_name: Option<String>,
+    pub suffix: Option<String>,
 }
 
 #[async_trait]

@@ -8,6 +8,10 @@ pub struct UserDbModel {
     pub id: Uuid,
     pub email: String,
     pub password_hash: String,
+    pub first_name: Option<String>,
+    pub middle_name: Option<String>,
+    pub last_name: Option<String>,
+    pub suffix: Option<String>,
     pub created_at: OffsetDateTime,
     pub updated_at: OffsetDateTime,
 }
@@ -18,6 +22,10 @@ impl From<UserDbModel> for User {
             id: model.id,
             email: model.email,
             password_hash: model.password_hash,
+            first_name: model.first_name,
+            middle_name: model.middle_name,
+            last_name: model.last_name,
+            suffix: model.suffix,
             created_at: model.created_at,
             updated_at: model.updated_at,
         }

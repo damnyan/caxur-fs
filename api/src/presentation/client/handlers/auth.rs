@@ -1,5 +1,7 @@
 use crate::application::auth::login::{LoginRequest, LoginUseCase};
 use crate::application::auth::refresh::{RefreshTokenRequest, RefreshTokenUseCase};
+use crate::application::auth::registration::initiate::{InitiateRegistrationRequest, InitiateRegistrationUseCase};
+use crate::application::auth::registration::verify::{VerifyRegistrationRequest, VerifyRegistrationUseCase};
 use crate::infrastructure::repositories::refresh_tokens::PostgresRefreshTokenRepository;
 use crate::infrastructure::repositories::users::PostgresUserRepository;
 use crate::infrastructure::state::AppState;
@@ -51,9 +53,9 @@ pub async fn login(
         refresh_token_expiry,
     );
 
-    let response = use_case.execute(req).await?;
+    let (response, user) = use_case.execute(req).await?;
     let resource =
-        JsonApiResource::new("auth-tokens", "session", AuthTokenResource::from(response));
+        JsonApiResource::new("auth-tokens", "session", AuthTokenResource::new(response, Some(user)));
 
     Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
 }
@@ -123,4 +125,82 @@ pub async fn logout(
     use_case.execute(req).await?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Initiate registration handler
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/register/initiate",
+    request_body = InitiateRegistrationRequest,
+    responses(
+        (status = 204, description = "Registration initiated, OTP sent"),
+        (status = 400, description = "Bad request", body = ErrorResponse),
+        (status = 422, description = "Validation error", body = ErrorResponse)
+    ),
+    tag = "Client / Auth"
+)]
+pub async fn register_initiate(
+    State(state): State<AppState>,
+    ValidatedJson(req): ValidatedJson<InitiateRegistrationRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let user_repo = Arc::new(PostgresUserRepository::new(state.pool.clone()));
+    let cache_service = state.cache_service.clone();
+    let email_service = state.email_service.clone();
+    let password_service = Arc::new(crate::infrastructure::password::PasswordService::new());
+
+    let use_case = InitiateRegistrationUseCase::new(
+        user_repo,
+        cache_service,
+        email_service,
+        password_service,
+    );
+
+    use_case.execute(req).await.map_err(|e| AppError::BadRequest(e.to_string()))?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Verify registration handler
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/register/verify",
+    request_body = VerifyRegistrationRequest,
+    responses(
+        (status = 200, description = "Registration successful", body = JsonApiResponse<JsonApiResource<AuthTokenResource>>),
+        (status = 400, description = "Invalid OTP or session expired", body = ErrorResponse),
+        (status = 422, description = "Validation error", body = ErrorResponse)
+    ),
+    tag = "Client / Auth"
+)]
+pub async fn register_verify(
+    State(state): State<AppState>,
+    ValidatedJson(req): ValidatedJson<VerifyRegistrationRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let user_repo = Arc::new(PostgresUserRepository::new(state.pool.clone()));
+    let cache_service = state.cache_service.clone();
+    let refresh_token_repo = Arc::new(PostgresRefreshTokenRepository::new(state.pool.clone()));
+    let auth_service = state.auth_service.clone();
+
+    let access_token_expiry = std::env::var("JWT_ACCESS_TOKEN_EXPIRY")
+        .unwrap_or_else(|_| "900".to_string())
+        .parse::<i64>()
+        .unwrap_or(900);
+    let refresh_token_expiry = std::env::var("JWT_REFRESH_TOKEN_EXPIRY")
+        .unwrap_or_else(|_| "604800".to_string())
+        .parse::<i64>()
+        .unwrap_or(604800);
+
+    let use_case = VerifyRegistrationUseCase::new(
+        user_repo,
+        cache_service,
+        refresh_token_repo,
+        auth_service,
+        access_token_expiry,
+        refresh_token_expiry,
+    );
+
+    let (response, user) = use_case.execute(req).await?;
+    let resource = JsonApiResource::new("auth-tokens", "session", AuthTokenResource::new(response, Some(user)));
+
+    Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
 }

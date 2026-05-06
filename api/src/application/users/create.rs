@@ -63,6 +63,10 @@ impl CreateUserUseCase {
         let new_user = NewUser {
             email: req.email,
             password_hash,
+            first_name: None,
+            middle_name: None,
+            last_name: None,
+            suffix: None,
         };
 
         Ok(self.repo.create(new_user).await?)
@@ -107,6 +111,10 @@ mod tests {
             id: Uuid::new_v4(),
             email: "existing@example.com".to_string(),
             password_hash: "hashed".to_string(),
+            first_name: None,
+            middle_name: None,
+            last_name: None,
+            suffix: None,
             created_at: OffsetDateTime::now_utc(),
             updated_at: OffsetDateTime::now_utc(),
         });

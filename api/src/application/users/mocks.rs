@@ -43,6 +43,10 @@ impl UserRepository for MockUserRepository {
             id: Uuid::new_v4(),
             email: new_user.email,
             password_hash: new_user.password_hash,
+            first_name: new_user.first_name,
+            middle_name: new_user.middle_name,
+            last_name: new_user.last_name,
+            suffix: new_user.suffix,
             created_at: OffsetDateTime::now_utc(),
             updated_at: OffsetDateTime::now_utc(),
         };
@@ -78,6 +82,18 @@ impl UserRepository for MockUserRepository {
             }
             if let Some(hash) = update.password_hash {
                 user.password_hash = hash;
+            }
+            if let Some(first_name) = update.first_name {
+                user.first_name = Some(first_name);
+            }
+            if let Some(middle_name) = update.middle_name {
+                user.middle_name = Some(middle_name);
+            }
+            if let Some(last_name) = update.last_name {
+                user.last_name = Some(last_name);
+            }
+            if let Some(suffix) = update.suffix {
+                user.suffix = Some(suffix);
             }
             user.updated_at = OffsetDateTime::now_utc();
             return Ok(user.clone());

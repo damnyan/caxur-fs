@@ -13,21 +13,43 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { config } from "@/lib/config"
+import { useAuthStore } from "@/lib/auth-store"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 
 export function Navbar() {
   const pathname = usePathname()
-  
-  // A simple mock for authentication state based on the route.
-  // If we are in /dashboard or /profile, we assume logged in.
-  const isAuthPage = pathname === "/login"
-  const isLoggedIn = pathname.startsWith("/dashboard") || pathname.startsWith("/profile")
+  const router = useRouter()
+  const { token, user, logout } = useAuthStore()
+  const [mounted, setMounted] = useState(false)
+
+  // Avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const isLoggedIn = mounted && !!token
+  const isAuthPage = pathname === "/login" || pathname === "/register" || pathname.startsWith("/register/verify")
+  const appName = config.appName
+
+  const handleLogout = () => {
+    logout()
+    router.push("/")
+  }
+
+  useEffect(() => {
+    if (isLoggedIn && isAuthPage) {
+      router.push("/dashboard")
+    }
+  }, [isLoggedIn, isAuthPage, router])
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 mx-auto max-w-7xl px-4 items-center justify-between">
         <div className="flex gap-6 md:gap-10">
           <Link href="/" className="flex items-center space-x-2">
-            <span className="inline-block font-bold">Acme Corp</span>
+            <span className="inline-block font-bold">{appName}</span>
           </Link>
           <nav className="hidden md:flex gap-6">
             <Link
@@ -71,7 +93,7 @@ export function Navbar() {
               <Button render={<Link href="/login" />} variant="ghost" nativeButton={false}>
                 Log in
               </Button>
-              <Button render={<Link href="/login" />} nativeButton={false}>
+              <Button render={<Link href="/register" />} nativeButton={false}>
                 Sign up
               </Button>
             </div>
@@ -90,9 +112,11 @@ export function Navbar() {
               <DropdownMenuContent className="w-56" align="end">
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">John Doe</p>
+                    <p className="text-sm font-medium leading-none">
+                      {user?.firstName ? `${user.firstName} ${user.lastName}` : "User"}
+                    </p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      john.doe@example.com
+                      {user?.email || "No email"}
                     </p>
                   </div>
                 </DropdownMenuLabel>
@@ -104,7 +128,7 @@ export function Navbar() {
                   Edit Profile
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem render={<Link href="/" />}>
+                <DropdownMenuItem onClick={handleLogout}>
                   Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>

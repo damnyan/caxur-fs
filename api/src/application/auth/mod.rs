@@ -3,3 +3,4 @@ pub mod refresh;
 pub mod token_utils;
 pub mod admin_login;
 pub mod logout;
+pub mod registration;

@@ -112,10 +112,19 @@ async fn bootstrap(
         .map_err(|e| anyhow::anyhow!("Failed to initialize email service: {}", e))?,
     );
 
+    let cache_service = std::sync::Arc::new(infrastructure::cache::MokaCacheService::new(1000));
+
     let admin_url = env::var("ADMIN_URL").context("ADMIN_URL must be set")?;
     let client_url = env::var("CLIENT_URL").context("CLIENT_URL must be set")?;
 
-    let state = infrastructure::state::AppState::new(pool, auth_service, email_service, admin_url, client_url);
+    let state = infrastructure::state::AppState::new(
+        pool,
+        auth_service,
+        email_service,
+        cache_service,
+        admin_url,
+        client_url,
+    );
     let app = presentation::router::app(state)?;
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));

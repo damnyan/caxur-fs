@@ -11,6 +11,9 @@ use crate::presentation::admin::handlers::permissions::PermissionResource;
 use crate::presentation::admin::handlers::roles::{
     AttachPermissionRequest, DetachPermissionRequest, ListRolesQuery, RoleResource,
 };
+use crate::application::auth::registration::initiate::InitiateRegistrationRequest;
+use crate::application::auth::registration::verify::VerifyRegistrationRequest;
+use crate::application::auth::registration::onboarding::OnboardingRequest;
 use crate::presentation::dtos::{AuthTokenResource, PermissionDto, UserResource};
 use crate::shared::error::{ErrorResponse, JsonApiError, JsonApiErrorSource};
 use crate::shared::response::{JsonApiLinks, JsonApiMeta, JsonApiResource, JsonApiResponse};
@@ -32,6 +35,10 @@ use utoipa::OpenApi;
         crate::presentation::client::handlers::auth::login,
         crate::presentation::client::handlers::auth::refresh_token,
         crate::presentation::client::handlers::auth::logout,
+        crate::presentation::client::handlers::auth::register_initiate,
+        crate::presentation::client::handlers::auth::register_verify,
+        crate::presentation::client::handlers::profile::complete_onboarding,
+        crate::presentation::client::handlers::profile::get_profile,
         crate::presentation::admin::handlers::auth::admin_login,
         crate::presentation::admin::handlers::auth::refresh_token,
         crate::presentation::admin::handlers::auth::admin_logout,
@@ -77,6 +84,9 @@ use utoipa::OpenApi;
             LogoutRequest,
             RefreshTokenRequest,
             RefreshTokenResponse,
+            InitiateRegistrationRequest,
+            VerifyRegistrationRequest,
+            OnboardingRequest,
 
             // JSON:API Resource types
             UserResource,
@@ -114,7 +124,8 @@ use utoipa::OpenApi;
         (name = "Admin / Administrator Management", description = "Administrator management endpoints"),
         (name = "Admin / User Management", description = "User management endpoints"),
         (name = "Admin / Role Management", description = "Role management endpoints"),
-        (name = "Admin / Permission Management", description = "Permission management endpoints")
+        (name = "Admin / Permission Management", description = "Permission management endpoints"),
+        (name = "Client / Profile", description = "User profile and onboarding endpoints")
     ),
     modifiers(&SecurityAddon)
 )]

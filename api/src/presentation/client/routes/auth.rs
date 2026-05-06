@@ -9,4 +9,6 @@ pub fn routes() -> Router<AppState> {
         .route("/login", post(auth::login))
         .route("/refresh", post(auth::refresh_token))
         .route("/logout", post(auth::logout))
+        .route("/register/initiate", post(auth::register_initiate))
+        .route("/register/verify", post(auth::register_verify))
 }

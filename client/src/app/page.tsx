@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export default function Home() {
+  const appName = process.env.NEXT_PUBLIC_APP_NAME || "Caxur-FS"
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
@@ -14,7 +16,7 @@ export default function Home() {
           <div className="flex flex-col items-center space-y-4 text-center">
             <div className="space-y-2">
               <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
-                Welcome to Acme Corp
+                Welcome to {appName}
               </h1>
               <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
                 Building the future of digital experiences. Secure, fast, and beautiful.

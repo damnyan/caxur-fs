@@ -41,6 +41,7 @@ pub struct AuthTokenResource {
     pub refresh_token: String,
     pub token_type: String,
     pub expires_in: i64,
+    pub user: Option<UserResource>,
 }
 
 impl From<LoginResponse> for AuthTokenResource {
@@ -50,6 +51,19 @@ impl From<LoginResponse> for AuthTokenResource {
             refresh_token: response.refresh_token,
             token_type: response.token_type,
             expires_in: response.expires_in,
+            user: None,
+        }
+    }
+}
+
+impl AuthTokenResource {
+    pub fn new(response: LoginResponse, user: Option<User>) -> Self {
+        Self {
+            access_token: response.access_token,
+            refresh_token: response.refresh_token,
+            token_type: response.token_type,
+            expires_in: response.expires_in,
+            user: user.map(UserResource::from),
         }
     }
 }
@@ -61,6 +75,10 @@ use crate::domain::users::User;
 pub struct UserResource {
     pub id: String,
     pub email: String,
+    pub first_name: Option<String>,
+    pub middle_name: Option<String>,
+    pub last_name: Option<String>,
+    pub suffix: Option<String>,
     #[serde(with = "time::serde::iso8601")]
     #[schema(value_type = String)]
     pub created_at: time::OffsetDateTime,
@@ -74,6 +92,10 @@ impl From<User> for UserResource {
         Self {
             id: user.id.to_string(),
             email: user.email,
+            first_name: user.first_name,
+            middle_name: user.middle_name,
+            last_name: user.last_name,
+            suffix: user.suffix,
             created_at: user.created_at,
             updated_at: user.updated_at,
         }

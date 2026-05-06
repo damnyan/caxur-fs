@@ -43,6 +43,8 @@ tower_governor = "0.8.0"
 governor = "0.10.4"
 serde_qs = "1.0.0"
 lettre = { version = "0.11.21", features = ["tokio1-native-tls", "builder"] }
+moka = { version = "0.12.15", features = ["future"] }
+rand = "0.10.1"
 
 [dev-dependencies]
 http-body-util = "0.1.3"

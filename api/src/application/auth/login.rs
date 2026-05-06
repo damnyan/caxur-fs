@@ -19,6 +19,9 @@ pub struct LoginRequest {
 pub type LoginResponse = TokenResponse;
 
 use crate::domain::password::PasswordHashingService;
+use crate::domain::users::User;
+
+pub type LoginUseCaseResult = (LoginResponse, User);
 
 pub struct LoginUseCase {
     user_repo: Arc<dyn UserRepository>,
@@ -49,7 +52,7 @@ impl LoginUseCase {
     }
 
     #[tracing::instrument(skip(self, req), fields(email = %req.email))]
-    pub async fn execute(&self, req: LoginRequest) -> Result<LoginResponse, AppError> {
+    pub async fn execute(&self, req: LoginRequest) -> Result<LoginUseCaseResult, AppError> {
         // Find user by email
         let user = self
             .user_repo
@@ -71,7 +74,7 @@ impl LoginUseCase {
         }
 
         // Generate and store token pair
-        generate_and_store_tokens(
+        let tokens = generate_and_store_tokens(
             user.id,
             "user".to_string(),
             &self.auth_service,
@@ -79,6 +82,8 @@ impl LoginUseCase {
             self.access_token_expiry,
             self.refresh_token_expiry,
         )
-        .await
+        .await?;
+
+        Ok((tokens, user))
     }
 }
