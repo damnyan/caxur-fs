@@ -1,0 +1,92 @@
+import { Outlet, Navigate, NavLink, Link } from 'react-router-dom';
+import { useAuthStore } from '@/store/authStore';
+import { LayoutDashboard, Users, Shield, UserCircle, LogOut } from 'lucide-react';
+
+export default function AdminLayout() {
+  const { isAuthenticated, user, logout } = useAuthStore();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const handleLogout = () => {
+    logout();
+  };
+
+  const navItems = [
+    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+    { name: 'Users', path: '/users', icon: Users },
+    { name: 'Roles', path: '/roles', icon: Shield },
+    { name: 'Profile', path: '/profile', icon: UserCircle },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex">
+      {/* Sidebar */}
+      <aside className="w-64 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 flex flex-col hidden md:flex">
+        <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-800">
+          <Link to="/" className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+            Admin Portal
+          </Link>
+        </div>
+        <div className="flex-1 overflow-y-auto py-4">
+          <nav className="px-3 space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.name}
+                  to={item.path}
+                  className={({ isActive }) =>
+                    `flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                      isActive
+                        ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white'
+                    }`
+                  }
+                >
+                  <Icon className="mr-3 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                  {item.name}
+                </NavLink>
+              );
+            })}
+          </nav>
+        </div>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+          <div className="flex items-center w-full">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                {user?.name}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                {user?.email}
+              </p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="ml-2 p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+              title="Logout"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Mobile Header */}
+        <header className="md:hidden bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 h-16 flex items-center justify-between px-4">
+          <span className="text-xl font-bold">Admin Portal</span>
+          <button onClick={handleLogout} className="p-2 text-gray-500">
+            <LogOut className="h-5 w-5" />
+          </button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  );
+}

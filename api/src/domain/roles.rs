@@ -1,0 +1,103 @@
+use super::access_scope::AccessScope;
+use super::permissions::Permission;
+use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
+use uuid::Uuid;
+// ToSchema removed
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Role {
+    pub id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub scope: AccessScope,
+    pub group_id: Option<Uuid>,
+    #[serde(with = "time::serde::iso8601")]
+    pub created_at: OffsetDateTime,
+    #[serde(with = "time::serde::iso8601")]
+    pub updated_at: OffsetDateTime,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewRole {
+    pub name: String,
+    pub description: Option<String>,
+    pub scope: AccessScope,
+    pub group_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateRole {
+    pub name: Option<String>,
+    pub description: Option<String>,
+}
+
+#[async_trait]
+pub trait RoleRepository: Send + Sync {
+    async fn create(&self, new_role: NewRole) -> Result<Role, anyhow::Error>;
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<Role>, anyhow::Error>;
+    async fn find_by_name(
+        &self,
+        name: &str,
+        scope: AccessScope,
+        group_id: Option<Uuid>,
+    ) -> Result<Option<Role>, anyhow::Error>;
+    async fn find_all(
+        &self,
+        scope: AccessScope,
+        group_id: Option<Uuid>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<Role>, anyhow::Error>;
+    async fn count(&self) -> Result<i64, anyhow::Error>;
+    async fn update(&self, id: Uuid, update: UpdateRole) -> Result<Role, anyhow::Error>;
+    async fn delete(&self, id: Uuid) -> Result<bool, anyhow::Error>;
+
+    async fn get_permissions(&self, role_id: Uuid) -> Result<Vec<Permission>, anyhow::Error>;
+
+    // Bulk permission operations for better performance
+    async fn attach_permissions(
+        &self,
+        role_id: Uuid,
+        permissions: Vec<Permission>,
+    ) -> Result<(), anyhow::Error>;
+    async fn detach_permissions(
+        &self,
+        role_id: Uuid,
+        permissions: Vec<Permission>,
+    ) -> Result<(), anyhow::Error>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_role_creation() {
+        let role = NewRole {
+            name: "admin_role".to_string(),
+            description: Some("Administrative role".to_string()),
+            scope: AccessScope::Administrator,
+            group_id: None,
+        };
+
+        assert_eq!(role.name, "admin_role");
+        assert_eq!(role.scope, AccessScope::Administrator);
+        assert!(role.description.is_some());
+    }
+
+    #[test]
+    fn test_update_role_creation() {
+        let update = UpdateRole {
+            name: Some("updated_role".to_string()),
+            description: None,
+        };
+
+        assert_eq!(update.name, Some("updated_role".to_string()));
+        assert_eq!(update.description, None);
+    }
+}

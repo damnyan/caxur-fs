@@ -1,0 +1,566 @@
+use axum::{
+    Json,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
+use serde::Serialize;
+use thiserror::Error;
+use utoipa::ToSchema;
+
+/// JSON:API compliant error response
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ErrorResponse {
+    pub errors: Vec<JsonApiError>,
+}
+
+/// JSON:API error object
+#[derive(Serialize, ToSchema, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonApiError {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
+    pub title: String,
+    pub detail: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<JsonApiErrorSource>,
+}
+
+/// JSON:API error source
+#[derive(Serialize, ToSchema, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonApiErrorSource {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pointer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parameter: Option<String>,
+}
+
+impl JsonApiError {
+    /// Create a new JSON:API error
+    pub fn new(status: StatusCode, title: impl Into<String>, detail: impl Into<String>) -> Self {
+        Self {
+            id: None,
+            status: status.as_u16().to_string(),
+            code: None,
+            title: title.into(),
+            detail: detail.into(),
+            source: None,
+        }
+    }
+
+    /// Set error ID
+    pub fn with_id(mut self, id: impl Into<String>) -> Self {
+        self.id = Some(id.into());
+        self
+    }
+
+    /// Set error code
+    pub fn with_code(mut self, code: impl Into<String>) -> Self {
+        self.code = Some(code.into());
+        self
+    }
+
+    /// Set error source
+    pub fn with_source(mut self, source: JsonApiErrorSource) -> Self {
+        self.source = Some(source);
+        self
+    }
+}
+
+impl JsonApiErrorSource {
+    /// Create error source with pointer
+    pub fn pointer(pointer: impl Into<String>) -> Self {
+        Self {
+            pointer: Some(pointer.into()),
+            parameter: None,
+        }
+    }
+
+    /// Create error source with parameter
+    pub fn parameter(parameter: impl Into<String>) -> Self {
+        Self {
+            pointer: None,
+            parameter: Some(parameter.into()),
+        }
+    }
+}
+
+/// Validation error for a specific field
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FieldError {
+    pub field: String,
+    pub message: String,
+}
+
+impl FieldError {
+    pub fn new(field: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            field: field.into(),
+            message: message.into(),
+        }
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum AppError {
+    #[error("Validation error")]
+    ValidationError(Vec<FieldError>),
+    #[error("Bad request: {0}")]
+    BadRequest(String),
+    #[error("Database error: {0}")]
+    DatabaseError(#[from] sqlx::Error),
+    #[error("Not found: {0}")]
+    NotFound(String),
+    #[error("Conflict: {0}")]
+    Conflict(String),
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
+    #[error("Unprocessable Entity: {0}")]
+    UnprocessableEntity(String),
+    #[error("Internal server error: {0}")]
+    InternalServerError(#[from] anyhow::Error),
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        match self {
+            AppError::ValidationError(errors) => {
+                let json_errors: Vec<JsonApiError> = errors
+                    .into_iter()
+                    .map(|err| {
+                        JsonApiError::new(
+                            StatusCode::UNPROCESSABLE_ENTITY,
+                            "Validation Error",
+                            err.message,
+                        )
+                        .with_code("validation_error")
+                        .with_source(JsonApiErrorSource::pointer(format!(
+                            "/data/attributes/{}",
+                            err.field
+                        )))
+                    })
+                    .collect();
+
+                (
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    Json(ErrorResponse {
+                        errors: json_errors,
+                    }),
+                )
+                    .into_response()
+            }
+            AppError::BadRequest(msg) => {
+                let error = JsonApiError::new(StatusCode::BAD_REQUEST, "Bad Request", msg)
+                    .with_code("bad_request");
+
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
+            AppError::UnprocessableEntity(msg) => {
+                let error = JsonApiError::new(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "Unprocessable Entity",
+                    msg,
+                )
+                .with_code("unprocessable_entity");
+
+                (
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
+            AppError::DatabaseError(e) => {
+                // Check for unique constraint violations
+                if let Some(db_err) = e.as_database_error()
+                    && db_err.is_unique_violation()
+                {
+                    let (field, msg) = if db_err.message().contains("email") {
+                        ("email", "Email already exists")
+                    } else {
+                        ("unknown", "Resource already exists")
+                    };
+
+                    let error = JsonApiError::new(
+                        StatusCode::UNPROCESSABLE_ENTITY,
+                        "Unique Constraint Violation",
+                        msg,
+                    )
+                    .with_code("unique_violation")
+                    .with_source(JsonApiErrorSource::pointer(format!(
+                        "/data/attributes/{}",
+                        field
+                    )));
+
+                    return (
+                        StatusCode::UNPROCESSABLE_ENTITY,
+                        Json(ErrorResponse {
+                            errors: vec![error],
+                        }),
+                    )
+                        .into_response();
+                }
+                tracing::error!("Database error: {:?}", e);
+                let error = JsonApiError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Database Error",
+                    "An error occurred while processing your request",
+                )
+                .with_code("database_error");
+
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
+            AppError::NotFound(msg) => {
+                let error = JsonApiError::new(StatusCode::NOT_FOUND, "Not Found", msg)
+                    .with_code("not_found");
+                (
+                    StatusCode::NOT_FOUND,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
+            AppError::Conflict(msg) => {
+                let error =
+                    JsonApiError::new(StatusCode::CONFLICT, "Conflict", msg).with_code("conflict");
+                (
+                    StatusCode::CONFLICT,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
+            AppError::Unauthorized(msg) => {
+                let error = JsonApiError::new(StatusCode::UNAUTHORIZED, "Unauthorized", msg)
+                    .with_code("unauthorized");
+                (
+                    StatusCode::UNAUTHORIZED,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
+            AppError::Forbidden(msg) => {
+                let error = JsonApiError::new(StatusCode::FORBIDDEN, "Forbidden", msg)
+                    .with_code("forbidden");
+                (
+                    StatusCode::FORBIDDEN,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
+            AppError::InternalServerError(e) => {
+                tracing::error!("Internal server error: {:?}", e);
+                let error = JsonApiError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal Server Error",
+                    "An unexpected error occurred",
+                )
+                .with_code("internal_error");
+
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use http_body_util::BodyExt;
+
+    #[tokio::test]
+    async fn test_validation_error_response() {
+        let err = AppError::ValidationError(vec![FieldError::new("email", "Invalid email format")]);
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "422");
+        assert_eq!(body_json["errors"][0]["title"], "Validation Error");
+        assert_eq!(body_json["errors"][0]["detail"], "Invalid email format");
+        assert_eq!(body_json["errors"][0]["code"], "validation_error");
+        assert_eq!(
+            body_json["errors"][0]["source"]["pointer"],
+            "/data/attributes/email"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_not_found_error_response() {
+        let err = AppError::NotFound("Resource not found".to_string());
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "404");
+        assert_eq!(body_json["errors"][0]["title"], "Not Found");
+        assert_eq!(body_json["errors"][0]["detail"], "Resource not found");
+        assert_eq!(body_json["errors"][0]["code"], "not_found");
+    }
+
+    #[tokio::test]
+    async fn test_unprocessable_entity_error_response() {
+        let err = AppError::UnprocessableEntity("Cannot process request".to_string());
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "422");
+        assert_eq!(body_json["errors"][0]["title"], "Unprocessable Entity");
+        assert_eq!(body_json["errors"][0]["detail"], "Cannot process request");
+        assert_eq!(body_json["errors"][0]["code"], "unprocessable_entity");
+    }
+
+    #[tokio::test]
+    async fn test_unauthorized_error_response() {
+        let err = AppError::Unauthorized("Invalid token".to_string());
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "401");
+        assert_eq!(body_json["errors"][0]["title"], "Unauthorized");
+        assert_eq!(body_json["errors"][0]["detail"], "Invalid token");
+        assert_eq!(body_json["errors"][0]["code"], "unauthorized");
+    }
+
+    #[test]
+    fn test_json_api_error_builder() {
+        let error = JsonApiError::new(StatusCode::BAD_REQUEST, "Bad Request", "Invalid data")
+            .with_id("err-123")
+            .with_code("bad_request")
+            .with_source(JsonApiErrorSource::pointer("/data/attributes/email"));
+
+        assert_eq!(error.id, Some("err-123".to_string()));
+        assert_eq!(error.status, "400");
+        assert_eq!(error.code, Some("bad_request".to_string()));
+        assert_eq!(error.title, "Bad Request");
+        assert_eq!(error.detail, "Invalid data");
+        assert!(error.source.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_conflict_error_response() {
+        let err = AppError::Conflict("Resource already exists".to_string());
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "409");
+        assert_eq!(body_json["errors"][0]["title"], "Conflict");
+        assert_eq!(body_json["errors"][0]["detail"], "Resource already exists");
+        assert_eq!(body_json["errors"][0]["code"], "conflict");
+    }
+
+    #[tokio::test]
+    async fn test_forbidden_error_response() {
+        let err = AppError::Forbidden("Access denied".to_string());
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "403");
+        assert_eq!(body_json["errors"][0]["title"], "Forbidden");
+        assert_eq!(body_json["errors"][0]["detail"], "Access denied");
+        assert_eq!(body_json["errors"][0]["code"], "forbidden");
+    }
+
+    #[tokio::test]
+    async fn test_internal_server_error_response() {
+        let err = AppError::InternalServerError(anyhow::anyhow!("Something went wrong"));
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "500");
+        assert_eq!(body_json["errors"][0]["title"], "Internal Server Error");
+        assert_eq!(
+            body_json["errors"][0]["detail"],
+            "An unexpected error occurred"
+        );
+        assert_eq!(body_json["errors"][0]["code"], "internal_error");
+    }
+
+    #[test]
+    fn test_json_api_error_source_parameter() {
+        let source = JsonApiErrorSource::parameter("email");
+
+        assert!(source.pointer.is_none());
+        assert_eq!(source.parameter, Some("email".to_string()));
+    }
+
+    // Mock DatabaseError implementation for testing
+    #[derive(Debug)]
+    struct MockDatabaseError {
+        message: String,
+        is_unique: bool,
+    }
+
+    impl MockDatabaseError {
+        fn new_unique_violation(message: String) -> Self {
+            Self {
+                message,
+                is_unique: true,
+            }
+        }
+    }
+
+    impl std::fmt::Display for MockDatabaseError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}", self.message)
+        }
+    }
+
+    impl std::error::Error for MockDatabaseError {}
+
+    impl sqlx::error::DatabaseError for MockDatabaseError {
+        fn message(&self) -> &str {
+            &self.message
+        }
+
+        fn kind(&self) -> sqlx::error::ErrorKind {
+            if self.is_unique {
+                sqlx::error::ErrorKind::UniqueViolation
+            } else {
+                sqlx::error::ErrorKind::Other
+            }
+        }
+
+        fn as_error(&self) -> &(dyn std::error::Error + Send + Sync + 'static) {
+            self
+        }
+
+        fn as_error_mut(&mut self) -> &mut (dyn std::error::Error + Send + Sync + 'static) {
+            self
+        }
+
+        fn into_error(self: Box<Self>) -> Box<dyn std::error::Error + Send + Sync + 'static> {
+            self
+        }
+
+        fn is_unique_violation(&self) -> bool {
+            self.is_unique
+        }
+    }
+
+    #[tokio::test]
+    async fn test_database_error_unique_violation_email() {
+        let db_error = sqlx::Error::Database(Box::new(MockDatabaseError::new_unique_violation(
+            "duplicate key value violates unique constraint \"users_email_key\"".to_string(),
+        )));
+
+        let err = AppError::DatabaseError(db_error);
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "422");
+        assert_eq!(
+            body_json["errors"][0]["title"],
+            "Unique Constraint Violation"
+        );
+        assert_eq!(body_json["errors"][0]["detail"], "Email already exists");
+        assert_eq!(body_json["errors"][0]["code"], "unique_violation");
+    }
+
+    #[tokio::test]
+    async fn test_database_error_unique_violation_generic() {
+        let db_error = sqlx::Error::Database(Box::new(MockDatabaseError::new_unique_violation(
+            "duplicate key value violates unique constraint \"some_other_key\"".to_string(),
+        )));
+
+        let err = AppError::DatabaseError(db_error);
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "422");
+        assert_eq!(
+            body_json["errors"][0]["title"],
+            "Unique Constraint Violation"
+        );
+        assert_eq!(body_json["errors"][0]["detail"], "Resource already exists");
+        assert_eq!(body_json["errors"][0]["code"], "unique_violation");
+    }
+
+    #[tokio::test]
+    async fn test_database_error_generic() {
+        // Create a generic database error (not unique violation)
+        let db_error = sqlx::Error::RowNotFound;
+
+        let err = AppError::DatabaseError(db_error);
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "500");
+        assert_eq!(body_json["errors"][0]["title"], "Database Error");
+        assert_eq!(
+            body_json["errors"][0]["detail"],
+            "An error occurred while processing your request"
+        );
+        assert_eq!(body_json["errors"][0]["code"], "database_error");
+    }
+}
