@@ -120,3 +120,79 @@ pub async fn update_my_password(
     use_case.execute(user_id, req).await?;
     Ok((StatusCode::OK, Json(JsonApiResponse::new(json!({ "success": true })))))
 }
+
+use crate::application::administrators::email_change::{
+    InitiateEmailChangeRequest, InitiateEmailChangeUseCase,
+    VerifyEmailChangeRequest, VerifyEmailChangeUseCase,
+};
+use crate::infrastructure::state::AppState;
+
+/// Initiate email change
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/my/profile/email/initiate",
+    request_body = InitiateEmailChangeRequest,
+    responses(
+        (status = 204, description = "Email change initiated successfully"),
+        (status = 400, description = "Bad request", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 422, description = "Validation error", body = ErrorResponse)
+    ),
+    security(
+        ("bearer_auth" = [])
+    ),
+    tag = "Admin / My Profile"
+)]
+pub async fn initiate_email_change(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    ValidatedJson(req): ValidatedJson<InitiateEmailChangeRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let repo = Arc::new(PostgresAdministratorRepository::new(state.pool));
+    let password_service = Arc::new(PasswordService::new());
+    let use_case = InitiateEmailChangeUseCase::new(
+        repo,
+        password_service,
+        state.cache_service,
+        state.email_service,
+    );
+
+    let user_id = uuid::Uuid::parse_str(&auth.claims.sub)
+        .map_err(|_| AppError::Unauthorized("Invalid user ID".to_string()))?;
+    use_case.execute(user_id, req).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Verify email change
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/my/profile/email/verify",
+    request_body = VerifyEmailChangeRequest,
+    responses(
+        (status = 200, description = "Email updated successfully", body = JsonApiResponse<serde_json::Value>),
+        (status = 400, description = "Bad request", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 422, description = "Validation error", body = ErrorResponse)
+    ),
+    security(
+        ("bearer_auth" = [])
+    ),
+    tag = "Admin / My Profile"
+)]
+pub async fn verify_email_change(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    ValidatedJson(req): ValidatedJson<VerifyEmailChangeRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let repo = Arc::new(PostgresAdministratorRepository::new(state.pool));
+    let use_case = VerifyEmailChangeUseCase::new(
+        repo,
+        state.cache_service,
+        state.email_service,
+    );
+
+    let user_id = uuid::Uuid::parse_str(&auth.claims.sub)
+        .map_err(|_| AppError::Unauthorized("Invalid user ID".to_string()))?;
+    use_case.execute(user_id, req).await?;
+    Ok((StatusCode::OK, Json(JsonApiResponse::new(json!({ "success": true })))))
+}

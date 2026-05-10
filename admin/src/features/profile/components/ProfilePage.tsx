@@ -17,7 +17,6 @@ const profileSchema = z.object({
   lastName: z.string().min(1, 'Last name is required'),
   suffix: z.string().optional().nullable(),
   contactNumber: z.string().optional().nullable(),
-  email: z.string().email('Invalid email address'),
 });
 
 const passwordSchema = z.object({
@@ -29,12 +28,26 @@ const passwordSchema = z.object({
   path: ["confirmPassword"],
 });
 
+const emailInitiateSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newEmail: z.string().email('Invalid email address'),
+});
+
+const emailVerifySchema = z.object({
+  otp: z.string().length(6, 'Verification code must be 6 digits'),
+});
+
 type ProfileFormValues = z.infer<typeof profileSchema>;
 type PasswordFormValues = z.infer<typeof passwordSchema>;
+type EmailInitiateFormValues = z.infer<typeof emailInitiateSchema>;
+type EmailVerifyFormValues = z.infer<typeof emailVerifySchema>;
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuthStore();
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isInitiatingEmail, setIsInitiatingEmail] = useState(false);
+  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+  const [isWaitingForOtp, setIsWaitingForOtp] = useState(false);
 
   const {
     register: registerProfile,
@@ -50,11 +63,9 @@ export default function ProfilePage() {
       lastName: user?.lastName || '',
       suffix: user?.suffix || '',
       contactNumber: user?.contactNumber || '',
-      email: user?.email || '',
     },
   });
 
-  // Watch for changes to `user` (e.g. after AdminLayout fetches it) and reset the form
   useEffect(() => {
     if (user) {
       resetProfile({
@@ -63,7 +74,6 @@ export default function ProfilePage() {
         lastName: user.lastName || '',
         suffix: user.suffix || '',
         contactNumber: user.contactNumber || '',
-        email: user.email || '',
       });
     }
   }, [user, resetProfile]);
@@ -76,6 +86,26 @@ export default function ProfilePage() {
     formState: { errors: passwordErrors },
   } = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordSchema),
+  });
+
+  const {
+    register: registerEmailInitiate,
+    handleSubmit: handleEmailInitiateSubmit,
+    setError: setEmailInitiateError,
+    reset: resetEmailInitiateForm,
+    formState: { errors: emailInitiateErrors },
+  } = useForm<EmailInitiateFormValues>({
+    resolver: zodResolver(emailInitiateSchema),
+  });
+
+  const {
+    register: registerEmailVerify,
+    handleSubmit: handleEmailVerifySubmit,
+    setError: setEmailVerifyError,
+    reset: resetEmailVerifyForm,
+    formState: { errors: emailVerifyErrors },
+  } = useForm<EmailVerifyFormValues>({
+    resolver: zodResolver(emailVerifySchema),
   });
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
@@ -98,9 +128,9 @@ export default function ProfilePage() {
       });
       
       toast.success('Profile updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       if (!handleApiValidationErrors(error, setProfileError)) {
-        toast.error('Failed to update profile');
+        toast.error(error?.response?.data?.errors?.[0]?.detail || 'Failed to update profile');
       }
     }
   };
@@ -115,12 +145,65 @@ export default function ProfilePage() {
       
       toast.success('Password updated successfully');
       resetPasswordForm();
-    } catch (error) {
+    } catch (error: any) {
       if (!handleApiValidationErrors(error, setPasswordError)) {
-        toast.error('Failed to update password');
+        toast.error(error?.response?.data?.errors?.[0]?.detail || 'Failed to update password');
       }
     } finally {
       setIsUpdatingPassword(false);
+    }
+  };
+
+  const onEmailInitiateSubmit = async (data: EmailInitiateFormValues) => {
+    if (data.newEmail === user?.email) {
+      setEmailInitiateError('newEmail', { message: 'New email cannot be the same as current email' });
+      return;
+    }
+
+    setIsInitiatingEmail(true);
+    try {
+      await apiClient.post('/admin/my/profile/email/initiate', {
+        currentPassword: data.currentPassword,
+        newEmail: data.newEmail,
+      });
+      
+      setIsWaitingForOtp(true);
+      toast.success('Verification code sent to your new email');
+    } catch (error: any) {
+      if (!handleApiValidationErrors(error, setEmailInitiateError)) {
+        toast.error(error?.response?.data?.errors?.[0]?.detail || 'Failed to initiate email change');
+      }
+    } finally {
+      setIsInitiatingEmail(false);
+    }
+  };
+
+  const onEmailVerifySubmit = async (data: EmailVerifyFormValues) => {
+    setIsVerifyingEmail(true);
+    try {
+      await apiClient.post('/admin/my/profile/email/verify', {
+        otp: data.otp,
+      });
+      
+      toast.success('Email updated successfully');
+      setIsWaitingForOtp(false);
+      resetEmailInitiateForm();
+      resetEmailVerifyForm();
+      
+      // Update user state to reflect new email.
+      // Note: A full page reload or refetch might be better depending on the app structure,
+      // but if the endpoint succeeds, the next session will use the new email.
+      // We can also fetch the updated profile to sync the state perfectly.
+      const res = await apiClient.get('/admin/my/profile');
+      if (res.data?.data?.attributes?.email) {
+        updateUser({ email: res.data.data.attributes.email });
+      }
+    } catch (error: any) {
+      if (!handleApiValidationErrors(error, setEmailVerifyError)) {
+        toast.error(error?.response?.data?.errors?.[0]?.detail || 'Failed to verify email change');
+      }
+    } finally {
+      setIsVerifyingEmail(false);
     }
   };
 
@@ -141,7 +224,7 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleProfileSubmit(onProfileSubmit)}>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pb-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>
@@ -149,7 +232,7 @@ export default function ProfilePage() {
                 {profileErrors.firstName && <p className="text-sm text-red-500">{profileErrors.firstName.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="middleName">Middle Name</Label>
+                <Label htmlFor="middleName">Middle Name (optional)</Label>
                 <Input id="middleName" {...registerProfile('middleName')} />
                 {profileErrors.middleName && <p className="text-sm text-red-500">{profileErrors.middleName.message}</p>}
               </div>
@@ -159,22 +242,16 @@ export default function ProfilePage() {
                 {profileErrors.lastName && <p className="text-sm text-red-500">{profileErrors.lastName.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="suffix">Suffix</Label>
+                <Label htmlFor="suffix">Suffix (optional)</Label>
                 <Input id="suffix" placeholder="e.g. Jr, Sr" {...registerProfile('suffix')} />
                 {profileErrors.suffix && <p className="text-sm text-red-500">{profileErrors.suffix.message}</p>}
               </div>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="contactNumber">Contact Number</Label>
+              <Label htmlFor="contactNumber">Contact Number (optional)</Label>
               <Input id="contactNumber" {...registerProfile('contactNumber')} />
               {profileErrors.contactNumber && <p className="text-sm text-red-500">{profileErrors.contactNumber.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input id="email" type="email" {...registerProfile('email')} disabled className="bg-gray-50 dark:bg-gray-900" />
-              <p className="text-xs text-gray-500">Email address cannot be changed.</p>
             </div>
           </CardContent>
           <CardFooter className="border-t px-6 py-4 bg-gray-50 dark:bg-gray-900/50 rounded-b-xl">
@@ -187,13 +264,86 @@ export default function ProfilePage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Change Email Address</CardTitle>
+          <CardDescription>
+            Update your account's primary email address. This requires a verification code sent to your new email.
+          </CardDescription>
+        </CardHeader>
+        
+        {!isWaitingForOtp ? (
+          <form onSubmit={handleEmailInitiateSubmit(onEmailInitiateSubmit)}>
+            <CardContent className="space-y-4 pb-4">
+              <div className="space-y-2">
+                <Label>Current Email</Label>
+                <Input value={user?.email || ''} disabled className="bg-gray-50 dark:bg-gray-900 text-gray-500" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newEmail">New Email Address</Label>
+                <Input id="newEmail" type="email" {...registerEmailInitiate('newEmail')} />
+                {emailInitiateErrors.newEmail && <p className="text-sm text-red-500">{emailInitiateErrors.newEmail.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="emailCurrentPassword">Current Password</Label>
+                <PasswordInput id="emailCurrentPassword" {...registerEmailInitiate('currentPassword')} />
+                {emailInitiateErrors.currentPassword && <p className="text-sm text-red-500">{emailInitiateErrors.currentPassword.message}</p>}
+              </div>
+            </CardContent>
+            <CardFooter className="border-t px-6 py-4 bg-gray-50 dark:bg-gray-900/50 rounded-b-xl">
+              <Button type="submit" variant="secondary" disabled={isInitiatingEmail}>
+                {isInitiatingEmail ? 'Sending Code...' : 'Send Verification Code'}
+              </Button>
+            </CardFooter>
+          </form>
+        ) : (
+          <form onSubmit={handleEmailVerifySubmit(onEmailVerifySubmit)} autoComplete="off">
+            {/* Hidden field to trap aggressive browser autofill */}
+            <input type="email" name="email" className="hidden" aria-hidden="true" tabIndex={-1} autoComplete="username" />
+            <CardContent className="space-y-4 pb-4">
+              <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 p-4 rounded-md text-sm mb-4">
+                We've sent a 6-digit verification code to your new email address. Please enter it below to complete the update.
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="otp">Verification Code</Label>
+                <Input 
+                  id="otp" 
+                  type="text"
+                  inputMode="numeric"
+                  pattern="\d*"
+                  placeholder="123456" 
+                  maxLength={6} 
+                  autoComplete="one-time-code" 
+                  data-1p-ignore="true" 
+                  data-lpignore="true"
+                  {...registerEmailVerify('otp')} 
+                />
+                {emailVerifyErrors.otp && <p className="text-sm text-red-500">{emailVerifyErrors.otp.message}</p>}
+              </div>
+            </CardContent>
+            <CardFooter className="border-t px-6 py-4 bg-gray-50 dark:bg-gray-900/50 rounded-b-xl flex gap-2">
+              <Button type="submit" variant="default" disabled={isVerifyingEmail}>
+                {isVerifyingEmail ? 'Verifying...' : 'Verify & Update Email'}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => {
+                setIsWaitingForOtp(false);
+                resetEmailInitiateForm();
+                resetEmailVerifyForm();
+              }}>
+                Cancel
+              </Button>
+            </CardFooter>
+          </form>
+        )}
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Change Password</CardTitle>
           <CardDescription>
             Ensure your account is using a long, random password to stay secure.
           </CardDescription>
         </CardHeader>
         <form onSubmit={handlePasswordSubmit(onPasswordSubmit)}>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pb-4">
             <div className="space-y-2">
               <Label htmlFor="currentPassword">Current Password</Label>
               <PasswordInput id="currentPassword" {...registerPassword('currentPassword')} />

@@ -11,4 +11,5 @@ pub fn routes() -> Router<AppState> {
         .route("/logout", post(auth::logout))
         .route("/register/initiate", post(auth::register_initiate))
         .route("/register/verify", post(auth::register_verify))
+        .route("/email/cancel", post(auth::cancel_email_change))
 }

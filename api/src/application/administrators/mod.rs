@@ -10,3 +10,4 @@ pub mod resend_verification;
 pub mod verify;
 pub mod update_my_profile;
 pub mod update_my_password;
+pub mod email_change;

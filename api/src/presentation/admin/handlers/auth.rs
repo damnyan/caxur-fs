@@ -123,3 +123,39 @@ pub async fn admin_logout(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
+use serde::Deserialize;
+use validator::Validate;
+use utoipa::ToSchema;
+
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CancelEmailChangeRequest {
+    #[validate(length(min = 1, message = "Token is required"))]
+    pub token: String,
+}
+
+/// Cancel admin email change request
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/auth/email/cancel",
+    request_body = CancelEmailChangeRequest,
+    responses(
+        (status = 200, description = "Email change cancelled successfully", body = JsonApiResponse<serde_json::Value>),
+        (status = 400, description = "Bad request / Invalid token", body = ErrorResponse),
+        (status = 422, description = "Validation error", body = ErrorResponse)
+    ),
+    tag = "Admin / Auth"
+)]
+pub async fn cancel_email_change(
+    State(state): State<AppState>,
+    ValidatedJson(req): ValidatedJson<CancelEmailChangeRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let use_case = crate::application::administrators::email_change::CancelEmailChangeUseCase::new(
+        state.cache_service,
+    );
+
+    use_case.execute(&req.token).await?;
+
+    Ok((StatusCode::OK, Json(JsonApiResponse::new(serde_json::json!({ "success": true })))))
+}
