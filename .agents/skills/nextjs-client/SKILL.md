@@ -40,6 +40,7 @@ src/
 ## 4. State Management & i18n
 
 - **React Context + Server State**: Rely on Next.js Server State and URL parameters for the vast majority of state. For purely global UI state (like Theme), use React Context. Do not introduce Zustand, Redux, or other global state managers.
+- **URL State Management**: For all data tables, lists, and paginated views, you MUST synchronize state (filters, search inputs, active tabs, and pagination) directly to the URL parameters (e.g., `?page=1&search=term` via `useSearchParams` or Next.js searchParams). Do not use isolated local state (`useState`) for these features. This ensures that refreshing the page, navigating back, or sharing the link preserves the exact user view. Debounce text inputs before pushing to the URL to prevent excessive re-renders or API calls.
 - **Internationalization (i18n)**: Hardcode all strings in English. Do not introduce `next-intl` or other i18n libraries (adhering to the YAGNI principle) unless explicitly required by a new feature request.
 
 ## 5. Tailwind CSS v4 Standards

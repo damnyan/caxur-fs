@@ -44,6 +44,7 @@ Use the established stack for data and state. **Do not introduce alternative lib
 - **React Query (TanStack Query)**: Use exclusively for *server state*, data fetching, caching, and mutations.
 - **React Hook Form + Zod**: Use for all form state management and schema validation. Do not manage form inputs manually with simple state unless it is a trivial 1-field input.
   - **Form Fields**: Always mark optional fields with `(optional)` in the label to reduce visual noise. Avoid using asterisks (`*`) for required fields unless requested, as marking optional fields is the modern industry standard.
+- **URL State Management**: For all data tables, lists, and paginated views, you MUST synchronize state (filters, search inputs, active tabs, and pagination) directly to the URL parameters (e.g., `?page=1&search=term` via `useSearchParams`). Do not use isolated local state (`useState`) for these features. This ensures that refreshing the page, navigating back, or sharing the link preserves the exact user view. Debounce text inputs before pushing to the URL to prevent excessive re-renders or API calls.
 - **React Router v7**: Use for client-side routing.
 
 ## 5. Tailwind CSS v4 Standards
