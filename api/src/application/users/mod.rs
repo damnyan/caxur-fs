@@ -7,3 +7,4 @@ pub mod email_change;
 
 #[cfg(test)]
 pub mod mocks;
+pub mod password_reset;

@@ -12,4 +12,6 @@ pub fn routes() -> Router<AppState> {
         .route("/register/initiate", post(auth::register_initiate))
         .route("/register/verify", post(auth::register_verify))
         .route("/email/cancel", post(auth::cancel_email_change))
+        .route("/forgot-password", post(auth::forgot_password))
+        .route("/reset-password", post(auth::reset_password))
 }

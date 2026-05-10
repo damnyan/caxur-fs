@@ -11,6 +11,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './features/auth/components/LoginPage';
 import SetPasswordPage from './features/auth/components/SetPasswordPage';
 import CancelEmailChangePage from './features/auth/components/CancelEmailChangePage';
+import ForgotPasswordPage from './features/auth/components/ForgotPasswordPage';
+import ResetPasswordPage from './features/auth/components/ResetPasswordPage';
 import DashboardPage from './features/dashboard/components/DashboardPage';
 import AdministratorsPage from './features/administrators/components/AdministratorsPage';
 import RolesPage from './features/roles/components/RolesPage';
@@ -64,6 +66,14 @@ const router = createBrowserRouter([
       {
         path: 'set-password',
         element: <SetPasswordPage />,
+      },
+      {
+        path: 'forgot-password',
+        element: <ForgotPasswordPage />,
+      },
+      {
+        path: 'reset-password',
+        element: <ResetPasswordPage />,
       },
       {
         path: 'auth/cancel-email-change',
