@@ -38,6 +38,8 @@ export interface AttachRolesData {
 export interface AdministratorsParams {
   'page[number]'?: number;
   'page[size]'?: number;
+  search?: string;
+  roleId?: string;
   filter?: string;
   sort?: string;
 }

@@ -3,7 +3,7 @@ use crate::shared::error::AppError;
 use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::{IntoParams, ToSchema};
-
+use uuid::Uuid;
 use crate::shared::pagination::{default_page_number, default_page_size};
 
 #[derive(Deserialize, IntoParams, ToSchema)]
@@ -28,6 +28,12 @@ pub struct ListAdministratorsRequest {
     /// Pagination parameters
     #[serde(default)]
     pub page: PageParams,
+    /// Search by name or email
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub search: Option<String>,
+    /// Filter by role
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub role_id: Option<Uuid>,
     /// Sort fields (comma-separated, prefix with - for descending) (future use)
     /// Example: "created_at" or "-created_at,email"
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -59,7 +65,7 @@ impl ListAdministratorsUseCase {
 
     pub async fn execute(
         &self,
-        req: ListAdministratorsRequest,
+        req: &ListAdministratorsRequest,
     ) -> Result<Vec<Administrator>, AppError> {
         // Enforce reasonable limits
         let per_page = req.page.size.clamp(1, 100);
@@ -70,7 +76,7 @@ impl ListAdministratorsUseCase {
 
         let admins = self
             .repo
-            .find_all(per_page, offset)
+            .find_all(req.search.clone(), req.role_id, per_page, offset)
             .await
             .map_err(AppError::InternalServerError)?;
 

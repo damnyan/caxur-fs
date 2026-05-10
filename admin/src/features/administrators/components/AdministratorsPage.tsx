@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import {
   AlertDialog,
@@ -18,7 +19,30 @@ import { Label } from '@/components/ui/label';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { UserPlus, Pencil, Trash2, Mail, ShieldAlert, ShieldCheck, MoreHorizontal } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Mail, ShieldAlert, ShieldCheck, MoreHorizontal, Check, ChevronsUpDown, X, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -62,15 +86,45 @@ export default function AdministratorsPage() {
   const [editAdmin, setEditAdmin] = useState<any | null>(null);
   const [confirmAction, setConfirmAction] = useState<{type: 'restore'|'revoke'|'delete', id: string} | null>(null);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const search = searchParams.get('search') || '';
+  const roleId = searchParams.get('roleId') || '';
+
+  const [searchInput, setSearchInput] = useState(search);
+  const [roleOpen, setRoleOpen] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const newParams = new URLSearchParams(searchParams);
+      if (searchInput) {
+        newParams.set('search', searchInput);
+      } else {
+        newParams.delete('search');
+      }
+      if (search !== searchInput) {
+        newParams.set('page', '1');
+      }
+      setSearchParams(newParams);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchInput, searchParams, setSearchParams, search]);
+
   const queryClient = useQueryClient();
-  const { data: response, isLoading } = useAdministrators();
+  const { data: response, isLoading } = useAdministrators({
+    'page[number]': page,
+    'page[size]': 10,
+    search: search || undefined,
+    roleId: roleId || undefined,
+  });
   const administrators = response?.data || [];
+  const meta = response?.meta;
+  const lastPage = meta ? Math.ceil((meta.total || 0) / (meta.perPage || 10)) : 1;
   
   // Fetch roles for selection
   const { data: rolesResp, isLoading: isLoadingRoles } = useQuery({
     queryKey: ['roles', 'all'],
     queryFn: () => getRoles(1, 100),
-    enabled: isAddOpen || !!editAdmin,
   });
   const rolesList = rolesResp?.data || [];
 
@@ -328,6 +382,93 @@ export default function AdministratorsPage() {
         </DialogContent>
       </Dialog>
 
+      <div className="flex flex-col sm:flex-row items-center gap-4 mb-6">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+          <Input
+            placeholder="Search by name or email..."
+            className="pl-9 pr-9"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+          {searchInput && (
+            <button
+              onClick={() => setSearchInput('')}
+              className="absolute right-2.5 top-2.5 h-4 w-4 text-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        
+        <Popover open={roleOpen} onOpenChange={setRoleOpen}>
+          <PopoverTrigger 
+            render={
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={roleOpen}
+                className="w-full sm:w-64 justify-between"
+              />
+            }
+          >
+            {roleId
+              ? rolesList.find((role: any) => role.id === roleId)?.attributes?.name || "Select role..."
+              : "Filter by role..."}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </PopoverTrigger>
+          <PopoverContent className="w-full sm:w-64 p-0">
+            <Command>
+              <CommandInput placeholder="Search role..." />
+              <CommandList>
+                <CommandEmpty>No role found.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem
+                    value="all"
+                    onSelect={() => {
+                      const newParams = new URLSearchParams(searchParams);
+                      newParams.delete('roleId');
+                      newParams.set('page', '1');
+                      setSearchParams(newParams);
+                      setRoleOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        !roleId ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    All Roles
+                  </CommandItem>
+                  {rolesList.map((role: any) => (
+                    <CommandItem
+                      key={role.id}
+                      value={role.attributes.name}
+                      onSelect={() => {
+                        const newParams = new URLSearchParams(searchParams);
+                        newParams.set('roleId', role.id);
+                        newParams.set('page', '1');
+                        setSearchParams(newParams);
+                        setRoleOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          roleId === role.id ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {role.attributes.name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
+
       <div className="border rounded-md bg-white dark:bg-gray-950">
         <Table>
           <TableHeader>
@@ -462,6 +603,76 @@ export default function AdministratorsPage() {
           </TableBody>
         </Table>
       </div>
+      
+      {meta && lastPage > 1 && (
+        <div className="mt-4 flex justify-end">
+          <Pagination className="mx-0 w-auto">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => {
+                    if (page > 1) {
+                      const newParams = new URLSearchParams(searchParams);
+                      newParams.set('page', (page - 1).toString());
+                      setSearchParams(newParams);
+                    }
+                  }} 
+                  className={page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: lastPage }, (_, i) => i + 1).map(p => {
+                // Show ellipsis if too many pages
+                if (
+                  p === 1 || 
+                  p === lastPage || 
+                  (p >= page - 1 && p <= page + 1)
+                ) {
+                  return (
+                    <PaginationItem key={p}>
+                      <PaginationLink 
+                        onClick={() => {
+                          const newParams = new URLSearchParams(searchParams);
+                          newParams.set('page', p.toString());
+                          setSearchParams(newParams);
+                        }}
+                        isActive={page === p}
+                        className="cursor-pointer"
+                      >
+                        {p}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                } else if (
+                  p === page - 2 || 
+                  p === page + 2
+                ) {
+                  return (
+                    <PaginationItem key={p}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  );
+                }
+                return null;
+              })}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => {
+                    if (page < lastPage) {
+                      const newParams = new URLSearchParams(searchParams);
+                      newParams.set('page', (page + 1).toString());
+                      setSearchParams(newParams);
+                    }
+                  }} 
+                  className={page >= lastPage ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
+
       {/* Confirmation Dialog */}
       <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent>

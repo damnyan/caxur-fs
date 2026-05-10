@@ -84,37 +84,73 @@ impl AdministratorRepository for PostgresAdministratorRepository {
     }
 
     #[tracing::instrument(skip(self))]
-    async fn find_all(&self, limit: i64, offset: i64) -> Result<Vec<Administrator>, anyhow::Error> {
-        let admins_db = sqlx::query_as::<_, AdministratorDbModel>(
+    async fn find_all(&self, search: Option<String>, role_id: Option<Uuid>, limit: i64, offset: i64) -> Result<Vec<Administrator>, anyhow::Error> {
+        let mut query_builder = sqlx::QueryBuilder::new(
             r#"
             SELECT a.id, a.first_name, a.middle_name, a.last_name, a.suffix, a.contact_number, a.email, a.password_hash, a.email_verified_at, a.revoked_at, a.created_at, a.updated_at,
                    COALESCE(jsonb_agg(jsonb_build_object('id', r.id, 'name', r.name)) FILTER (WHERE r.id IS NOT NULL), '[]'::jsonb) as roles
             FROM user_administrators a
             LEFT JOIN administrator_roles ar ON a.id = ar.administrator_id
             LEFT JOIN roles r ON ar.role_id = r.id
-            GROUP BY a.id
-            ORDER BY a.created_at DESC
-            LIMIT $1 OFFSET $2
+            WHERE 1=1
             "#,
-        )
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&self.pool)
-        .await?;
+        );
+
+        if let Some(ref s) = search {
+            query_builder.push(" AND (a.first_name ILIKE ");
+            query_builder.push_bind(format!("%{}%", s));
+            query_builder.push(" OR a.last_name ILIKE ");
+            query_builder.push_bind(format!("%{}%", s));
+            query_builder.push(" OR a.email ILIKE ");
+            query_builder.push_bind(format!("%{}%", s));
+            query_builder.push(")");
+        }
+
+        if let Some(r_id) = role_id {
+            query_builder.push(" AND EXISTS (SELECT 1 FROM administrator_roles ar2 WHERE ar2.administrator_id = a.id AND ar2.role_id = ");
+            query_builder.push_bind(r_id);
+            query_builder.push(")");
+        }
+
+        query_builder.push(" GROUP BY a.id ORDER BY a.created_at DESC LIMIT ");
+        query_builder.push_bind(limit);
+        query_builder.push(" OFFSET ");
+        query_builder.push_bind(offset);
+
+        let query = query_builder.build_query_as::<AdministratorDbModel>();
+        let admins_db = query.fetch_all(&self.pool).await?;
 
         let admins = admins_db.into_iter().map(|a| a.into()).collect();
         Ok(admins)
     }
 
     #[tracing::instrument(skip(self))]
-    async fn count(&self) -> Result<i64, anyhow::Error> {
-        let result: (i64,) = sqlx::query_as(
+    async fn count(&self, search: Option<String>, role_id: Option<Uuid>) -> Result<i64, anyhow::Error> {
+        let mut query_builder = sqlx::QueryBuilder::new(
             r#"
-            SELECT COUNT(*) FROM user_administrators
+            SELECT COUNT(*) FROM user_administrators a
+            WHERE 1=1
             "#,
-        )
-        .fetch_one(&self.pool)
-        .await?;
+        );
+
+        if let Some(ref s) = search {
+            query_builder.push(" AND (a.first_name ILIKE ");
+            query_builder.push_bind(format!("%{}%", s));
+            query_builder.push(" OR a.last_name ILIKE ");
+            query_builder.push_bind(format!("%{}%", s));
+            query_builder.push(" OR a.email ILIKE ");
+            query_builder.push_bind(format!("%{}%", s));
+            query_builder.push(")");
+        }
+
+        if let Some(r_id) = role_id {
+            query_builder.push(" AND EXISTS (SELECT 1 FROM administrator_roles ar2 WHERE ar2.administrator_id = a.id AND ar2.role_id = ");
+            query_builder.push_bind(r_id);
+            query_builder.push(")");
+        }
+
+        let query = query_builder.build_query_as::<(i64,)>();
+        let result = query.fetch_one(&self.pool).await?;
 
         Ok(result.0)
     }

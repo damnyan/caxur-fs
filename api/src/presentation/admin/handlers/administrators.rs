@@ -239,10 +239,10 @@ pub async fn list_admins(
 
     let include_roles = req.include.as_deref().unwrap_or("").contains("roles");
     
-    let admins = use_case.execute(req).await?;
+    let admins = use_case.execute(&req).await?;
 
     // Get total count for pagination
-    let total = crate::domain::administrators::AdministratorRepository::count(&*repo)
+    let total = crate::domain::administrators::AdministratorRepository::count(&*repo, req.search.clone(), req.role_id)
         .await
         .map_err(AppError::InternalServerError)?;
     let mut resources = Vec::new();
