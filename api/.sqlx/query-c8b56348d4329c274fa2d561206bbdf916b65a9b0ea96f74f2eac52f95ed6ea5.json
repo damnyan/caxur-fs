@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT DISTINCT rp.permission as \"permission!: String\"\n            FROM administrator_roles ar\n            JOIN role_permissions rp ON ar.role_id = rp.role_id\n            WHERE ar.administrator_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "permission!: String",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c8b56348d4329c274fa2d561206bbdf916b65a9b0ea96f74f2eac52f95ed6ea5"
+}

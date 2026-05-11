@@ -30,6 +30,14 @@ fi
 echo "📦 Starting API Database..."
 cd api
 docker compose up -d db
+
+echo "⏳ Waiting for database to initialize..."
+until docker compose exec -T db pg_isready -U postgres > /dev/null 2>&1; do
+  sleep 1
+done
+
+echo "🗄️ Running database migrations..."
+cargo sqlx database setup
 cd ..
 
 echo "⚡ Starting all services concurrently..."
