@@ -1,5 +1,6 @@
 import { useAuthStore } from "./auth-store";
 import { config } from "./config";
+import { refreshAction } from "@/app/actions/auth";
 
 let isRefreshing = false;
 let failedQueue: { resolve: (value: string | null) => void; reject: (reason?: any) => void; }[] = [];
@@ -81,19 +82,14 @@ export async function fetchApi(input: RequestInfo | URL, init?: RequestInit): Pr
     isRefreshing = true;
 
     try {
-      const refreshResponse = await fetch(`${config.apiUrl}/api/v1/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      });
+      const refreshResult = await refreshAction(refreshToken);
 
-      if (!refreshResponse.ok) {
-        throw new Error('Refresh failed');
+      if (refreshResult.error || !refreshResult.data) {
+        throw new Error(refreshResult.error || 'Refresh failed');
       }
 
-      const refreshData = await refreshResponse.json();
-      const newAccessToken = refreshData.data.attributes.accessToken;
-      const newRefreshToken = refreshData.data.attributes.refreshToken;
+      const newAccessToken = refreshResult.data.accessToken;
+      const newRefreshToken = refreshResult.data.refreshToken;
 
       authStore.setToken(newAccessToken, newRefreshToken);
       processQueue(null, newAccessToken);
