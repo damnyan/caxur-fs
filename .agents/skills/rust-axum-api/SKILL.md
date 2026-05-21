@@ -82,3 +82,7 @@ When adding a new feature, follow this strict order:
 ## 7. Testing
 
 - **Strict Unit Testing**: The AI MUST ALWAYS write unit tests for the core logic implemented. We exclusively use unit testing for this project. DO NOT write integration tests.
+
+## 8. AI Agent Guidelines
+
+- **Temporary Files**: If an AI agent creates a file for testing, debugging, or validation, it MUST delete that file after its usage is complete or after the task is done to prevent cluttering the repository.

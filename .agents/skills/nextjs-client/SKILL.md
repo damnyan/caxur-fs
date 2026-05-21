@@ -75,3 +75,7 @@ src/
 - **Verification**: Run `scripts/verify.sh` to quickly run the Next.js build process (type-checks and lints).
 - **Setup**: Run `scripts/setup.sh` when initializing or restoring the project dependencies.
 - **No Native Alerts**: Do not use `window.alert` or `window.confirm`. Use standardized UI components (e.g., Shadcn Dialog, Alert Dialog, or Sonner Toasts) for all notifications and confirmations.
+
+## 11. AI Agent Guidelines
+
+- **Temporary Files**: If an AI agent creates a file for testing, debugging, or validation, it MUST delete that file after its usage is complete or after the task is done to prevent cluttering the repository.
