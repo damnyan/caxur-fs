@@ -1,5 +1,4 @@
 import { useAuthStore } from "./auth-store";
-import { config } from "./config";
 import { refreshAction } from "@/app/actions/auth";
 
 let isRefreshing = false;
@@ -50,7 +49,7 @@ export async function fetchApi(input: RequestInfo | URL, init?: RequestInit): Pr
         }
         return response;
       }
-    } catch (e) {
+    } catch {
       // Ignore json parse error
     }
   }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, Suspense, useRef } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -11,7 +11,6 @@ import { config } from "@/lib/config"
 function CancelEmailChangeContent() {
   const searchParams = useSearchParams()
   const token = searchParams.get("token")
-  const router = useRouter()
 
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
   const [errorMessage, setErrorMessage] = useState("")
