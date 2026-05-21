@@ -20,6 +20,7 @@ use axum::{
     extract::{Path, Query, State},
     http::{StatusCode, Uri},
     response::IntoResponse,
+    Extension,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -82,7 +83,7 @@ pub struct ListRolesQuery {
 )]
 pub async fn create_role(
     State(pool): State<DbPool>,
-    axum::Extension(permissions): axum::Extension<Vec<Permission>>,
+    Extension(permissions): Extension<Vec<Permission>>,
     ValidatedJson(req): ValidatedJson<CreateRoleRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     require_role_management(&permissions)?;
@@ -200,7 +201,7 @@ pub async fn list_roles(
 )]
 pub async fn update_role(
     State(pool): State<DbPool>,
-    axum::Extension(permissions): axum::Extension<Vec<Permission>>,
+    Extension(permissions): Extension<Vec<Permission>>,
     Path(id): Path<Uuid>,
     ValidatedJson(req): ValidatedJson<UpdateRoleRequest>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -233,7 +234,7 @@ pub async fn update_role(
 )]
 pub async fn delete_role(
     State(pool): State<DbPool>,
-    axum::Extension(permissions): axum::Extension<Vec<Permission>>,
+    Extension(permissions): Extension<Vec<Permission>>,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
     require_role_management(&permissions)?;
@@ -269,7 +270,7 @@ pub async fn delete_role(
 )]
 pub async fn attach_permission(
     State(pool): State<DbPool>,
-    axum::Extension(permissions): axum::Extension<Vec<Permission>>,
+    Extension(permissions): Extension<Vec<Permission>>,
     Path(id): Path<Uuid>,
     Json(req): Json<AttachPermissionRequest>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -307,7 +308,7 @@ pub async fn attach_permission(
 )]
 pub async fn detach_permission(
     State(pool): State<DbPool>,
-    axum::Extension(permissions): axum::Extension<Vec<Permission>>,
+    Extension(permissions): Extension<Vec<Permission>>,
     Path(id): Path<Uuid>,
     Json(req): Json<DetachPermissionRequest>,
 ) -> Result<impl IntoResponse, AppError> {

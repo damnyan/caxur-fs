@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -10,14 +11,35 @@ import { handleApiValidationErrors } from '@/lib/api';
 import { getRoles, createRole, updateRole, deleteRole, attachRolePermissions, detachRolePermissions } from '../api/roles';
 import type { Role, Permission } from '../types';
 import { RoleForm } from './RoleForm';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 export default function RolesPage() {
   const queryClient = useQueryClient();
-  const [page] = useState(1);
-  const [perPage] = useState(20);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const perPage = 20;
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editRole, setEditRole] = useState<Role | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   
   // Track global saving state across multiple mutations
   const [isSaving, setIsSaving] = useState(false);
@@ -40,6 +62,8 @@ export default function RolesPage() {
   });
 
   const roles = rolesResp?.data.map((r) => r.attributes) || [];
+  const meta = rolesResp?.meta;
+  const lastPage = meta ? Math.ceil((meta.total || 0) / (meta.perPage || 20)) : 1;
 
   const handleCreateSubmit = async (
     data: { name: string; description?: string | null },
@@ -119,9 +143,7 @@ export default function RolesPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this role?')) {
-      deleteMutation.mutate(id);
-    }
+    setConfirmDeleteId(id);
   };
 
   return (
@@ -205,6 +227,74 @@ export default function RolesPage() {
         </CardContent>
       </Card>
 
+      {meta && lastPage > 1 && (
+        <div className="mt-4 flex justify-end">
+          <Pagination className="mx-0 w-auto">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => {
+                    if (page > 1) {
+                      const newParams = new URLSearchParams(searchParams);
+                      newParams.set('page', (page - 1).toString());
+                      setSearchParams(newParams);
+                    }
+                  }} 
+                  className={page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: lastPage }, (_, i) => i + 1).map(p => {
+                if (
+                  p === 1 || 
+                  p === lastPage || 
+                  (p >= page - 1 && p <= page + 1)
+                ) {
+                  return (
+                    <PaginationItem key={p}>
+                      <PaginationLink 
+                        onClick={() => {
+                          const newParams = new URLSearchParams(searchParams);
+                          newParams.set('page', p.toString());
+                          setSearchParams(newParams);
+                        }}
+                        isActive={page === p}
+                        className="cursor-pointer"
+                      >
+                        {p}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                } else if (
+                  p === page - 2 || 
+                  p === page + 2
+                ) {
+                  return (
+                    <PaginationItem key={p}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  );
+                }
+                return null;
+              })}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => {
+                    if (page < lastPage) {
+                      const newParams = new URLSearchParams(searchParams);
+                      newParams.set('page', (page + 1).toString());
+                      setSearchParams(newParams);
+                    }
+                  }} 
+                  className={page >= lastPage ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
+
       {/* Create Role Modal */}
       <RoleForm
         open={isAddOpen}
@@ -226,6 +316,32 @@ export default function RolesPage() {
           title={`Edit Role: ${editRole.name}`}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => !open && setConfirmDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Role</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete this role? This action cannot be undone and may affect users assigned to this role.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              onClick={() => {
+                if (confirmDeleteId) {
+                  deleteMutation.mutate(confirmDeleteId);
+                  setConfirmDeleteId(null);
+                }
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

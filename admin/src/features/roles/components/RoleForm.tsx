@@ -119,7 +119,7 @@ export function RoleForm({ open, onOpenChange, onSubmit, role, isPending, title 
               {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">Description (optional)</Label>
               <Textarea id="description" {...register('description')} rows={2} />
               {errors.description && <p className="text-sm text-red-500">{errors.description.message}</p>}
             </div>

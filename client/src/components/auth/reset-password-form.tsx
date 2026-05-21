@@ -16,33 +16,44 @@ import { PasswordInput } from "@/components/ui/password-input"
 import { useState } from "react"
 import { config } from "@/lib/config"
 import { toast } from "sonner"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+
+const resetPasswordSchema = z.object({
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+})
+
+type ResetPasswordValues = z.infer<typeof resetPasswordSchema>
 
 export function ResetPasswordForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get("token")
 
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ResetPasswordValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      password: "",
+      confirmPassword: "",
+    },
+  })
 
+  const onSubmit = async (values: ResetPasswordValues) => {
     if (!token) {
       setError("Reset token is missing.")
-      return
-    }
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.")
-      return
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.")
       return
     }
 
@@ -53,7 +64,7 @@ export function ResetPasswordForm() {
       const response = await fetch(`${config.apiUrl}/api/v1/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, newPassword: password }),
+        body: JSON.stringify({ token, newPassword: values.password }),
       })
 
       const data = await response.json()
@@ -120,7 +131,7 @@ export function ResetPasswordForm() {
           Please enter your new password below.
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <CardContent className="space-y-4">
           {error && (
             <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
@@ -131,19 +142,27 @@ export function ResetPasswordForm() {
             <Label htmlFor="password">New Password</Label>
             <PasswordInput 
               id="password" 
-              required 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              className="bg-background/50 border-primary/10 focus-visible:ring-primary/30"
+              {...register("password")}
             />
+            {errors.password && (
+              <p className="text-xs font-medium text-destructive mt-1">
+                {errors.password.message}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm Password</Label>
             <PasswordInput 
               id="confirmPassword" 
-              required 
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="bg-background/50 border-primary/10 focus-visible:ring-primary/30"
+              {...register("confirmPassword")}
             />
+            {errors.confirmPassword && (
+              <p className="text-xs font-medium text-destructive mt-1">
+                {errors.confirmPassword.message}
+              </p>
+            )}
           </div>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">

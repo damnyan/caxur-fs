@@ -19,20 +19,39 @@ import { useState } from "react"
 import { useAuthStore } from "@/lib/auth-store"
 import { toast } from "sonner"
 import { loginAction } from "@/app/actions/auth"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+
+const loginSchema = z.object({
+  email: z.string().min(1, "Email is required").email("Invalid email format"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+})
+
+type LoginValues = z.infer<typeof loginSchema>
 
 export function LoginForm() {
   const router = useRouter()
   const { setToken, setUser } = useAuthStore()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  })
+
+  const onSubmit = async (values: LoginValues) => {
     setIsLoading(true)
 
     try {
-      const response = await loginAction(email, password)
+      const response = await loginAction(values.email, values.password)
 
       if (response.error) {
         throw new Error(response.error)
@@ -62,7 +81,7 @@ export function LoginForm() {
           Enter your email and password to access your account
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleLogin} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -70,10 +89,14 @@ export function LoginForm() {
               id="email" 
               type="email" 
               placeholder="john@example.com" 
-              required 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              className="bg-background/50 border-primary/10 focus-visible:ring-primary/30"
+              {...register("email")}
             />
+            {errors.email && (
+              <p className="text-xs font-medium text-destructive mt-1">
+                {errors.email.message}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -87,10 +110,14 @@ export function LoginForm() {
             </div>
             <PasswordInput 
               id="password" 
-              required 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              className="bg-background/50 border-primary/10 focus-visible:ring-primary/30"
+              {...register("password")}
             />
+            {errors.password && (
+              <p className="text-xs font-medium text-destructive mt-1">
+                {errors.password.message}
+              </p>
+            )}
           </div>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">

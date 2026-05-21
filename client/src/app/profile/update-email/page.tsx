@@ -11,6 +11,22 @@ import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/lib/auth-store"
 import { fetchApi } from "@/lib/api-client"
 import { config } from "@/lib/config"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+
+const initiateSchema = z.object({
+  newEmail: z.string().min(1, "New email is required").email("Invalid email format"),
+  currentPassword: z.string().min(1, "Current password is required"),
+})
+
+type InitiateValues = z.infer<typeof initiateSchema>
+
+const verifySchema = z.object({
+  otp: z.string().length(6, "Verification code must be exactly 6 digits").regex(/^\d+$/, "Verification code must be numeric"),
+})
+
+type VerifyValues = z.infer<typeof verifySchema>
 
 export default function UpdateEmailPage() {
   const router = useRouter()
@@ -21,15 +37,25 @@ export default function UpdateEmailPage() {
   const [isWaitingForOtp, setIsWaitingForOtp] = useState(false)
   const [error, setError] = useState("")
 
-  const [currentPassword, setCurrentPassword] = useState("")
-  const [newEmail, setNewEmail] = useState("")
-  const [otp, setOtp] = useState("")
+  const initiateForm = useForm<InitiateValues>({
+    resolver: zodResolver(initiateSchema),
+    defaultValues: {
+      newEmail: "",
+      currentPassword: "",
+    },
+  })
 
-  const handleInitiate = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const verifyForm = useForm<VerifyValues>({
+    resolver: zodResolver(verifySchema),
+    defaultValues: {
+      otp: "",
+    },
+  })
+
+  const handleInitiate = async (values: InitiateValues) => {
     setError("")
     
-    if (newEmail === user?.email) {
+    if (values.newEmail === user?.email) {
       setError("New email cannot be the same as your current email.")
       return
     }
@@ -38,7 +64,10 @@ export default function UpdateEmailPage() {
     try {
       const response = await fetchApi(`${config.apiUrl}/api/v1/profile/email/initiate`, {
         method: "POST",
-        body: JSON.stringify({ currentPassword, newEmail })
+        body: JSON.stringify({ 
+          currentPassword: values.currentPassword, 
+          newEmail: values.newEmail 
+        })
       })
 
       if (!response.ok) {
@@ -54,14 +83,13 @@ export default function UpdateEmailPage() {
     }
   }
 
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleVerify = async (values: VerifyValues) => {
     setError("")
     setIsVerifying(true)
     try {
       const response = await fetchApi(`${config.apiUrl}/api/v1/profile/email/verify`, {
         method: "POST",
-        body: JSON.stringify({ otp })
+        body: JSON.stringify({ otp: values.otp })
       })
 
       if (!response.ok) {
@@ -94,7 +122,7 @@ export default function UpdateEmailPage() {
       </div>
 
       {!isWaitingForOtp ? (
-        <form onSubmit={handleInitiate}>
+        <form onSubmit={initiateForm.handleSubmit(handleInitiate)}>
           <Card>
             <CardHeader>
               <CardTitle>Email Address</CardTitle>
@@ -112,19 +140,27 @@ export default function UpdateEmailPage() {
                   id="newEmail" 
                   type="email" 
                   placeholder="new.email@example.com" 
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  required 
+                  className="bg-background/50 border-primary/10 focus-visible:ring-primary/30"
+                  {...initiateForm.register("newEmail")}
                 />
+                {initiateForm.formState.errors.newEmail && (
+                  <p className="text-xs font-medium text-destructive mt-1">
+                    {initiateForm.formState.errors.newEmail.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Current Password</Label>
                 <PasswordInput 
                   id="password" 
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  required 
+                  className="bg-background/50 border-primary/10 focus-visible:ring-primary/30"
+                  {...initiateForm.register("currentPassword")}
                 />
+                {initiateForm.formState.errors.currentPassword && (
+                  <p className="text-xs font-medium text-destructive mt-1">
+                    {initiateForm.formState.errors.currentPassword.message}
+                  </p>
+                )}
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2 border-t px-6 py-4 bg-gray-50/50">
@@ -138,7 +174,7 @@ export default function UpdateEmailPage() {
           </Card>
         </form>
       ) : (
-        <form onSubmit={handleVerify} autoComplete="off">
+        <form onSubmit={verifyForm.handleSubmit(handleVerify)} autoComplete="off">
           {/* Hidden field to trap aggressive browser autofill */}
           <input type="email" name="email" className="hidden" aria-hidden="true" tabIndex={-1} autoComplete="username" />
           <Card>
@@ -157,13 +193,17 @@ export default function UpdateEmailPage() {
                   pattern="\d*"
                   placeholder="123456" 
                   maxLength={6} 
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
                   autoComplete="one-time-code"
                   data-1p-ignore="true" 
                   data-lpignore="true"
-                  required 
+                  className="bg-background/50 border-primary/10 focus-visible:ring-primary/30"
+                  {...verifyForm.register("otp")}
                 />
+                {verifyForm.formState.errors.otp && (
+                  <p className="text-xs font-medium text-destructive mt-1">
+                    {verifyForm.formState.errors.otp.message}
+                  </p>
+                )}
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2 border-t px-6 py-4 bg-gray-50/50">
