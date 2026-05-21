@@ -40,8 +40,12 @@ This skill governs development within the `api` project. It enforces strict adhe
   - Use `AppError` (from `shared/error.rs`) for all errors, mapping to appropriate HTTP status codes.
   - Use `validator` crate and `ValidatedJson` extractor from `shared` to automatically validate requests.
   - ALL validation errors must return a `422 Unprocessable Entity` status code and be formatted as a JSON:API compliant error object (using `source.pointer` to indicate the specific field).
-- **Rate Limiting**:
-  - EVERY endpoint must have a default rate limit. The rate limit per minute must be configurable via the `RATE_LIMIT_PER_MINUTE` environment variable, defaulting to `60` if not set.
+- **Rate Limiting (3-Tiered Quota System)**:
+  - Endpoints MUST be segregated into 3 tiers based on their function, and the respective middleware layer must be applied to the router:
+    - **Auth/Strict**: `auth_rate_limit_layer` (configured via `RATE_LIMIT_AUTH_PER_MINUTE`, default: `10`). For login, registration, password resets.
+    - **Public/Guest**: `public_rate_limit_layer` (configured via `RATE_LIMIT_PUBLIC_PER_MINUTE`, default: `60`). For unauthenticated, open endpoints (e.g., fetching a public directory).
+    - **Private/Standard**: `api_rate_limit_layer` (configured via `RATE_LIMIT_PER_MINUTE`, default: `300`). For standard data fetching by authenticated users.
+  - Health checks and internal monitoring endpoints MUST bypass rate limiting entirely.
 - **Code Style**:
   - **No Fully Qualified Names (FQN)**: Always import types, functions, and modules at the top of the file. (e.g., `use crate::domain::User;` instead of `crate::domain::User::new()`).
 - **Email Notifications**:

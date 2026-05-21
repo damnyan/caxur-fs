@@ -31,6 +31,10 @@ mod tests {
             id,
             email: "test@example.com".to_string(),
             password_hash: "hash".to_string(),
+            first_name: None,
+            middle_name: None,
+            last_name: None,
+            suffix: None,
             created_at: OffsetDateTime::now_utc(),
             updated_at: OffsetDateTime::now_utc(),
         });

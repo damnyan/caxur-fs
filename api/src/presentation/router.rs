@@ -32,12 +32,11 @@ pub fn app(state: AppState) -> anyhow::Result<Router> {
         )
         .route("/health", get(client::handlers::health::health_check))
         // Client routes (Auth, Users) nested under /api/v1
-        .nest("/api/v1", client::routes::routes())
+        .nest("/api/v1", client::routes::routes(state.clone())?)
         // Admin routes nested under /api/v1/admin
-        .nest("/api/v1/admin", admin::routes::routes(state.clone()))
+        .nest("/api/v1/admin", admin::routes::routes(state.clone())?)
         .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http())
         .layer(middleware::cors::cors_layer()?)
-        .layer(middleware::rate_limit::rate_limit_layer()?)
         .with_state(state))
 }

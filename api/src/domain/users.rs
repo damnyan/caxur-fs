@@ -61,6 +61,10 @@ mod tests {
         let user = NewUser {
             email: "test@example.com".to_string(),
             password_hash: "hash".to_string(),
+            first_name: None,
+            middle_name: None,
+            last_name: None,
+            suffix: None,
         };
 
         assert_eq!(user.email, "test@example.com");
@@ -72,6 +76,10 @@ mod tests {
         let update = UpdateUser {
             email: Some("new@example.com".to_string()),
             password_hash: None,
+            first_name: None,
+            middle_name: None,
+            last_name: None,
+            suffix: None,
         };
 
         assert_eq!(update.email, Some("new@example.com".to_string()));
