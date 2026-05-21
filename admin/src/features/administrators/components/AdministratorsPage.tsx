@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import {
@@ -126,7 +126,7 @@ export default function AdministratorsPage() {
     queryKey: ['roles', 'all'],
     queryFn: () => getRoles(1, 100),
   });
-  const rolesList = rolesResp?.data || [];
+  const rolesList = useMemo(() => rolesResp?.data || [], [rolesResp]);
 
   const createMutation = useCreateAdministrator();
   const updateMutation = useUpdateAdministrator();
@@ -336,7 +336,7 @@ export default function AdministratorsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="editEmail">Email</Label>
-                <Input id="editEmail" type="email" {...registerEdit('email')} disabled={!!editAdmin?.emailVerifiedAt} className={!!editAdmin?.emailVerifiedAt ? "bg-gray-100" : ""} title={!!editAdmin?.emailVerifiedAt ? "Email cannot be changed after verification" : ""} />
+                <Input id="editEmail" type="email" {...registerEdit('email')} disabled={Boolean(editAdmin?.emailVerifiedAt)} className={editAdmin?.emailVerifiedAt ? "bg-gray-100" : ""} title={editAdmin?.emailVerifiedAt ? "Email cannot be changed after verification" : ""} />
                 {editErrors.email && <p className="text-sm text-red-500">{editErrors.email.message}</p>}
               </div>
               <div className="space-y-2">

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 /**
  * A hook that triggers a callback after a period of user inactivity.
@@ -8,14 +8,14 @@ import { useEffect, useRef } from 'react';
 export function useIdleTimeout(onIdle: () => void, idleTimeInMs: number = 15 * 60 * 1000) {
   const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleActivity = () => {
+  const handleActivity = useCallback(() => {
     if (timeoutId.current) {
       clearTimeout(timeoutId.current);
     }
     timeoutId.current = setTimeout(() => {
       onIdle();
     }, idleTimeInMs);
-  };
+  }, [onIdle, idleTimeInMs]);
 
   useEffect(() => {
     const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
@@ -35,5 +35,6 @@ export function useIdleTimeout(onIdle: () => void, idleTimeInMs: number = 15 * 6
         window.removeEventListener(event, handleActivity);
       });
     };
-  }, [onIdle, idleTimeInMs]);
+  }, [handleActivity]);
 }
+

@@ -9,18 +9,12 @@ export default function CancelEmailChangePage() {
   const token = searchParams.get('token');
   const navigate = useNavigate();
 
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>(token ? 'loading' : 'error');
+  const [errorMessage, setErrorMessage] = useState(token ? '' : 'No cancellation token provided.');
   const hasRequested = useRef(false);
 
   useEffect(() => {
-    if (!token) {
-      setStatus('error');
-      setErrorMessage('No cancellation token provided.');
-      return;
-    }
-
-    if (hasRequested.current) return;
+    if (!token || hasRequested.current) return;
     hasRequested.current = true;
 
     const cancelRequest = async () => {
