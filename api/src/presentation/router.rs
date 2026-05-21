@@ -18,8 +18,13 @@ pub fn app(state: AppState) -> anyhow::Result<Router> {
         .description(Some("Local Development Server"))
         .build()]);
 
-    Ok(Router::new()
-        .merge(
+    let swagger_enabled = std::env::var("SWAGGER_ENABLED")
+        .map(|v| v.trim().to_lowercase() == "true")
+        .unwrap_or(false);
+
+    let mut router = Router::new();
+    if swagger_enabled {
+        router = router.merge(
             SwaggerUi::new("/swagger-ui")
                 .url("/api-docs/openapi.json", openapi)
                 .config(
@@ -29,7 +34,10 @@ pub fn app(state: AppState) -> anyhow::Result<Router> {
                         .display_operation_id(true)
                         .doc_expansion("none"),
                 ),
-        )
+        );
+    }
+
+    Ok(router
         .route("/health", get(client::handlers::health::health_check))
         // Client routes (Auth, Users) nested under /api/v1
         .nest("/api/v1", client::routes::routes(state.clone())?)

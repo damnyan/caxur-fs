@@ -24,7 +24,8 @@ echo "🦀 Checking API..."
 cd api
 cargo sqlx prepare
 cargo check
+cargo test --lib presentation::openapi::tests::generate_openapi_json
 cd ..
-echo "✅ API checks successful."
+echo "✅ API checks and OpenAPI spec generation successful."
 
 echo "🎉 All verifications passed! You are ready to commit and push."

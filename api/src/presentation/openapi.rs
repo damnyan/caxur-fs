@@ -151,3 +151,18 @@ impl Modify for SecurityAddon {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use utoipa::OpenApi;
+
+    #[test]
+    fn generate_openapi_json() {
+        let openapi = ApiDoc::openapi();
+        let json = serde_json::to_string_pretty(&openapi).unwrap();
+        std::fs::write("openapi.json", json).expect("Failed to write openapi.json");
+        println!("OpenAPI schema generated successfully at api/openapi.json");
+    }
+}
+
