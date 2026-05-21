@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "./scripts/verify-all.sh",
+        "matcher": "run_command",
+        "stopOnError": true
+      }
+    ]
+  }
+}

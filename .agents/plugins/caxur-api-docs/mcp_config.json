@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "caxur-api-docs": {
+      "command": "bun",
+      "args": ["scripts/mcp-api-docs.ts"]
+    }
+  }
+}
