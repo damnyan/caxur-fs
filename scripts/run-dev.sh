@@ -19,6 +19,7 @@ echo "🧹 Cleaning up potentially conflicting ports..."
 kill_port 3000 # API
 kill_port 3001 # Admin
 kill_port 3002 # Client
+kill_port 5173 # MCP Inspector
 
 # Check for conflicting docker containers on 5432
 CONFLICTING_CONTAINER=$(docker ps -q --filter "publish=5432")
@@ -41,10 +42,11 @@ cargo sqlx database setup
 cd ..
 
 echo "⚡ Starting all services concurrently..."
-# Use bunx concurrently to run all three services
+# Use bunx concurrently to run all services
 bunx concurrently \
-  -c "green,blue,magenta" \
-  -n "API,CLIENT,ADMIN" \
+  -c "green,blue,magenta,yellow" \
+  -n "API,CLIENT,ADMIN,MCP" \
   "cd api && cargo watch -x run" \
   "cd client && bun run dev" \
-  "cd admin && bun run dev"
+  "cd admin && bun run dev" \
+  "bunx @modelcontextprotocol/inspector bun scripts/mcp-api-docs.ts"
