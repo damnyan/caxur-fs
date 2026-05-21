@@ -43,6 +43,7 @@ All files related to AI Agent management, guidance, and tools are located in the
   - [`setup-project.md`](.agents/workflows/setup-project.md): Initial bootstrapping workflow.
   - [`run-dev.md`](.agents/workflows/run-dev.md): Development environment launch sequence.
   - [`verify-commit.md`](.agents/workflows/verify-commit.md): Pre-commit verification and git push sequence.
+  - [`bhu.md`](.agents/workflows/bhu.md): Agent task creation, skill planning, and sub-agent allocation workflow.
 - **`.agents/plugins/`**: Custom workspace plugins exposing Model Context Protocol (MCP) servers.
 
 ---
@@ -98,6 +99,10 @@ AI agents should recommend these commands to the user, or execute the underlying
   1. Commit and push (with high-quality Conventional Commit message).
   2. Commit only.
   3. Regenerate commit message.
+
+### 📋 4. `/bhu` (Agent Task Creation & Planning)
+- Governed by [`.agents/workflows/bhu.md`](.agents/workflows/bhu.md).
+- Enforces rigorous requirement ingestion, custom Model Context Protocol (MCP) server mapping, workspace-specific skill alignment, and sub-agent workload decomposition prior to writing any production code.
 
 ---
 
