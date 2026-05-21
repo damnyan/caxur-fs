@@ -24,7 +24,10 @@ pub fn routes(state: AppState) -> Router<AppState> {
         )
         .route("/{id}/revoke", post(administrators::revoke_admin))
         .route("/{id}/restore", post(administrators::restore_admin))
-        .route("/{id}/resend-verification", post(administrators::resend_verification_admin))
+        .route(
+            "/{id}/resend-verification",
+            post(administrators::resend_verification_admin),
+        )
         .route("/verify", post(administrators::verify_admin))
         .route_layer(middleware::from_fn_with_state(state, check_permissions))
         .route_layer(Extension(RequiredPermissions {

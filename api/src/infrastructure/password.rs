@@ -101,7 +101,7 @@ mod tests {
 
     #[test]
     fn test_default_implementation() {
-        let service = PasswordService::default();
+        let service = PasswordService;
         let password = "testpassword123";
         let hash = service.hash_password(password).unwrap();
         assert!(service.verify_password(password, &hash).unwrap());

@@ -16,11 +16,10 @@ use crate::shared::error::{AppError, ErrorResponse};
 use crate::shared::response::{JsonApiMeta, JsonApiResource, JsonApiResponse};
 use crate::shared::validation::ValidatedJson;
 use axum::{
-    Json,
+    Extension, Json,
     extract::{Path, Query, State},
     http::{StatusCode, Uri},
     response::IntoResponse,
-    Extension,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -372,7 +371,9 @@ pub async fn get_role_permissions(
 }
 
 fn require_role_management(permissions: &[Permission]) -> Result<(), AppError> {
-    if permissions.contains(&Permission::Wildcard) || permissions.contains(&Permission::RoleManagement) {
+    if permissions.contains(&Permission::Wildcard)
+        || permissions.contains(&Permission::RoleManagement)
+    {
         Ok(())
     } else {
         Err(AppError::Forbidden("Insufficient permissions".to_string()))

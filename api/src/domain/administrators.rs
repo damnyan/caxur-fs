@@ -64,8 +64,18 @@ pub trait AdministratorRepository: Send + Sync {
     async fn create(&self, new_admin: NewAdministrator) -> Result<Administrator, anyhow::Error>;
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Administrator>, anyhow::Error>;
     async fn find_by_email(&self, email: &str) -> Result<Option<Administrator>, anyhow::Error>;
-    async fn find_all(&self, search: Option<String>, role_id: Option<Uuid>, limit: i64, offset: i64) -> Result<Vec<Administrator>, anyhow::Error>;
-    async fn count(&self, search: Option<String>, role_id: Option<Uuid>) -> Result<i64, anyhow::Error>;
+    async fn find_all(
+        &self,
+        search: Option<String>,
+        role_id: Option<Uuid>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<Administrator>, anyhow::Error>;
+    async fn count(
+        &self,
+        search: Option<String>,
+        role_id: Option<Uuid>,
+    ) -> Result<i64, anyhow::Error>;
     async fn update(
         &self,
         id: Uuid,

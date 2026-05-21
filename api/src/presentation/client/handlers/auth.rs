@@ -1,7 +1,11 @@
 use crate::application::auth::login::{LoginRequest, LoginUseCase};
 use crate::application::auth::refresh::{RefreshTokenRequest, RefreshTokenUseCase};
-use crate::application::auth::registration::initiate::{InitiateRegistrationRequest, InitiateRegistrationUseCase};
-use crate::application::auth::registration::verify::{VerifyRegistrationRequest, VerifyRegistrationUseCase};
+use crate::application::auth::registration::initiate::{
+    InitiateRegistrationRequest, InitiateRegistrationUseCase,
+};
+use crate::application::auth::registration::verify::{
+    VerifyRegistrationRequest, VerifyRegistrationUseCase,
+};
 use crate::infrastructure::repositories::refresh_tokens::PostgresRefreshTokenRepository;
 use crate::infrastructure::repositories::users::PostgresUserRepository;
 use crate::infrastructure::state::AppState;
@@ -54,8 +58,11 @@ pub async fn login(
     );
 
     let (response, user) = use_case.execute(req).await?;
-    let resource =
-        JsonApiResource::new("auth-tokens", "session", AuthTokenResource::new(response, Some(user)));
+    let resource = JsonApiResource::new(
+        "auth-tokens",
+        "session",
+        AuthTokenResource::new(response, Some(user)),
+    );
 
     Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
 }
@@ -148,14 +155,13 @@ pub async fn register_initiate(
     let email_service = state.email_service.clone();
     let password_service = Arc::new(crate::infrastructure::password::PasswordService::new());
 
-    let use_case = InitiateRegistrationUseCase::new(
-        user_repo,
-        cache_service,
-        email_service,
-        password_service,
-    );
+    let use_case =
+        InitiateRegistrationUseCase::new(user_repo, cache_service, email_service, password_service);
 
-    use_case.execute(req).await.map_err(|e| AppError::BadRequest(e.to_string()))?;
+    use_case
+        .execute(req)
+        .await
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -200,7 +206,11 @@ pub async fn register_verify(
     );
 
     let (response, user) = use_case.execute(req).await?;
-    let resource = JsonApiResource::new("auth-tokens", "session", AuthTokenResource::new(response, Some(user)));
+    let resource = JsonApiResource::new(
+        "auth-tokens",
+        "session",
+        AuthTokenResource::new(response, Some(user)),
+    );
 
     Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
 }
@@ -230,17 +240,19 @@ pub async fn cancel_email_change(
     State(state): State<AppState>,
     ValidatedJson(req): ValidatedJson<CancelUserEmailChangeRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let use_case = CancelUserEmailChangeUseCase::new(
-        state.cache_service,
-    );
+    let use_case = CancelUserEmailChangeUseCase::new(state.cache_service);
 
     use_case.execute(&req.token).await?;
 
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(serde_json::json!({ "success": true })))))
+    Ok((
+        StatusCode::OK,
+        Json(JsonApiResponse::new(serde_json::json!({ "success": true }))),
+    ))
 }
 
 use crate::application::users::password_reset::{
-    ConfirmPasswordResetRequest, RequestPasswordResetRequest, RequestPasswordResetUseCase, ConfirmPasswordResetUseCase
+    ConfirmPasswordResetRequest, ConfirmPasswordResetUseCase, RequestPasswordResetRequest,
+    RequestPasswordResetUseCase,
 };
 
 /// Request password reset
@@ -259,15 +271,17 @@ pub async fn forgot_password(
     ValidatedJson(req): ValidatedJson<RequestPasswordResetRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_repo = Arc::new(PostgresUserRepository::new(state.pool.clone()));
-    let use_case = RequestPasswordResetUseCase::new(
-        user_repo,
-        state.cache_service,
-        state.email_service,
-    );
+    let use_case =
+        RequestPasswordResetUseCase::new(user_repo, state.cache_service, state.email_service);
 
     use_case.execute(req).await?;
 
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(serde_json::json!({ "message": "If an account with that email exists, we have sent a reset link." })))))
+    Ok((
+        StatusCode::OK,
+        Json(JsonApiResponse::new(
+            serde_json::json!({ "message": "If an account with that email exists, we have sent a reset link." }),
+        )),
+    ))
 }
 
 /// Confirm password reset
@@ -288,14 +302,14 @@ pub async fn reset_password(
 ) -> Result<impl IntoResponse, AppError> {
     let user_repo = Arc::new(PostgresUserRepository::new(state.pool.clone()));
     let password_service = Arc::new(crate::infrastructure::password::PasswordService::new());
-    
-    let use_case = ConfirmPasswordResetUseCase::new(
-        user_repo,
-        state.cache_service,
-        password_service,
-    );
+
+    let use_case =
+        ConfirmPasswordResetUseCase::new(user_repo, state.cache_service, password_service);
 
     use_case.execute(req).await?;
 
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(serde_json::json!({ "success": true })))))
+    Ok((
+        StatusCode::OK,
+        Json(JsonApiResponse::new(serde_json::json!({ "success": true }))),
+    ))
 }

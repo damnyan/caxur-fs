@@ -59,16 +59,25 @@ mod tests {
         let use_case = ListRolesUseCase::new(repo);
 
         // Limit exactly 2 items on page 1
-        let result1 = use_case.execute(AccessScope::Administrator, None, 2, 1).await.unwrap();
+        let result1 = use_case
+            .execute(AccessScope::Administrator, None, 2, 1)
+            .await
+            .unwrap();
         assert_eq!(result1.len(), 2);
         assert_eq!(result1[0].name, "role0");
 
         // Out of bounds page
-        let result2 = use_case.execute(AccessScope::Administrator, None, 2, 5).await.unwrap();
+        let result2 = use_case
+            .execute(AccessScope::Administrator, None, 2, 5)
+            .await
+            .unwrap();
         assert_eq!(result2.len(), 0);
 
         // Clamp limit to 100
-        let result3 = use_case.execute(AccessScope::Administrator, None, 1000, 1).await.unwrap();
+        let result3 = use_case
+            .execute(AccessScope::Administrator, None, 1000, 1)
+            .await
+            .unwrap();
         assert_eq!(result3.len(), 5);
     }
 }

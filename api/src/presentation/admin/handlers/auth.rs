@@ -125,8 +125,8 @@ pub async fn admin_logout(
 }
 
 use serde::Deserialize;
-use validator::Validate;
 use utoipa::ToSchema;
+use validator::Validate;
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -157,11 +157,15 @@ pub async fn cancel_email_change(
 
     use_case.execute(&req.token).await?;
 
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(serde_json::json!({ "success": true })))))
+    Ok((
+        StatusCode::OK,
+        Json(JsonApiResponse::new(serde_json::json!({ "success": true }))),
+    ))
 }
 
 use crate::application::administrators::password_reset::{
-    ConfirmPasswordResetRequest, RequestPasswordResetRequest, RequestPasswordResetUseCase, ConfirmPasswordResetUseCase
+    ConfirmPasswordResetRequest, ConfirmPasswordResetUseCase, RequestPasswordResetRequest,
+    RequestPasswordResetUseCase,
 };
 
 /// Request password reset
@@ -180,15 +184,17 @@ pub async fn forgot_password(
     ValidatedJson(req): ValidatedJson<RequestPasswordResetRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let admin_repo = Arc::new(PostgresAdministratorRepository::new(state.pool.clone()));
-    let use_case = RequestPasswordResetUseCase::new(
-        admin_repo,
-        state.cache_service,
-        state.email_service,
-    );
+    let use_case =
+        RequestPasswordResetUseCase::new(admin_repo, state.cache_service, state.email_service);
 
     use_case.execute(req).await?;
 
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(serde_json::json!({ "message": "If an account with that email exists, we have sent a reset link." })))))
+    Ok((
+        StatusCode::OK,
+        Json(JsonApiResponse::new(
+            serde_json::json!({ "message": "If an account with that email exists, we have sent a reset link." }),
+        )),
+    ))
 }
 
 /// Confirm password reset
@@ -209,14 +215,14 @@ pub async fn reset_password(
 ) -> Result<impl IntoResponse, AppError> {
     let admin_repo = Arc::new(PostgresAdministratorRepository::new(state.pool.clone()));
     let password_service = Arc::new(crate::infrastructure::password::PasswordService::new());
-    
-    let use_case = ConfirmPasswordResetUseCase::new(
-        admin_repo,
-        state.cache_service,
-        password_service,
-    );
+
+    let use_case =
+        ConfirmPasswordResetUseCase::new(admin_repo, state.cache_service, password_service);
 
     use_case.execute(req).await?;
 
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(serde_json::json!({ "success": true })))))
+    Ok((
+        StatusCode::OK,
+        Json(JsonApiResponse::new(serde_json::json!({ "success": true }))),
+    ))
 }

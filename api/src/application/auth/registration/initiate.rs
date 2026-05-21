@@ -1,12 +1,12 @@
 use crate::domain::cache::{CacheService, PendingRegistration};
+use crate::domain::password::PasswordHashingService;
 use crate::domain::users::UserRepository;
 use crate::infrastructure::email::EmailService;
-use crate::domain::password::PasswordHashingService;
+use rand::RngExt;
 use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::ToSchema;
 use validator::Validate;
-use rand::RngExt;
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -43,7 +43,12 @@ impl InitiateRegistrationUseCase {
         request.validate()?;
 
         // 1. Check for email uniqueness
-        if let Some(_) = self.user_repository.find_by_email(&request.email).await? {
+        if self
+            .user_repository
+            .find_by_email(&request.email)
+            .await?
+            .is_some()
+        {
             return Err(anyhow::anyhow!("Email already registered"));
         }
 
@@ -51,9 +56,7 @@ impl InitiateRegistrationUseCase {
         let password_hash = self.password_service.hash_password(&request.password)?;
 
         // 3. Generate 6-digit OTP
-        let otp: String = rand::rng()
-            .random_range(100_000..999_999)
-            .to_string();
+        let otp: String = rand::rng().random_range(100_000..999_999).to_string();
 
         // 4. Store in cache (pending:email:{email})
         let pending = PendingRegistration {
@@ -61,7 +64,7 @@ impl InitiateRegistrationUseCase {
             password_hash,
             otp: otp.clone(),
         };
-        
+
         let pending_json = serde_json::to_string(&pending)?;
         let key = format!("registration:pending:{}", request.email);
         self.cache_service.set(&key, pending_json, 600).await?; // 10 minutes

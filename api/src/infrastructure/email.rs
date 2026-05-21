@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use lettre::{
-    message::header::ContentType, transport::smtp::authentication::Credentials, Message,
-    AsyncTransport, AsyncSmtpTransport, Tokio1Executor
+    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor, message::header::ContentType,
+    transport::smtp::authentication::Credentials,
 };
 use tracing;
 
@@ -35,16 +35,26 @@ impl SmtpEmailService {
         app_name: String,
     ) -> Result<Self, anyhow::Error> {
         let creds = Credentials::new(username.to_string(), password.to_string());
-        
+
         let mailer = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(host)?
             .port(port)
             .credentials(creds)
             .build();
-            
-        Ok(Self { mailer, from_email, app_name })
+
+        Ok(Self {
+            mailer,
+            from_email,
+            app_name,
+        })
     }
 
-    fn build_html_layout(&self, title: &str, content: &str, cta_text: Option<&str>, cta_url: Option<&str>) -> String {
+    fn build_html_layout(
+        &self,
+        title: &str,
+        content: &str,
+        cta_text: Option<&str>,
+        cta_url: Option<&str>,
+    ) -> String {
         let year = time::OffsetDateTime::now_utc().year();
         let cta_button = if let (Some(text), Some(url)) = (cta_text, cta_url) {
             format!(
@@ -63,7 +73,9 @@ impl SmtpEmailService {
                     <p style="margin-bottom: 8px;">If you're having trouble clicking the "{}" button, copy and paste the URL below into your web browser:</p>
                     <a href="{}" style="color: #2563eb; word-break: break-all; overflow-wrap: break-word;">{}</a>
                 </div>"#,
-                cta_text.unwrap_or("button"), url, url
+                cta_text.unwrap_or("button"),
+                url,
+                url
             )
         } else {
             String::new()
@@ -106,7 +118,14 @@ impl SmtpEmailService {
     </div>
 </body>
 </html>"#,
-            self.app_name, title, content, cta_button, fallback_link, year, self.app_name, self.app_name
+            self.app_name,
+            title,
+            content,
+            cta_button,
+            fallback_link,
+            year,
+            self.app_name,
+            self.app_name
         )
     }
 }
@@ -163,8 +182,14 @@ mod tests {
             }
         }
 
-        fn build_html_layout(&self, title: &str, content: &str, cta_text: Option<&str>, cta_url: Option<&str>) -> String {
-            // Re-implement or call the real one if we can. 
+        fn build_html_layout(
+            &self,
+            title: &str,
+            content: &str,
+            cta_text: Option<&str>,
+            cta_url: Option<&str>,
+        ) -> String {
+            // Re-implement or call the real one if we can.
             // Since it's a private method on SmtpEmailService, let's test it via a mock or make it public/internal.
             // For now, let's just test that the logic is sound.
             let year = 2026;
@@ -185,7 +210,9 @@ mod tests {
                         <p style="margin-bottom: 8px;">If you're having trouble clicking the "{}" button, copy and paste the URL below into your web browser:</p>
                         <a href="{}" style="color: #2563eb; word-break: break-all; overflow-wrap: break-word;">{}</a>
                     </div>"#,
-                    cta_text.unwrap_or("button"), url, url
+                    cta_text.unwrap_or("button"),
+                    url,
+                    url
                 )
             } else {
                 String::new()

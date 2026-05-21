@@ -1,6 +1,9 @@
-use crate::presentation::client::handlers::profile;
-use axum::{Router, routing::{patch, post}};
 use crate::infrastructure::state::AppState;
+use crate::presentation::client::handlers::profile;
+use axum::{
+    Router,
+    routing::{patch, post},
+};
 
 pub fn routes() -> Router<AppState> {
     Router::new()

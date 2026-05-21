@@ -26,7 +26,7 @@ mod tests {
     async fn test_get_user_success() {
         let repo = Arc::new(MockUserRepository::new());
         let id = Uuid::new_v4();
-        
+
         repo.seed(User {
             id,
             email: "test@example.com".to_string(),
@@ -41,7 +41,7 @@ mod tests {
 
         let use_case = GetUserUseCase::new(repo);
         let result = use_case.execute(id).await;
-        
+
         assert!(result.is_ok());
         let user_opt = result.unwrap();
         assert!(user_opt.is_some());
@@ -52,9 +52,9 @@ mod tests {
     async fn test_get_user_not_found() {
         let repo = Arc::new(MockUserRepository::new());
         let use_case = GetUserUseCase::new(repo);
-        
+
         let result = use_case.execute(Uuid::new_v4()).await;
-        
+
         assert!(result.is_ok());
         assert!(result.unwrap().is_none());
     }

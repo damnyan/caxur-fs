@@ -1,5 +1,3 @@
-#![cfg(test)]
-
 use crate::domain::access_scope::AccessScope;
 use crate::domain::permissions::Permission;
 use crate::domain::roles::{NewRole, Role, RoleRepository, UpdateRole};
@@ -12,13 +10,19 @@ pub struct MockRoleRepository {
     pub roles: Arc<Mutex<Vec<Role>>>,
 }
 
-impl MockRoleRepository {
-    pub fn new() -> Self {
+impl Default for MockRoleRepository {
+    fn default() -> Self {
         Self {
             roles: Arc::new(Mutex::new(Vec::new())),
         }
     }
-    
+}
+
+impl MockRoleRepository {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn seed(&self, role: Role) {
         self.roles.lock().unwrap().push(role);
     }
@@ -69,9 +73,9 @@ impl RoleRepository for MockRoleRepository {
         let filtered: Vec<_> = guard
             .iter()
             .filter(|r| r.scope == scope && r.group_id == group_id)
-            .cloned()
             .skip(offset as usize)
             .take(limit as usize)
+            .cloned()
             .collect();
         Ok(filtered)
     }

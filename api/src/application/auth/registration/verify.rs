@@ -49,26 +49,47 @@ impl VerifyRegistrationUseCase {
         }
     }
 
-    pub async fn execute(&self, request: VerifyRegistrationRequest) -> Result<VerifyRegistrationUseCaseResult, AppError> {
-        request.validate().map_err(|e| AppError::ValidationError(flatten_validation_errors(e)))?;
+    pub async fn execute(
+        &self,
+        request: VerifyRegistrationRequest,
+    ) -> Result<VerifyRegistrationUseCaseResult, AppError> {
+        request
+            .validate()
+            .map_err(|e| AppError::ValidationError(flatten_validation_errors(e)))?;
 
         // 1. Fetch from cache
         let key = format!("registration:pending:{}", request.email);
-        let pending_json = self.cache_service.get(&key).await
+        let pending_json = self
+            .cache_service
+            .get(&key)
+            .await
             .map_err(AppError::InternalServerError)?
-            .ok_or(AppError::NotFound("Registration session expired or not found".to_string()))?;
+            .ok_or(AppError::NotFound(
+                "Registration session expired or not found".to_string(),
+            ))?;
 
-        let pending: PendingRegistration = serde_json::from_str(&pending_json)
-            .map_err(|e| AppError::InternalServerError(anyhow::anyhow!("Failed to parse pending registration: {}", e)))?;
+        let pending: PendingRegistration = serde_json::from_str(&pending_json).map_err(|e| {
+            AppError::InternalServerError(anyhow::anyhow!(
+                "Failed to parse pending registration: {}",
+                e
+            ))
+        })?;
 
         // 2. Compare OTP
         if pending.otp != request.otp {
-            return Err(AppError::BadRequest("Invalid verification code".to_string()));
+            return Err(AppError::BadRequest(
+                "Invalid verification code".to_string(),
+            ));
         }
 
         // 3. Double-check email uniqueness
-        if let Some(_) = self.user_repository.find_by_email(&request.email).await
-            .map_err(AppError::InternalServerError)? {
+        if self
+            .user_repository
+            .find_by_email(&request.email)
+            .await
+            .map_err(AppError::InternalServerError)?
+            .is_some()
+        {
             return Err(AppError::BadRequest("Email already registered".to_string()));
         }
 
@@ -82,11 +103,16 @@ impl VerifyRegistrationUseCase {
             suffix: None,
         };
 
-        let user = self.user_repository.create(new_user).await
+        let user = self
+            .user_repository
+            .create(new_user)
+            .await
             .map_err(AppError::InternalServerError)?;
 
         // 5. Remove from cache
-        self.cache_service.delete(&key).await
+        self.cache_service
+            .delete(&key)
+            .await
             .map_err(AppError::InternalServerError)?;
 
         // 6. Generate tokens

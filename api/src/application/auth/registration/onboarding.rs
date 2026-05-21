@@ -27,8 +27,14 @@ impl CompleteOnboardingUseCase {
         Self { user_repository }
     }
 
-    pub async fn execute(&self, user_id: Uuid, request: OnboardingRequest) -> Result<User, AppError> {
-        request.validate().map_err(|e| AppError::ValidationError(flatten_validation_errors(e)))?;
+    pub async fn execute(
+        &self,
+        user_id: Uuid,
+        request: OnboardingRequest,
+    ) -> Result<User, AppError> {
+        request
+            .validate()
+            .map_err(|e| AppError::ValidationError(flatten_validation_errors(e)))?;
 
         let update = UpdateUser {
             email: None,

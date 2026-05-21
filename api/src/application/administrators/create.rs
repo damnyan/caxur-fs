@@ -115,7 +115,11 @@ impl CreateAdministratorUseCase {
             )
             .await
         {
-            tracing::error!("Failed to send verification email to {}: {:?}", admin.email, e);
+            tracing::error!(
+                "Failed to send verification email to {}: {:?}",
+                admin.email,
+                e
+            );
         }
 
         Ok(admin)

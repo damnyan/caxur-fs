@@ -84,7 +84,13 @@ impl AdministratorRepository for PostgresAdministratorRepository {
     }
 
     #[tracing::instrument(skip(self))]
-    async fn find_all(&self, search: Option<String>, role_id: Option<Uuid>, limit: i64, offset: i64) -> Result<Vec<Administrator>, anyhow::Error> {
+    async fn find_all(
+        &self,
+        search: Option<String>,
+        role_id: Option<Uuid>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<Administrator>, anyhow::Error> {
         let mut query_builder = sqlx::QueryBuilder::new(
             r#"
             SELECT a.id, a.first_name, a.middle_name, a.last_name, a.suffix, a.contact_number, a.email, a.password_hash, a.email_verified_at, a.revoked_at, a.created_at, a.updated_at,
@@ -125,7 +131,11 @@ impl AdministratorRepository for PostgresAdministratorRepository {
     }
 
     #[tracing::instrument(skip(self))]
-    async fn count(&self, search: Option<String>, role_id: Option<Uuid>) -> Result<i64, anyhow::Error> {
+    async fn count(
+        &self,
+        search: Option<String>,
+        role_id: Option<Uuid>,
+    ) -> Result<i64, anyhow::Error> {
         let mut query_builder = sqlx::QueryBuilder::new(
             r#"
             SELECT COUNT(*) FROM user_administrators a

@@ -1,10 +1,11 @@
 use crate::infrastructure::state::AppState;
 use crate::presentation::admin::handlers::my::{
-    get_my_profile, update_my_password, update_my_profile, initiate_email_change, verify_email_change,
+    get_my_profile, initiate_email_change, update_my_password, update_my_profile,
+    verify_email_change,
 };
 use axum::{
-    routing::{get, patch, post},
     Router,
+    routing::{get, patch, post},
 };
 
 pub fn routes(_state: AppState) -> Router<AppState> {

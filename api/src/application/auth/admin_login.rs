@@ -71,7 +71,10 @@ impl AdminLoginUseCase {
         }
 
         if admin.email_verified_at.is_none() {
-            tracing::warn!("Login attempt for unverified administrator: {}", admin.email);
+            tracing::warn!(
+                "Login attempt for unverified administrator: {}",
+                admin.email
+            );
             return Err(AppError::Unauthorized("Email not verified".to_string()));
         }
 

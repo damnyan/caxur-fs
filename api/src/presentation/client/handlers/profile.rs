@@ -1,4 +1,6 @@
-use crate::application::auth::registration::onboarding::{OnboardingRequest, CompleteOnboardingUseCase};
+use crate::application::auth::registration::onboarding::{
+    CompleteOnboardingUseCase, OnboardingRequest,
+};
 use crate::application::users::get::GetUserUseCase;
 use crate::infrastructure::repositories::users::PostgresUserRepository;
 use crate::infrastructure::state::AppState;
@@ -30,12 +32,14 @@ pub async fn complete_onboarding(
     AuthUser { claims }: AuthUser,
     ValidatedJson(req): ValidatedJson<OnboardingRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = claims.user_id().map_err(|e| AppError::Unauthorized(e.to_string()))?;
+    let user_id = claims
+        .user_id()
+        .map_err(|e| AppError::Unauthorized(e.to_string()))?;
     let user_repo = Arc::new(PostgresUserRepository::new(state.pool.clone()));
     let use_case = CompleteOnboardingUseCase::new(user_repo);
 
     let user = use_case.execute(user_id, req).await?;
-    let resource = JsonApiResource::new("users", &user.id.to_string(), UserResource::from(user));
+    let resource = JsonApiResource::new("users", user.id.to_string(), UserResource::from(user));
 
     Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
 }
@@ -62,13 +66,15 @@ pub async fn update_profile(
     AuthUser { claims }: AuthUser,
     ValidatedJson(req): ValidatedJson<UpdateUserRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = claims.user_id().map_err(|e| AppError::Unauthorized(e.to_string()))?;
+    let user_id = claims
+        .user_id()
+        .map_err(|e| AppError::Unauthorized(e.to_string()))?;
     let user_repo = Arc::new(PostgresUserRepository::new(state.pool.clone()));
     let password_service = Arc::new(crate::infrastructure::password::PasswordService::new());
     let use_case = UpdateUserUseCase::new(user_repo, password_service);
 
     let user = use_case.execute(user_id, req).await?;
-    let resource = JsonApiResource::new("users", &user.id.to_string(), UserResource::from(user));
+    let resource = JsonApiResource::new("users", user.id.to_string(), UserResource::from(user));
 
     Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
 }
@@ -91,24 +97,30 @@ pub async fn get_profile(
     State(state): State<AppState>,
     AuthUser { claims }: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = claims.user_id().map_err(|e| AppError::Unauthorized(e.to_string()))?;
+    let user_id = claims
+        .user_id()
+        .map_err(|e| AppError::Unauthorized(e.to_string()))?;
     let user_repo = Arc::new(PostgresUserRepository::new(state.pool.clone()));
     let use_case = GetUserUseCase::new(user_repo);
 
     let user = use_case.execute(user_id).await?;
-    
+
     match user {
         Some(user) => {
-            let resource = JsonApiResource::new("users", &user.id.to_string(), UserResource::from(user));
+            let resource =
+                JsonApiResource::new("users", user.id.to_string(), UserResource::from(user));
             Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
-        },
-        None => Err(AppError::NotFound(format!("User with id {} not found", user_id))),
+        }
+        None => Err(AppError::NotFound(format!(
+            "User with id {} not found",
+            user_id
+        ))),
     }
 }
 
 use crate::application::users::email_change::{
-    InitiateUserEmailChangeRequest, InitiateUserEmailChangeUseCase,
-    VerifyUserEmailChangeRequest, VerifyUserEmailChangeUseCase,
+    InitiateUserEmailChangeRequest, InitiateUserEmailChangeUseCase, VerifyUserEmailChangeRequest,
+    VerifyUserEmailChangeUseCase,
 };
 
 /// Initiate email change
@@ -141,7 +153,9 @@ pub async fn initiate_email_change(
         state.email_service,
     );
 
-    let user_id = claims.user_id().map_err(|e| AppError::Unauthorized(e.to_string()))?;
+    let user_id = claims
+        .user_id()
+        .map_err(|e| AppError::Unauthorized(e.to_string()))?;
     use_case.execute(user_id, req).await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -168,13 +182,15 @@ pub async fn verify_email_change(
     ValidatedJson(req): ValidatedJson<VerifyUserEmailChangeRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let repo = Arc::new(PostgresUserRepository::new(state.pool));
-    let use_case = VerifyUserEmailChangeUseCase::new(
-        repo,
-        state.cache_service,
-        state.email_service,
-    );
+    let use_case =
+        VerifyUserEmailChangeUseCase::new(repo, state.cache_service, state.email_service);
 
-    let user_id = claims.user_id().map_err(|e| AppError::Unauthorized(e.to_string()))?;
+    let user_id = claims
+        .user_id()
+        .map_err(|e| AppError::Unauthorized(e.to_string()))?;
     use_case.execute(user_id, req).await?;
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(serde_json::json!({ "success": true })))))
+    Ok((
+        StatusCode::OK,
+        Json(JsonApiResponse::new(serde_json::json!({ "success": true }))),
+    ))
 }

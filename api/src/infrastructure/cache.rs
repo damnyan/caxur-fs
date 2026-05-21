@@ -1,6 +1,6 @@
+use crate::domain::cache::CacheService;
 use async_trait::async_trait;
 use moka::future::Cache;
-use crate::domain::cache::CacheService;
 
 pub struct MokaCacheService {
     cache: Cache<String, String>,
@@ -8,9 +8,7 @@ pub struct MokaCacheService {
 
 impl MokaCacheService {
     pub fn new(max_capacity: u64) -> Self {
-        let cache = Cache::builder()
-            .max_capacity(max_capacity)
-            .build();
+        let cache = Cache::builder().max_capacity(max_capacity).build();
         Self { cache }
     }
 }
@@ -19,7 +17,7 @@ impl MokaCacheService {
 impl CacheService for MokaCacheService {
     async fn set(&self, key: &str, value: String, _ttl_seconds: u64) -> Result<(), anyhow::Error> {
         self.cache.insert(key.to_string(), value).await;
-        // Note: Moka's entry-level TTL is tricky with the basic Cache. 
+        // Note: Moka's entry-level TTL is tricky with the basic Cache.
         // For a true per-key TTL, we'd use Policy or just accept the global policy.
         // For now, we'll use a global capacity-based cache or a separate cache per TTL if needed.
         // Since we only use this for registration (10m), we can set a global expiry if desired.

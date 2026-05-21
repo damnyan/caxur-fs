@@ -101,7 +101,10 @@ mod tests {
         assert_eq!(role.name, "test_role");
         assert_eq!(role.scope, AccessScope::Administrator);
 
-        let saved = repo.find_by_name("test_role", AccessScope::Administrator, None).await.unwrap();
+        let saved = repo
+            .find_by_name("test_role", AccessScope::Administrator, None)
+            .await
+            .unwrap();
         assert!(saved.is_some());
     }
 

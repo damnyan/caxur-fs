@@ -22,7 +22,9 @@ impl RevokeAdministratorUseCase {
             .ok_or_else(|| AppError::NotFound("Administrator not found".to_string()))?;
 
         if admin.revoked_at.is_some() {
-            return Err(AppError::BadRequest("Administrator is already revoked".to_string()));
+            return Err(AppError::BadRequest(
+                "Administrator is already revoked".to_string(),
+            ));
         }
 
         let update = UpdateAdministrator {

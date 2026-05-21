@@ -6,26 +6,37 @@ set -e
 echo "🚀 Starting full project verification..."
 
 # 1. Client Verification
-echo "📦 Building Client..."
+echo "📦 Verification: Next.js Client..."
 cd client
+echo "   🧹 Running Linter..."
+bun run lint
+echo "   📦 Building Production Bundle..."
 bun run build
 cd ..
-echo "✅ Client build successful."
+echo "✅ Client verification successful."
 
 # 2. Admin Verification
-echo "📦 Building Admin..."
+echo "📦 Verification: React Admin..."
 cd admin
+echo "   🧹 Running Linter..."
+bun run lint
+echo "   📦 Building Production Bundle..."
 bun run build
 cd ..
-echo "✅ Admin build successful."
+echo "✅ Admin verification successful."
 
 # 3. API Verification
-echo "🦀 Checking API..."
+echo "📦 Verification: Rust Axum API..."
 cd api
+echo "   🎨 Checking Code Formatting..."
+cargo fmt --all -- --check
+echo "   🗃️ Preparing SQLx Queries..."
 cargo sqlx prepare
-cargo check
-cargo test --lib presentation::openapi::tests::generate_openapi_json
+echo "   🦀 Running Clippy Lints..."
+cargo clippy --all-targets -- -D warnings
+echo "   🧪 Running Unit Tests & OpenAPI Spec Generation..."
+cargo test --lib
 cd ..
-echo "✅ API checks and OpenAPI spec generation successful."
+echo "✅ API checks, formatting, clippy, and unit tests successful."
 
 echo "🎉 All verifications passed! You are ready to commit and push."

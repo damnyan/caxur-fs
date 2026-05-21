@@ -1,5 +1,3 @@
-#![cfg(test)]
-
 use crate::domain::password::PasswordHashingService;
 use crate::domain::users::{NewUser, UpdateUser, User, UserRepository};
 use async_trait::async_trait;
@@ -24,13 +22,19 @@ pub struct MockUserRepository {
     pub users: Arc<Mutex<Vec<User>>>,
 }
 
-impl MockUserRepository {
-    pub fn new() -> Self {
+impl Default for MockUserRepository {
+    fn default() -> Self {
         Self {
             users: Arc::new(Mutex::new(Vec::new())),
         }
     }
-    
+}
+
+impl MockUserRepository {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn seed(&self, user: User) {
         self.users.lock().unwrap().push(user);
     }
@@ -66,7 +70,12 @@ impl UserRepository for MockUserRepository {
 
     async fn find_all(&self, limit: i64, offset: i64) -> Result<Vec<User>, anyhow::Error> {
         let guard = self.users.lock().unwrap();
-        let skipped = guard.iter().skip(offset as usize).take(limit as usize).cloned().collect();
+        let skipped = guard
+            .iter()
+            .skip(offset as usize)
+            .take(limit as usize)
+            .cloned()
+            .collect();
         Ok(skipped)
     }
 

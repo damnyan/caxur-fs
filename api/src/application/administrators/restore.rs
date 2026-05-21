@@ -21,7 +21,9 @@ impl RestoreAdministratorUseCase {
             .ok_or_else(|| AppError::NotFound("Administrator not found".to_string()))?;
 
         if admin.revoked_at.is_none() {
-            return Err(AppError::BadRequest("Administrator is not revoked".to_string()));
+            return Err(AppError::BadRequest(
+                "Administrator is not revoked".to_string(),
+            ));
         }
 
         let update = UpdateAdministrator {

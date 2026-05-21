@@ -47,7 +47,10 @@ mod tests {
 
     #[test]
     fn test_access_scope_from_str_valid() {
-        assert_eq!(AccessScope::from_str("administrator").unwrap(), AccessScope::Administrator);
+        assert_eq!(
+            AccessScope::from_str("administrator").unwrap(),
+            AccessScope::Administrator
+        );
     }
 
     #[test]

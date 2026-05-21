@@ -251,4 +251,3 @@ impl RoleRepository for PostgresRoleRepository {
         Ok(())
     }
 }
-

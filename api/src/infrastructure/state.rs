@@ -2,8 +2,8 @@ use crate::infrastructure::auth::JwtAuthService;
 use crate::infrastructure::db::DbPool;
 use std::sync::Arc;
 
-use crate::infrastructure::email::EmailService;
 use crate::domain::cache::CacheService;
+use crate::infrastructure::email::EmailService;
 
 /// Application state shared across handlers
 #[derive(Clone)]
@@ -25,7 +25,14 @@ impl AppState {
         admin_url: String,
         client_url: String,
     ) -> Self {
-        Self { pool, auth_service, email_service, cache_service, admin_url, client_url }
+        Self {
+            pool,
+            auth_service,
+            email_service,
+            cache_service,
+            admin_url,
+            client_url,
+        }
     }
 }
 

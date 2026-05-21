@@ -1,21 +1,22 @@
 use crate::application::administrators::get::GetAdministratorUseCase;
-use crate::application::administrators::update_my_profile::{UpdateMyProfileRequest, UpdateMyProfileUseCase};
-use crate::application::administrators::update_my_password::{UpdateMyPasswordRequest, UpdateMyPasswordUseCase};
+use crate::application::administrators::update_my_password::{
+    UpdateMyPasswordRequest, UpdateMyPasswordUseCase,
+};
+use crate::application::administrators::update_my_profile::{
+    UpdateMyProfileRequest, UpdateMyProfileUseCase,
+};
 use crate::domain::administrators::AdministratorRepository;
 use crate::infrastructure::db::DbPool;
 use crate::infrastructure::password::PasswordService;
 use crate::infrastructure::repositories::administrators::PostgresAdministratorRepository;
-use crate::presentation::admin::handlers::administrators::{build_admin_resource, AdministratorResource};
+use crate::presentation::admin::handlers::administrators::{
+    AdministratorResource, build_admin_resource,
+};
 use crate::presentation::extractors::AuthUser;
 use crate::shared::error::{AppError, ErrorResponse};
-use crate::shared::response::{JsonApiResponse, JsonApiResource, JsonApiMeta};
+use crate::shared::response::{JsonApiMeta, JsonApiResource, JsonApiResponse};
 use crate::shared::validation::ValidatedJson;
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    Json,
-};
+use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde_json::json;
 use std::sync::Arc;
 
@@ -46,7 +47,8 @@ pub async fn get_my_profile(
     match admin {
         Some(admin) => {
             let permissions = repo.get_permissions(user_id).await.unwrap_or_default();
-            let permissions_str: Vec<String> = permissions.into_iter().map(|p| p.to_string()).collect();
+            let permissions_str: Vec<String> =
+                permissions.into_iter().map(|p| p.to_string()).collect();
 
             let (resource, included) = build_admin_resource(admin, true);
             let meta = JsonApiMeta::new().with_extra(json!({ "permissions": permissions_str }));
@@ -57,7 +59,9 @@ pub async fn get_my_profile(
             }
             Ok((StatusCode::OK, Json(response)))
         }
-        None => Err(AppError::Unauthorized("Administrator not found".to_string())),
+        None => Err(AppError::Unauthorized(
+            "Administrator not found".to_string(),
+        )),
     }
 }
 
@@ -118,12 +122,15 @@ pub async fn update_my_password(
     let user_id = uuid::Uuid::parse_str(&auth.claims.sub)
         .map_err(|_| AppError::Unauthorized("Invalid user ID".to_string()))?;
     use_case.execute(user_id, req).await?;
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(json!({ "success": true })))))
+    Ok((
+        StatusCode::OK,
+        Json(JsonApiResponse::new(json!({ "success": true }))),
+    ))
 }
 
 use crate::application::administrators::email_change::{
-    InitiateEmailChangeRequest, InitiateEmailChangeUseCase,
-    VerifyEmailChangeRequest, VerifyEmailChangeUseCase,
+    InitiateEmailChangeRequest, InitiateEmailChangeUseCase, VerifyEmailChangeRequest,
+    VerifyEmailChangeUseCase,
 };
 use crate::infrastructure::state::AppState;
 
@@ -185,14 +192,13 @@ pub async fn verify_email_change(
     ValidatedJson(req): ValidatedJson<VerifyEmailChangeRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let repo = Arc::new(PostgresAdministratorRepository::new(state.pool));
-    let use_case = VerifyEmailChangeUseCase::new(
-        repo,
-        state.cache_service,
-        state.email_service,
-    );
+    let use_case = VerifyEmailChangeUseCase::new(repo, state.cache_service, state.email_service);
 
     let user_id = uuid::Uuid::parse_str(&auth.claims.sub)
         .map_err(|_| AppError::Unauthorized("Invalid user ID".to_string()))?;
     use_case.execute(user_id, req).await?;
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(json!({ "success": true })))))
+    Ok((
+        StatusCode::OK,
+        Json(JsonApiResponse::new(json!({ "success": true }))),
+    ))
 }

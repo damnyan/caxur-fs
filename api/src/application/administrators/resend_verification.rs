@@ -36,7 +36,9 @@ impl ResendVerificationUseCase {
             .ok_or_else(|| AppError::NotFound("Administrator not found".to_string()))?;
 
         if admin.email_verified_at.is_some() {
-            return Err(AppError::BadRequest("Email is already verified".to_string()));
+            return Err(AppError::BadRequest(
+                "Email is already verified".to_string(),
+            ));
         }
 
         let token = self

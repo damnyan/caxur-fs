@@ -34,7 +34,7 @@ mod tests {
     async fn test_delete_role_success() {
         let repo = Arc::new(MockRoleRepository::new());
         let id = Uuid::new_v4();
-        
+
         repo.seed(Role {
             id,
             name: "role".to_string(),
@@ -47,7 +47,7 @@ mod tests {
 
         let use_case = DeleteRoleUseCase::new(repo.clone());
         let result = use_case.execute(id).await;
-        
+
         assert!(result.is_ok());
 
         // Verify it was actually deleted
@@ -58,9 +58,9 @@ mod tests {
     async fn test_delete_role_not_found() {
         let repo = Arc::new(MockRoleRepository::new());
         let use_case = DeleteRoleUseCase::new(repo);
-        
+
         let result = use_case.execute(Uuid::new_v4()).await;
-        
+
         assert!(result.is_err());
         match result.unwrap_err() {
             AppError::NotFound(_) => {}

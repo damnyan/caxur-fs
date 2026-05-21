@@ -33,16 +33,21 @@ impl UpdateUserRequest {
         repo: &Arc<dyn UserRepository>,
         current_user_id: Uuid,
     ) -> Result<(), AppError> {
-        if let Some(email) = &self.email {
-            if let Some(existing_user) = repo.find_by_email(email).await.map_err(AppError::InternalServerError)? {
-                // Only error if the email belongs to a different user
-                if existing_user.id != current_user_id {
-                    return Err(AppError::ValidationError(vec![FieldError::new(
-                        "email",
-                        "Email already exists",
-                    )]));
-                }
-            }
+        let email_exists = match &self.email {
+            Some(email) => repo
+                .find_by_email(email)
+                .await
+                .map_err(AppError::InternalServerError)?
+                .filter(|u| u.id != current_user_id)
+                .is_some(),
+            None => false,
+        };
+
+        if email_exists {
+            return Err(AppError::ValidationError(vec![FieldError::new(
+                "email",
+                "Email already exists",
+            )]));
         }
         Ok(())
     }
@@ -66,7 +71,11 @@ impl UpdateUserUseCase {
 
     pub async fn execute(&self, id: Uuid, req: UpdateUserRequest) -> Result<User, AppError> {
         // Check if user exists
-        let existing = self.repo.find_by_id(id).await.map_err(AppError::InternalServerError)?
+        let existing = self
+            .repo
+            .find_by_id(id)
+            .await
+            .map_err(AppError::InternalServerError)?
             .ok_or_else(|| AppError::NotFound(format!("User with id {} not found", id)))?;
 
         // Validate unique email using custom validator (ignoring current user)
@@ -75,14 +84,23 @@ impl UpdateUserUseCase {
         // Hash the password if it's being updated
         let password_hash = if let Some(password) = &req.password {
             // Verify current password if new password is provided
-            let current_password = req.current_password.as_ref()
-                .ok_or_else(|| AppError::ValidationError(vec![FieldError::new("currentPassword", "Current password is required to change password")]))?;
+            let current_password = req.current_password.as_ref().ok_or_else(|| {
+                AppError::ValidationError(vec![FieldError::new(
+                    "currentPassword",
+                    "Current password is required to change password",
+                )])
+            })?;
 
-            let is_valid = self.password_hasher.verify_password(current_password, &existing.password_hash)
+            let is_valid = self
+                .password_hasher
+                .verify_password(current_password, &existing.password_hash)
                 .map_err(AppError::InternalServerError)?;
 
             if !is_valid {
-                return Err(AppError::ValidationError(vec![FieldError::new("currentPassword", "Invalid current password")]));
+                return Err(AppError::ValidationError(vec![FieldError::new(
+                    "currentPassword",
+                    "Invalid current password",
+                )]));
             }
 
             Some(
@@ -103,6 +121,9 @@ impl UpdateUserUseCase {
             suffix: req.suffix,
         };
 
-        Ok(self.repo.update(id, update).await.map_err(AppError::InternalServerError)?)
+        self.repo
+            .update(id, update)
+            .await
+            .map_err(AppError::InternalServerError)
     }
 }

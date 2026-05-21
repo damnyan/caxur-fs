@@ -2,29 +2,34 @@ use crate::application::administrators::create::{
     CreateAdministratorRequest, CreateAdministratorUseCase,
 };
 use crate::application::administrators::delete::DeleteAdministratorUseCase;
-use crate::application::administrators::get::{GetAdministratorUseCase, GetAdministratorRequest};
+use crate::application::administrators::get::{GetAdministratorRequest, GetAdministratorUseCase};
 use crate::application::administrators::list::{
     ListAdministratorsRequest, ListAdministratorsUseCase,
 };
-use crate::application::administrators::roles::{
-    AttachRoles, AttachRolesRequest, DetachRoles, DetachRolesRequest,
-};
-use crate::application::administrators::verify::{VerifyAndSetPasswordUseCase, VerifyAndSetPasswordRequest};
 use crate::application::administrators::resend_verification::ResendVerificationUseCase;
 use crate::application::administrators::restore::RestoreAdministratorUseCase;
 use crate::application::administrators::revoke::RevokeAdministratorUseCase;
+use crate::application::administrators::roles::{
+    AttachRoles, AttachRolesRequest, DetachRoles, DetachRolesRequest,
+};
 use crate::application::administrators::update::{
     UpdateAdministratorRequest, UpdateAdministratorUseCase,
 };
+use crate::application::administrators::verify::{
+    VerifyAndSetPasswordRequest, VerifyAndSetPasswordUseCase,
+};
 use crate::domain::administrators::Administrator;
 use crate::infrastructure::db::DbPool;
-use crate::infrastructure::state::AppState;
 use crate::infrastructure::password::PasswordService;
 use crate::infrastructure::repositories::administrators::PostgresAdministratorRepository;
+use crate::infrastructure::state::AppState;
 use crate::presentation::extractors::AuthUser;
 use crate::shared::error::{AppError, ErrorResponse};
 use crate::shared::query::Qs;
-use crate::shared::response::{JsonApiMeta, JsonApiResource, JsonApiResponse, JsonApiIdentifier, JsonApiRelationship, JsonApiRelationshipData};
+use crate::shared::response::{
+    JsonApiIdentifier, JsonApiMeta, JsonApiRelationship, JsonApiRelationshipData, JsonApiResource,
+    JsonApiResponse,
+};
 use crate::shared::validation::ValidatedJson;
 use axum::{
     Json,
@@ -96,35 +101,45 @@ impl From<Administrator> for AdministratorResource {
     tag = "Admin / Administrator Management"
 )]
 
-pub fn build_admin_resource(admin: Administrator, include_roles: bool) -> (JsonApiResource<AdministratorResource>, Vec<serde_json::Value>) {
+pub fn build_admin_resource(
+    admin: Administrator,
+    include_roles: bool,
+) -> (
+    JsonApiResource<AdministratorResource>,
+    Vec<serde_json::Value>,
+) {
     let mut included = Vec::new();
     let mut rels = std::collections::HashMap::new();
 
     let resource_attrs = AdministratorResource::from(admin.clone());
-    
+
     if let Some(roles) = admin.roles {
         let mut role_ids = Vec::new();
         for role in roles {
             role_ids.push(JsonApiIdentifier::new("roles", role.id.to_string()));
-            
+
             if include_roles {
-                let role_res = JsonApiResource::new("roles", role.id.to_string(), json!({ "name": role.name }));
+                let role_res = JsonApiResource::new(
+                    "roles",
+                    role.id.to_string(),
+                    json!({ "name": role.name }),
+                );
                 included.push(serde_json::to_value(&role_res).unwrap());
             }
         }
-        
+
         rels.insert(
             "roles".to_string(),
-            JsonApiRelationship::new()
-                .with_data(JsonApiRelationshipData::Many(role_ids)),
+            JsonApiRelationship::new().with_data(JsonApiRelationshipData::Many(role_ids)),
         );
     }
-    
-    let mut api_resource = JsonApiResource::new("administrators", admin.id.to_string(), resource_attrs);
+
+    let mut api_resource =
+        JsonApiResource::new("administrators", admin.id.to_string(), resource_attrs);
     if !rels.is_empty() {
         api_resource = api_resource.with_relationships(rels);
     }
-    
+
     (api_resource, included)
 }
 
@@ -238,16 +253,20 @@ pub async fn list_admins(
     let page_size = req.page.size;
 
     let include_roles = req.include.as_deref().unwrap_or("").contains("roles");
-    
+
     let admins = use_case.execute(&req).await?;
 
     // Get total count for pagination
-    let total = crate::domain::administrators::AdministratorRepository::count(&*repo, req.search.clone(), req.role_id)
-        .await
-        .map_err(AppError::InternalServerError)?;
+    let total = crate::domain::administrators::AdministratorRepository::count(
+        &*repo,
+        req.search.clone(),
+        req.role_id,
+    )
+    .await
+    .map_err(AppError::InternalServerError)?;
     let mut resources = Vec::new();
     let mut all_included = Vec::new();
-    
+
     for admin in admins {
         let (resource, mut included) = build_admin_resource(admin, include_roles);
         resources.push(resource);
@@ -272,7 +291,7 @@ pub async fn list_admins(
     let mut response = JsonApiResponse::new(resources)
         .with_meta(meta)
         .with_links(links);
-        
+
     if !all_included.is_empty() {
         let mut unique_included = std::collections::HashMap::new();
         for item in all_included {
@@ -428,7 +447,6 @@ pub async fn detach_admin_roles(
     ))
 }
 
-
 /// Revoke an administrator
 #[utoipa::path(
     post,
@@ -454,7 +472,10 @@ pub async fn revoke_admin(
     let repo = Arc::new(PostgresAdministratorRepository::new(pool));
     let use_case = RevokeAdministratorUseCase::new(repo);
     use_case.execute(id).await?;
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(json!({ "success": true })))))
+    Ok((
+        StatusCode::OK,
+        Json(JsonApiResponse::new(json!({ "success": true }))),
+    ))
 }
 
 /// Restore an administrator
@@ -482,7 +503,10 @@ pub async fn restore_admin(
     let repo = Arc::new(PostgresAdministratorRepository::new(pool));
     let use_case = RestoreAdministratorUseCase::new(repo);
     use_case.execute(id).await?;
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(json!({ "success": true })))))
+    Ok((
+        StatusCode::OK,
+        Json(JsonApiResponse::new(json!({ "success": true }))),
+    ))
 }
 
 /// Resend verification email
@@ -515,7 +539,10 @@ pub async fn resend_verification_admin(
         state.admin_url,
     );
     use_case.execute(id).await?;
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(json!({ "success": true })))))
+    Ok((
+        StatusCode::OK,
+        Json(JsonApiResponse::new(json!({ "success": true }))),
+    ))
 }
 
 /// Verify and set password
@@ -538,6 +565,8 @@ pub async fn verify_admin(
     let hasher = Arc::new(PasswordService::new());
     let use_case = VerifyAndSetPasswordUseCase::new(repo, state.auth_service, hasher);
     use_case.execute(req).await?;
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(json!({ "success": true })))))
+    Ok((
+        StatusCode::OK,
+        Json(JsonApiResponse::new(json!({ "success": true }))),
+    ))
 }
-

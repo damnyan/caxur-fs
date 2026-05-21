@@ -66,7 +66,7 @@ async fn bootstrap(
     let private_key_pem = std::env::var("JWT_PRIVATE_KEY")
         .context("JWT_PRIVATE_KEY must be set")?
         .replace("\\n", "\n");
-    
+
     let public_key_pem = std::env::var("JWT_PUBLIC_KEY")
         .context("JWT_PUBLIC_KEY must be set")?
         .replace("\\n", "\n");
@@ -133,4 +133,3 @@ async fn bootstrap(
 
     Ok((listener, app))
 }
-

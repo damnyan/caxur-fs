@@ -72,7 +72,7 @@ mod tests {
     async fn test_update_role_success() {
         let repo = Arc::new(MockRoleRepository::new());
         let role_id = Uuid::new_v4();
-        
+
         repo.seed(Role {
             id: role_id,
             name: "old_role".to_string(),
@@ -142,7 +142,7 @@ mod tests {
         });
 
         let use_case = UpdateRoleUseCase::new(repo);
-        
+
         let req = UpdateRoleRequest {
             name: Some("role2".to_string()), // Trying to rename role1 to role2
             description: None,

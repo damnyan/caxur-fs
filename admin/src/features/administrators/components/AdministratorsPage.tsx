@@ -166,7 +166,7 @@ export default function AdministratorsPage() {
           try {
             await administratorsApi.attachRoles(createdAdmin.id, { roleIds });
             queryClient.invalidateQueries({ queryKey: administratorsKeys.lists() });
-          } catch (e) {
+          } catch {
             toast.error('Admin created but failed to attach roles.');
           }
         }
@@ -197,7 +197,7 @@ export default function AdministratorsPage() {
             if (toDetach.length > 0) await administratorsApi.detachRoles(editAdmin.id, { roleIds: toDetach });
             if (toAttach.length > 0) await administratorsApi.attachRoles(editAdmin.id, { roleIds: toAttach });
             queryClient.invalidateQueries({ queryKey: administratorsKeys.lists() });
-          } catch (e) {
+          } catch {
             toast.error('Admin updated but failed to sync roles.');
           }
         }

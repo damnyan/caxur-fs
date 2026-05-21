@@ -1,11 +1,11 @@
+use crate::domain::auth::AuthService;
+use crate::infrastructure::auth::JwtAuthService;
 use axum::{body::Body, extract::ConnectInfo};
 use governor::{clock::QuantaInstant, middleware::NoOpMiddleware};
 use std::env;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder, key_extractor::KeyExtractor};
-use crate::infrastructure::auth::JwtAuthService;
-use crate::domain::auth::AuthService;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum RateLimitKey {
@@ -33,18 +33,18 @@ impl KeyExtractor for SmartRateLimitKeyExtractor {
     ) -> Result<Self::Key, tower_governor::errors::GovernorError> {
         let path = req.uri().path().to_string();
 
-        if let Some(auth_header) = req.headers().get(axum::http::header::AUTHORIZATION) {
-            if let Ok(auth_str) = auth_header.to_str() {
-                if auth_str.starts_with("Bearer ") {
-                    let token = &auth_str[7..];
-                    if let Ok(claims) = self.auth_service.validate_token(token) {
-                        return Ok(RateLimitKey::Authenticated {
-                            user_id: claims.sub,
-                            path,
-                        });
-                    }
-                }
-            }
+        let token_claims = req
+            .headers()
+            .get(axum::http::header::AUTHORIZATION)
+            .and_then(|h| h.to_str().ok())
+            .and_then(|auth_str| auth_str.strip_prefix("Bearer "))
+            .and_then(|token| self.auth_service.validate_token(token).ok());
+
+        if let Some(claims) = token_claims {
+            return Ok(RateLimitKey::Authenticated {
+                user_id: claims.sub,
+                path,
+            });
         }
 
         let ip = req
@@ -64,7 +64,8 @@ impl KeyExtractor for SmartRateLimitKeyExtractor {
 pub fn custom_rate_limit_layer(
     requests_per_minute: u64,
     auth_service: Arc<JwtAuthService>,
-) -> anyhow::Result<GovernorLayer<SmartRateLimitKeyExtractor, NoOpMiddleware<QuantaInstant>, Body>> {
+) -> anyhow::Result<GovernorLayer<SmartRateLimitKeyExtractor, NoOpMiddleware<QuantaInstant>, Body>>
+{
     let quota_duration_ms = 60_000 / requests_per_minute;
 
     let config = Arc::new(
@@ -79,7 +80,10 @@ pub fn custom_rate_limit_layer(
     Ok(GovernorLayer::new(config))
 }
 
-pub fn auth_rate_limit_layer(auth_service: Arc<JwtAuthService>) -> anyhow::Result<GovernorLayer<SmartRateLimitKeyExtractor, NoOpMiddleware<QuantaInstant>, Body>> {
+pub fn auth_rate_limit_layer(
+    auth_service: Arc<JwtAuthService>,
+) -> anyhow::Result<GovernorLayer<SmartRateLimitKeyExtractor, NoOpMiddleware<QuantaInstant>, Body>>
+{
     let rate_limit = env::var("RATE_LIMIT_AUTH_PER_MINUTE")
         .unwrap_or_else(|_| "10".to_string())
         .parse::<u64>()
@@ -87,7 +91,10 @@ pub fn auth_rate_limit_layer(auth_service: Arc<JwtAuthService>) -> anyhow::Resul
     custom_rate_limit_layer(rate_limit, auth_service)
 }
 
-pub fn api_rate_limit_layer(auth_service: Arc<JwtAuthService>) -> anyhow::Result<GovernorLayer<SmartRateLimitKeyExtractor, NoOpMiddleware<QuantaInstant>, Body>> {
+pub fn api_rate_limit_layer(
+    auth_service: Arc<JwtAuthService>,
+) -> anyhow::Result<GovernorLayer<SmartRateLimitKeyExtractor, NoOpMiddleware<QuantaInstant>, Body>>
+{
     let rate_limit = env::var("RATE_LIMIT_PER_MINUTE")
         .unwrap_or_else(|_| "300".to_string())
         .parse::<u64>()
@@ -95,7 +102,10 @@ pub fn api_rate_limit_layer(auth_service: Arc<JwtAuthService>) -> anyhow::Result
     custom_rate_limit_layer(rate_limit, auth_service)
 }
 
-pub fn public_rate_limit_layer(auth_service: Arc<JwtAuthService>) -> anyhow::Result<GovernorLayer<SmartRateLimitKeyExtractor, NoOpMiddleware<QuantaInstant>, Body>> {
+pub fn public_rate_limit_layer(
+    auth_service: Arc<JwtAuthService>,
+) -> anyhow::Result<GovernorLayer<SmartRateLimitKeyExtractor, NoOpMiddleware<QuantaInstant>, Body>>
+{
     let rate_limit = env::var("RATE_LIMIT_PUBLIC_PER_MINUTE")
         .unwrap_or_else(|_| "60".to_string())
         .parse::<u64>()
@@ -113,11 +123,12 @@ mod tests {
 
     #[test]
     fn test_anonymous_extraction() {
-        let auth_service = Arc::new(JwtAuthService::new(TEST_PRIVATE_KEY, TEST_PUBLIC_KEY, 900, 604800).unwrap());
+        let auth_service =
+            Arc::new(JwtAuthService::new(TEST_PRIVATE_KEY, TEST_PUBLIC_KEY, 900, 604800).unwrap());
         let extractor = SmartRateLimitKeyExtractor::new(auth_service);
 
         let req = Request::builder().uri("/api/test").body(()).unwrap();
-        
+
         let key = extractor.extract(&req).unwrap();
         assert_eq!(
             key,
@@ -130,11 +141,14 @@ mod tests {
 
     #[test]
     fn test_authenticated_extraction() {
-        let auth_service = Arc::new(JwtAuthService::new(TEST_PRIVATE_KEY, TEST_PUBLIC_KEY, 900, 604800).unwrap());
+        let auth_service =
+            Arc::new(JwtAuthService::new(TEST_PRIVATE_KEY, TEST_PUBLIC_KEY, 900, 604800).unwrap());
         let extractor = SmartRateLimitKeyExtractor::new(auth_service.clone());
 
         let user_id = uuid::Uuid::new_v4();
-        let token = auth_service.generate_access_token(user_id, "user".to_string()).unwrap();
+        let token = auth_service
+            .generate_access_token(user_id, "user".to_string())
+            .unwrap();
 
         let req = Request::builder()
             .uri("/api/protected")

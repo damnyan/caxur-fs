@@ -37,7 +37,12 @@ impl RequestPasswordResetUseCase {
 
     pub async fn execute(&self, req: RequestPasswordResetRequest) -> Result<(), AppError> {
         // 1. Find user by email
-        let admin = match self.repo.find_by_email(&req.email).await.map_err(AppError::InternalServerError)? {
+        let admin = match self
+            .repo
+            .find_by_email(&req.email)
+            .await
+            .map_err(AppError::InternalServerError)?
+        {
             Some(a) => a,
             None => {
                 // Return success even if not found to prevent email enumeration
@@ -56,7 +61,8 @@ impl RequestPasswordResetUseCase {
             .map_err(AppError::InternalServerError)?;
 
         // 4. Send email
-        let base_url = std::env::var("ADMIN_URL").unwrap_or_else(|_| "http://localhost:3001".to_string());
+        let base_url =
+            std::env::var("ADMIN_URL").unwrap_or_else(|_| "http://localhost:3001".to_string());
         let reset_link = format!("{}/reset-password?token={}", base_url, token);
 
         self.email_service.send_templated_email(
@@ -109,13 +115,23 @@ impl ConfirmPasswordResetUseCase {
 
     pub async fn execute(&self, req: ConfirmPasswordResetRequest) -> Result<(), AppError> {
         let key = format!("admin_password_reset:{}", req.token);
-        
+
         // 1. Get user id from cache
-        let user_id_str = self.cache_service.get(&key).await.map_err(AppError::InternalServerError)?;
-        
+        let user_id_str = self
+            .cache_service
+            .get(&key)
+            .await
+            .map_err(AppError::InternalServerError)?;
+
         let user_id = match user_id_str {
-            Some(id_str) => Uuid::parse_str(&id_str).map_err(|_| AppError::InternalServerError(anyhow::anyhow!("Invalid UUID in cache")))?,
-            None => return Err(AppError::BadRequest("Invalid or expired password reset token".to_string())),
+            Some(id_str) => Uuid::parse_str(&id_str).map_err(|_| {
+                AppError::InternalServerError(anyhow::anyhow!("Invalid UUID in cache"))
+            })?,
+            None => {
+                return Err(AppError::BadRequest(
+                    "Invalid or expired password reset token".to_string(),
+                ));
+            }
         };
 
         // 2. Hash new password

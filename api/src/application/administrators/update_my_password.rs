@@ -33,11 +33,7 @@ impl UpdateMyPasswordUseCase {
         }
     }
 
-    pub async fn execute(
-        &self,
-        id: Uuid,
-        req: UpdateMyPasswordRequest,
-    ) -> Result<(), AppError> {
+    pub async fn execute(&self, id: Uuid, req: UpdateMyPasswordRequest) -> Result<(), AppError> {
         let administrator = self
             .repo
             .find_by_id(id)

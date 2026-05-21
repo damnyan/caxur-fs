@@ -1,9 +1,12 @@
+use crate::application::administrators::verify::VerifyAndSetPasswordRequest;
 #[allow(unused_imports)]
 use crate::application::auth::admin_login::AdminLoginRequest;
 use crate::application::auth::login::{LoginRequest, LoginResponse};
 use crate::application::auth::logout::LogoutRequest;
 use crate::application::auth::refresh::{RefreshTokenRequest, RefreshTokenResponse};
-use crate::application::administrators::verify::VerifyAndSetPasswordRequest;
+use crate::application::auth::registration::initiate::InitiateRegistrationRequest;
+use crate::application::auth::registration::onboarding::OnboardingRequest;
+use crate::application::auth::registration::verify::VerifyRegistrationRequest;
 use crate::application::roles::create::CreateRoleRequest;
 use crate::application::roles::update::UpdateRoleRequest;
 use crate::application::users::list::ListUsersRequest;
@@ -11,9 +14,6 @@ use crate::presentation::admin::handlers::permissions::PermissionResource;
 use crate::presentation::admin::handlers::roles::{
     AttachPermissionRequest, DetachPermissionRequest, ListRolesQuery, RoleResource,
 };
-use crate::application::auth::registration::initiate::InitiateRegistrationRequest;
-use crate::application::auth::registration::verify::VerifyRegistrationRequest;
-use crate::application::auth::registration::onboarding::OnboardingRequest;
 use crate::presentation::dtos::{AuthTokenResource, PermissionDto, UserResource};
 use crate::shared::error::{ErrorResponse, JsonApiError, JsonApiErrorSource};
 use crate::shared::response::{JsonApiLinks, JsonApiMeta, JsonApiResource, JsonApiResponse};
@@ -165,4 +165,3 @@ mod tests {
         println!("OpenAPI schema generated successfully at api/openapi.json");
     }
 }
-

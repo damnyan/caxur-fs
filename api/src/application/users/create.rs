@@ -129,7 +129,7 @@ mod tests {
 
         let result = use_case.execute(req).await;
         assert!(result.is_err());
-        
+
         match result.unwrap_err() {
             AppError::ValidationError(errors) => {
                 assert_eq!(errors.len(), 1);

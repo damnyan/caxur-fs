@@ -1,10 +1,10 @@
 use crate::domain::administrators::{Administrator, AdministratorRepository};
 use crate::shared::error::AppError;
+use crate::shared::pagination::{default_page_number, default_page_size};
 use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
-use crate::shared::pagination::{default_page_number, default_page_size};
 
 #[derive(Deserialize, IntoParams, ToSchema)]
 #[serde(rename_all = "camelCase")]

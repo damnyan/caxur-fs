@@ -3,12 +3,12 @@ use crate::domain::cache::{CacheService, PendingEmailChange};
 use crate::domain::password::PasswordHashingService;
 use crate::infrastructure::email::EmailService;
 use crate::shared::error::{AppError, FieldError};
+use rand::RngExt;
 use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
-use rand::RngExt;
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -41,11 +41,7 @@ impl InitiateEmailChangeUseCase {
         }
     }
 
-    pub async fn execute(
-        &self,
-        id: Uuid,
-        req: InitiateEmailChangeRequest,
-    ) -> Result<(), AppError> {
+    pub async fn execute(&self, id: Uuid, req: InitiateEmailChangeRequest) -> Result<(), AppError> {
         let admin = self
             .repo
             .find_by_id(id)
@@ -67,18 +63,18 @@ impl InitiateEmailChangeUseCase {
         }
 
         // 2. Check if new email is already in use
-        if let Some(existing) = self
+        if self
             .repo
             .find_by_email(&req.new_email)
             .await
             .map_err(AppError::InternalServerError)?
+            .filter(|existing| existing.id != id)
+            .is_some()
         {
-            if existing.id != id {
-                return Err(AppError::ValidationError(vec![FieldError::new(
-                    "newEmail",
-                    "Email is already in use",
-                )]));
-            }
+            return Err(AppError::ValidationError(vec![FieldError::new(
+                "newEmail",
+                "Email is already in use",
+            )]));
         }
 
         // 3. Generate 6-digit OTP and Cancel Token
@@ -93,12 +89,19 @@ impl InitiateEmailChangeUseCase {
 
         // 4. Store in cache (15 minutes)
         let key = format!("admin_email_change:pending:{}", id);
-        let pending_json = serde_json::to_string(&pending).map_err(|e| AppError::InternalServerError(e.into()))?;
-        self.cache_service.set(&key, pending_json, 900).await.map_err(AppError::InternalServerError)?;
-        
+        let pending_json =
+            serde_json::to_string(&pending).map_err(|e| AppError::InternalServerError(e.into()))?;
+        self.cache_service
+            .set(&key, pending_json, 900)
+            .await
+            .map_err(AppError::InternalServerError)?;
+
         // Also map cancel_token to user_id for public cancel endpoint
         let cancel_key = format!("admin_email_change:cancel:{}", cancel_token);
-        self.cache_service.set(&cancel_key, id.to_string(), 900).await.map_err(AppError::InternalServerError)?;
+        self.cache_service
+            .set(&cancel_key, id.to_string(), 900)
+            .await
+            .map_err(AppError::InternalServerError)?;
 
         // 5. Send emails
         // To new email (Verification)
@@ -112,9 +115,13 @@ impl InitiateEmailChangeUseCase {
         ).await.map_err(AppError::InternalServerError)?;
 
         // To old email (Security Alert)
-        let base_url = std::env::var("ADMIN_URL").unwrap_or_else(|_| "http://localhost:3001".to_string());
-        let cancel_link = format!("{}/auth/cancel-email-change?token={}", base_url, cancel_token);
-        
+        let base_url =
+            std::env::var("ADMIN_URL").unwrap_or_else(|_| "http://localhost:3001".to_string());
+        let cancel_link = format!(
+            "{}/auth/cancel-email-change?token={}",
+            base_url, cancel_token
+        );
+
         self.email_service.send_templated_email(
             &admin.email,
             "Security Alert: Email change requested",
@@ -159,17 +166,23 @@ impl VerifyEmailChangeUseCase {
         }
     }
 
-    pub async fn execute(
-        &self,
-        id: Uuid,
-        req: VerifyEmailChangeRequest,
-    ) -> Result<(), AppError> {
+    pub async fn execute(&self, id: Uuid, req: VerifyEmailChangeRequest) -> Result<(), AppError> {
         let key = format!("admin_email_change:pending:{}", id);
-        let pending_json = self.cache_service.get(&key).await.map_err(AppError::InternalServerError)?;
-        
+        let pending_json = self
+            .cache_service
+            .get(&key)
+            .await
+            .map_err(AppError::InternalServerError)?;
+
         let pending: PendingEmailChange = match pending_json {
-            Some(json) => serde_json::from_str(&json).map_err(|e| AppError::InternalServerError(e.into()))?,
-            None => return Err(AppError::BadRequest("No pending email change request found or it has expired".to_string())),
+            Some(json) => {
+                serde_json::from_str(&json).map_err(|e| AppError::InternalServerError(e.into()))?
+            }
+            None => {
+                return Err(AppError::BadRequest(
+                    "No pending email change request found or it has expired".to_string(),
+                ));
+            }
         };
 
         if req.otp != pending.otp {
@@ -185,7 +198,7 @@ impl VerifyEmailChangeUseCase {
             .await
             .map_err(AppError::InternalServerError)?
             .ok_or_else(|| AppError::NotFound("Administrator not found".to_string()))?;
-            
+
         let old_email = admin.email.clone();
 
         // Update email
@@ -201,7 +214,10 @@ impl VerifyEmailChangeUseCase {
             revoked_at: None,
         };
 
-        self.repo.update(id, update_struct).await.map_err(AppError::InternalServerError)?;
+        self.repo
+            .update(id, update_struct)
+            .await
+            .map_err(AppError::InternalServerError)?;
 
         // Clear cache
         let _ = self.cache_service.delete(&key).await;
@@ -210,12 +226,28 @@ impl VerifyEmailChangeUseCase {
 
         // Final Confirmations
         let success_msg = "<p>Your email address has been successfully updated.</p>";
-        let _ = self.email_service.send_templated_email(
-            &pending.new_email, "Email Address Updated", "Update Successful", success_msg, None, None
-        ).await;
-        let _ = self.email_service.send_templated_email(
-            &old_email, "Email Address Updated", "Update Successful", success_msg, None, None
-        ).await;
+        let _ = self
+            .email_service
+            .send_templated_email(
+                &pending.new_email,
+                "Email Address Updated",
+                "Update Successful",
+                success_msg,
+                None,
+                None,
+            )
+            .await;
+        let _ = self
+            .email_service
+            .send_templated_email(
+                &old_email,
+                "Email Address Updated",
+                "Update Successful",
+                success_msg,
+                None,
+                None,
+            )
+            .await;
 
         Ok(())
     }
@@ -232,15 +264,21 @@ impl CancelEmailChangeUseCase {
 
     pub async fn execute(&self, token: &str) -> Result<(), AppError> {
         let cancel_key = format!("admin_email_change:cancel:{}", token);
-        let user_id_str = self.cache_service.get(&cancel_key).await.map_err(AppError::InternalServerError)?;
-        
+        let user_id_str = self
+            .cache_service
+            .get(&cancel_key)
+            .await
+            .map_err(AppError::InternalServerError)?;
+
         if let Some(user_id) = user_id_str {
             // Delete both keys
             let _ = self.cache_service.delete(&cancel_key).await;
             let pending_key = format!("admin_email_change:pending:{}", user_id);
             let _ = self.cache_service.delete(&pending_key).await;
         } else {
-            return Err(AppError::BadRequest("Invalid or expired cancel token".to_string()));
+            return Err(AppError::BadRequest(
+                "Invalid or expired cancel token".to_string(),
+            ));
         }
 
         Ok(())

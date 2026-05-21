@@ -13,10 +13,12 @@ use crate::infrastructure::state::AppState;
 pub fn app(state: AppState) -> anyhow::Result<Router> {
     let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
     let mut openapi = ApiDoc::openapi();
-    openapi.servers = Some(vec![utoipa::openapi::ServerBuilder::new()
-        .url(format!("http://localhost:{}", port))
-        .description(Some("Local Development Server"))
-        .build()]);
+    openapi.servers = Some(vec![
+        utoipa::openapi::ServerBuilder::new()
+            .url(format!("http://localhost:{}", port))
+            .description(Some("Local Development Server"))
+            .build(),
+    ]);
 
     let swagger_enabled = std::env::var("SWAGGER_ENABLED")
         .map(|v| v.trim().to_lowercase() == "true")
