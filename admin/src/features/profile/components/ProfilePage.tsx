@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { apiClient, handleApiValidationErrors } from '@/lib/api';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const profileSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -43,6 +44,7 @@ type EmailInitiateFormValues = z.infer<typeof emailInitiateSchema>;
 type EmailVerifyFormValues = z.infer<typeof emailVerifySchema>;
 
 export default function ProfilePage() {
+  useDocumentTitle('Profile');
   const { user, updateUser } = useAuthStore();
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [isInitiatingEmail, setIsInitiatingEmail] = useState(false);

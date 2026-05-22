@@ -5,6 +5,8 @@ import { LayoutDashboard, Users, Shield, UserCircle, LogOut } from 'lucide-react
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { apiClient } from '@/lib/api';
 
+const APP_NAME = import.meta.env.VITE_APP_NAME || 'Caxur-FS Admin';
+
 export default function AdminLayout() {
   const { isAuthenticated, user, updateUser, logout, refreshToken } = useAuthStore();
 
@@ -82,7 +84,7 @@ export default function AdminLayout() {
       <aside className="w-64 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 flex flex-col hidden md:flex">
         <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-800">
           <Link to="/" className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Admin Portal
+            {APP_NAME}
           </Link>
         </div>
         <div className="flex-1 overflow-y-auto py-4">
@@ -138,7 +140,7 @@ export default function AdminLayout() {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile Header */}
         <header className="md:hidden bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 h-16 flex items-center justify-between px-4">
-          <span className="text-xl font-bold">Admin Portal</span>
+          <span className="text-xl font-bold">{APP_NAME}</span>
           <button onClick={handleLogout} className="p-2 text-gray-500">
             <LogOut className="h-5 w-5" />
           </button>

@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const setPasswordSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -21,6 +22,7 @@ const setPasswordSchema = z.object({
 type SetPasswordFormValues = z.infer<typeof setPasswordSchema>;
 
 export default function SetPasswordPage() {
+  useDocumentTitle('Set Password');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();

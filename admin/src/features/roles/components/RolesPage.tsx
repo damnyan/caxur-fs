@@ -11,6 +11,7 @@ import { handleApiValidationErrors } from '@/lib/api';
 import { getRoles, createRole, updateRole, deleteRole, attachRolePermissions, detachRolePermissions } from '../api/roles';
 import type { Role, Permission } from '../types';
 import { RoleForm } from './RoleForm';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +33,7 @@ import {
 } from "@/components/ui/pagination";
 
 export default function RolesPage() {
+  useDocumentTitle('Roles');
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const page = parseInt(searchParams.get('page') || '1', 10);

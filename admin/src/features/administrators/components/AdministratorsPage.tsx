@@ -61,6 +61,7 @@ import {
   administratorsKeys
 } from '../api/queries';
 import { handleApiValidationErrors } from '@/lib/api';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const baseSchema = {
   firstName: z.string().min(1, 'First name is required'),
@@ -82,6 +83,7 @@ type CreateFormValues = z.infer<typeof createSchema>;
 type UpdateFormValues = z.infer<typeof updateSchema>;
 
 export default function AdministratorsPage() {
+  useDocumentTitle('Administrators');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editAdmin, setEditAdmin] = useState<any | null>(null);
   const [confirmAction, setConfirmAction] = useState<{type: 'restore'|'revoke'|'delete', id: string} | null>(null);
