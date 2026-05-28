@@ -50,4 +50,3 @@ pub async fn health_check(State(pool): State<DbPool>) -> impl IntoResponse {
         }
     }
 }
-
