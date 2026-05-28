@@ -1,6 +1,8 @@
 use crate::infrastructure::auth::JwtAuthService;
 use crate::infrastructure::db::DbPool;
+use moka::sync::Cache;
 use std::sync::Arc;
+use std::time::Duration;
 
 use crate::domain::cache::CacheService;
 use crate::domain::storage::StorageService;
@@ -16,6 +18,8 @@ pub struct AppState {
     pub storage_service: Arc<dyn StorageService>,
     pub admin_url: String,
     pub client_url: String,
+    pub admin_permissions_cache:
+        Cache<uuid::Uuid, crate::domain::administrators::AdminPermissionsAndStatus>,
 }
 
 impl AppState {
@@ -28,6 +32,11 @@ impl AppState {
         admin_url: String,
         client_url: String,
     ) -> Self {
+        let admin_permissions_cache = Cache::builder()
+            .max_capacity(1000)
+            .time_to_live(Duration::from_secs(10))
+            .build();
+
         Self {
             pool,
             auth_service,
@@ -36,6 +45,7 @@ impl AppState {
             storage_service,
             admin_url,
             client_url,
+            admin_permissions_cache,
         }
     }
 }

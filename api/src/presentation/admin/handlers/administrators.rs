@@ -325,16 +325,17 @@ pub async fn list_admins(
     tag = "Admin / Administrator Management"
 )]
 pub async fn update_admin(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Path(id): Path<Uuid>,
     _auth: AuthUser,
     ValidatedJson(req): ValidatedJson<UpdateAdministratorRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let repo = Arc::new(PostgresAdministratorRepository::new(pool));
+    let repo = Arc::new(PostgresAdministratorRepository::new(state.pool.clone()));
     let hasher = Arc::new(PasswordService::new());
     let use_case = UpdateAdministratorUseCase::new(repo, hasher);
 
     let admin = use_case.execute(id, req).await?;
+    state.admin_permissions_cache.invalidate(&id);
     let (resource, _) = build_admin_resource(admin, false);
     Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
 }
@@ -357,16 +358,17 @@ pub async fn update_admin(
     tag = "Admin / Administrator Management"
 )]
 pub async fn delete_admin(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Path(id): Path<Uuid>,
     _auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
-    let repo = Arc::new(PostgresAdministratorRepository::new(pool));
+    let repo = Arc::new(PostgresAdministratorRepository::new(state.pool.clone()));
     let use_case = DeleteAdministratorUseCase::new(repo);
 
     let deleted = use_case.execute(id).await?;
 
     if deleted {
+        state.admin_permissions_cache.invalidate(&id);
         let meta = JsonApiMeta::new().with_extra(json!({ "deleted": true }));
         Ok((
             StatusCode::OK,
@@ -396,15 +398,16 @@ pub async fn delete_admin(
     tag = "Admin / Administrator Management"
 )]
 pub async fn attach_admin_roles(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Path(id): Path<Uuid>,
     _auth: AuthUser,
     ValidatedJson(req): ValidatedJson<AttachRolesRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let repo = Arc::new(PostgresAdministratorRepository::new(pool));
+    let repo = Arc::new(PostgresAdministratorRepository::new(state.pool.clone()));
     let use_case = AttachRoles::new(repo);
 
     use_case.execute(id, req.role_ids).await?;
+    state.admin_permissions_cache.invalidate(&id);
 
     Ok((
         StatusCode::OK,
@@ -431,15 +434,16 @@ pub async fn attach_admin_roles(
     tag = "Admin / Administrator Management"
 )]
 pub async fn detach_admin_roles(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Path(id): Path<Uuid>,
     _auth: AuthUser,
     ValidatedJson(req): ValidatedJson<DetachRolesRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let repo = Arc::new(PostgresAdministratorRepository::new(pool));
+    let repo = Arc::new(PostgresAdministratorRepository::new(state.pool.clone()));
     let use_case = DetachRoles::new(repo);
 
     use_case.execute(id, req.role_ids).await?;
+    state.admin_permissions_cache.invalidate(&id);
 
     Ok((
         StatusCode::OK,
@@ -465,13 +469,14 @@ pub async fn detach_admin_roles(
     tag = "Admin / Administrator Management"
 )]
 pub async fn revoke_admin(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Path(id): Path<Uuid>,
     _auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
-    let repo = Arc::new(PostgresAdministratorRepository::new(pool));
+    let repo = Arc::new(PostgresAdministratorRepository::new(state.pool.clone()));
     let use_case = RevokeAdministratorUseCase::new(repo);
     use_case.execute(id).await?;
+    state.admin_permissions_cache.invalidate(&id);
     Ok((
         StatusCode::OK,
         Json(JsonApiResponse::new(json!({ "success": true }))),
@@ -496,13 +501,14 @@ pub async fn revoke_admin(
     tag = "Admin / Administrator Management"
 )]
 pub async fn restore_admin(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Path(id): Path<Uuid>,
     _auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
-    let repo = Arc::new(PostgresAdministratorRepository::new(pool));
+    let repo = Arc::new(PostgresAdministratorRepository::new(state.pool.clone()));
     let use_case = RestoreAdministratorUseCase::new(repo);
     use_case.execute(id).await?;
+    state.admin_permissions_cache.invalidate(&id);
     Ok((
         StatusCode::OK,
         Json(JsonApiResponse::new(json!({ "success": true }))),

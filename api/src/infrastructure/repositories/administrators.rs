@@ -337,4 +337,47 @@ impl AdministratorRepository for PostgresAdministratorRepository {
 
         Ok(permissions)
     }
+
+    #[tracing::instrument(skip(self))]
+    async fn find_permissions_and_status(
+        &self,
+        admin_id: Uuid,
+    ) -> Result<crate::domain::administrators::AdminPermissionsAndStatus, anyhow::Error> {
+        let row = sqlx::query!(
+            r#"
+            SELECT 
+                a.id as "id?",
+                a.revoked_at as "revoked_at?",
+                COALESCE(array_agg(DISTINCT rp.permission) FILTER (WHERE rp.permission IS NOT NULL), '{}') as "permissions!: Vec<String>"
+            FROM user_administrators a
+            LEFT JOIN administrator_roles ar ON a.id = ar.administrator_id
+            LEFT JOIN role_permissions rp ON ar.role_id = rp.role_id
+            WHERE a.id = $1
+            GROUP BY a.id
+            "#,
+            admin_id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if let Some(r) = row {
+            let permissions = r
+                .permissions
+                .into_iter()
+                .filter_map(|p| p.parse().ok())
+                .collect();
+
+            Ok(crate::domain::administrators::AdminPermissionsAndStatus {
+                is_found: true,
+                revoked_at: r.revoked_at,
+                permissions,
+            })
+        } else {
+            Ok(crate::domain::administrators::AdminPermissionsAndStatus {
+                is_found: false,
+                revoked_at: None,
+                permissions: Vec::new(),
+            })
+        }
+    }
 }

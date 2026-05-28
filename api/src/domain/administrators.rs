@@ -59,6 +59,14 @@ pub struct UpdateAdministrator {
     pub revoked_at: Option<Option<OffsetDateTime>>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminPermissionsAndStatus {
+    pub is_found: bool,
+    pub revoked_at: Option<OffsetDateTime>,
+    pub permissions: Vec<crate::domain::permissions::Permission>,
+}
+
 #[async_trait]
 pub trait AdministratorRepository: Send + Sync {
     async fn create(&self, new_admin: NewAdministrator) -> Result<Administrator, anyhow::Error>;
@@ -89,4 +97,9 @@ pub trait AdministratorRepository: Send + Sync {
         &self,
         admin_id: Uuid,
     ) -> Result<Vec<crate::domain::permissions::Permission>, anyhow::Error>;
+
+    async fn find_permissions_and_status(
+        &self,
+        admin_id: Uuid,
+    ) -> Result<AdminPermissionsAndStatus, anyhow::Error>;
 }

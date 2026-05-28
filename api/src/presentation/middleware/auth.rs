@@ -36,26 +36,39 @@ pub async fn check_permissions(
 
     // For admins, we check the DB for permissions
     if config.user_type == "admin" {
-        let repo = PostgresAdministratorRepository::new(state.pool.clone());
+        // Check cache first
+        let status_and_permissions =
+            if let Some(cached) = state.admin_permissions_cache.get(&user_id) {
+                cached
+            } else {
+                let repo = PostgresAdministratorRepository::new(state.pool.clone());
+                let fetched = repo
+                    .find_permissions_and_status(user_id)
+                    .await
+                    .map_err(|e| {
+                        tracing::error!(
+                            "Failed to fetch permissions and status for user {}: {}",
+                            user_id,
+                            e
+                        );
+                        AppError::InternalServerError(e)
+                    })?;
 
-        // Fetch the admin to ensure they exist and are not revoked
-        let admin = repo
-            .find_by_id(user_id)
-            .await
-            .map_err(|e| {
-                tracing::error!("Failed to fetch user {}: {}", user_id, e);
-                AppError::InternalServerError(e)
-            })?
-            .ok_or_else(|| AppError::Unauthorized("User not found".to_string()))?;
+                state
+                    .admin_permissions_cache
+                    .insert(user_id, fetched.clone());
+                fetched
+            };
 
-        if admin.revoked_at.is_some() {
+        if !status_and_permissions.is_found {
+            return Err(AppError::Unauthorized("User not found".to_string()));
+        }
+
+        if status_and_permissions.revoked_at.is_some() {
             return Err(AppError::AccountRevoked("Account revoked".to_string()));
         }
 
-        let permissions = repo.get_permissions(user_id).await.map_err(|e| {
-            tracing::error!("Failed to fetch permissions for user {}: {}", user_id, e);
-            AppError::InternalServerError(e)
-        })?;
+        let permissions = status_and_permissions.permissions;
 
         // Check if user has Wildcard OR any of the required permissions
         let has_permission = permissions.contains(&Permission::Wildcard)

@@ -1,6 +1,8 @@
 use crate::domain::auth::{AuthService, Claims};
 use anyhow::Result;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use moka::sync::Cache;
+use std::time::Duration;
 use uuid::Uuid;
 
 /// JWT Authentication Service using ES256 algorithm
@@ -9,6 +11,7 @@ pub struct JwtAuthService {
     decoding_key: DecodingKey,
     access_token_expiry: i64,
     refresh_token_expiry: i64,
+    validation_cache: Cache<String, Claims>,
 }
 
 impl JwtAuthService {
@@ -25,11 +28,17 @@ impl JwtAuthService {
         let decoding_key = DecodingKey::from_ec_pem(public_key_pem.as_bytes())
             .map_err(|e| anyhow::anyhow!("Failed to parse public key: {}", e))?;
 
+        let validation_cache = Cache::builder()
+            .max_capacity(5000)
+            .time_to_live(Duration::from_secs(60))
+            .build();
+
         Ok(Self {
             encoding_key,
             decoding_key,
             access_token_expiry,
             refresh_token_expiry,
+            validation_cache,
         })
     }
 }
@@ -61,11 +70,18 @@ impl AuthService for JwtAuthService {
     }
 
     fn validate_token(&self, token: &str) -> Result<Claims> {
+        if let Some(claims) = self.validation_cache.get(token) {
+            return Ok(claims);
+        }
+
         let mut validation = Validation::new(Algorithm::ES256);
         validation.validate_exp = true;
 
         let token_data = decode::<Claims>(token, &self.decoding_key, &validation)
             .map_err(|e| anyhow::anyhow!("Invalid token: {}", e))?;
+
+        self.validation_cache
+            .insert(token.to_string(), token_data.claims.clone());
 
         Ok(token_data.claims)
     }

@@ -97,6 +97,8 @@ export default function AdministratorsPage() {
   const [roleOpen, setRoleOpen] = useState(false);
 
   useEffect(() => {
+    if (search === searchInput) return;
+
     const timer = setTimeout(() => {
       const newParams = new URLSearchParams(searchParams);
       if (searchInput) {
@@ -104,13 +106,11 @@ export default function AdministratorsPage() {
       } else {
         newParams.delete('search');
       }
-      if (search !== searchInput) {
-        newParams.set('page', '1');
-      }
+      newParams.set('page', '1');
       setSearchParams(newParams);
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchInput, searchParams, setSearchParams, search]);
+  }, [searchInput, search, searchParams, setSearchParams]);
 
   const queryClient = useQueryClient();
   const { data: response, isLoading } = useAdministrators({

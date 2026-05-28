@@ -7,15 +7,21 @@ import { useEffect, useRef, useCallback } from 'react';
  */
 export function useIdleTimeout(onIdle: () => void, idleTimeInMs: number = 15 * 60 * 1000) {
   const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onIdleRef = useRef(onIdle);
+
+  // Update ref when callback changes so handleActivity always uses the latest logic
+  useEffect(() => {
+    onIdleRef.current = onIdle;
+  }, [onIdle]);
 
   const handleActivity = useCallback(() => {
     if (timeoutId.current) {
       clearTimeout(timeoutId.current);
     }
     timeoutId.current = setTimeout(() => {
-      onIdle();
+      onIdleRef.current();
     }, idleTimeInMs);
-  }, [onIdle, idleTimeInMs]);
+  }, [idleTimeInMs]);
 
   useEffect(() => {
     const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
