@@ -11,6 +11,12 @@ This workflow enforces code quality standards and automates the git commit and p
 
 1. **Run Verification**:
    - Run the workspace verification script located at `scripts/verify-all.sh`.
+   - **Semantic Versioning Auto-Bump**:
+     - `verify-all.sh` executes `scripts/increment-versions.ts` before compiling, linting, or building.
+     - This script automatically checks for updates in `client/`, `admin/`, and `api/`.
+     - **AI-Proposed Version Bump**: The AI analyzes the actual git diff of the changes to automatically categorize and propose a bump (`PATCH`, `MINOR`, or `MAJOR`) with its corresponding rationale.
+     - **Interactive Confirmation**: If run interactively, developers are prompted to accept the proposed version bump or override/skip it. If run in a non-interactive session (e.g., CI/CD), the proposed bump is applied automatically.
+     - **Double-Bump Protection**: If a service's version file (`package.json` or `Cargo.toml`) is already modified, the script automatically skips it to prevent multiple bumps within the same development cycle.
    - Wait for the verification process to complete.
    - **Display the script output as well, and explicitly show if there are any warnings or errors.**
 

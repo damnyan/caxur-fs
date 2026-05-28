@@ -23,7 +23,7 @@ use utoipa::OpenApi;
 #[openapi(
     info(
         title = "Caxur API",
-        version = "0.1.0",
+        version = env!("CARGO_PKG_VERSION"),
         description = "Clean Architecture REST API with Axum and SQLx\n\nThis API follows the JSON:API v1.1 specification for all responses.",
         contact(
             name = "API Support",

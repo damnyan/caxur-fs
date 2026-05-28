@@ -5,6 +5,9 @@ set -e
 
 echo "🚀 Starting full project verification..."
 
+# 0. Semantic Versioning Auto-Bump (prior to build to ensure correct bundle versions)
+bun scripts/increment-versions.ts
+
 # 1. Client Verification
 echo "📦 Verification: Next.js Client..."
 cd client
