@@ -1,4 +1,5 @@
 use crate::domain::password::PasswordHashingService;
+use crate::domain::storage::StorageService;
 use crate::domain::users::{UpdateUser, User, UserRepository};
 use crate::shared::error::{AppError, FieldError};
 use serde::Deserialize;
@@ -24,6 +25,7 @@ pub struct UpdateUserRequest {
     pub middle_name: Option<String>,
     pub last_name: Option<String>,
     pub suffix: Option<String>,
+    pub face_photo: Option<String>,
 }
 
 impl UpdateUserRequest {
@@ -56,16 +58,19 @@ impl UpdateUserRequest {
 pub struct UpdateUserUseCase {
     repo: Arc<dyn UserRepository>,
     password_hasher: Arc<dyn PasswordHashingService>,
+    storage_service: Arc<dyn StorageService>,
 }
 
 impl UpdateUserUseCase {
     pub fn new(
         repo: Arc<dyn UserRepository>,
         password_hasher: Arc<dyn PasswordHashingService>,
+        storage_service: Arc<dyn StorageService>,
     ) -> Self {
         Self {
             repo,
             password_hasher,
+            storage_service,
         }
     }
 
@@ -112,6 +117,51 @@ impl UpdateUserUseCase {
             None
         };
 
+        // File lifecycle movement: tmp/ -> uploads/ -> deleted/
+        let face_photo = if let Some(new_photo) = &req.face_photo {
+            if new_photo.starts_with("tmp/") {
+                let filename = new_photo.strip_prefix("tmp/").unwrap();
+                let dest_key = format!("uploads/{}", filename);
+
+                // Move file from tmp/ to uploads/ in S3
+                self.storage_service
+                    .move_object(new_photo, &dest_key)
+                    .await
+                    .map_err(|e| {
+                        tracing::error!("Failed to move face photo in S3: {}", e);
+                        AppError::InternalServerError(e)
+                    })?;
+
+                // Move old file to deleted/ in S3 if one exists in uploads/
+                if let Some(old_photo) = existing
+                    .face_photo
+                    .as_ref()
+                    .filter(|p| p.starts_with("uploads/"))
+                {
+                    let old_filename = old_photo.strip_prefix("uploads/").unwrap();
+                    let deleted_key = format!("deleted/{}", old_filename);
+
+                    if let Err(e) = self
+                        .storage_service
+                        .move_object(old_photo, &deleted_key)
+                        .await
+                    {
+                        tracing::warn!(
+                            "Failed to move old face photo {} to deleted/: {}",
+                            old_photo,
+                            e
+                        );
+                    }
+                }
+
+                Some(dest_key)
+            } else {
+                Some(new_photo.clone())
+            }
+        } else {
+            None
+        };
+
         let update = UpdateUser {
             email: req.email,
             password_hash,
@@ -119,6 +169,7 @@ impl UpdateUserUseCase {
             middle_name: req.middle_name,
             last_name: req.last_name,
             suffix: req.suffix,
+            face_photo,
         };
 
         self.repo

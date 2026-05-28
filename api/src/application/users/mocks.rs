@@ -51,6 +51,7 @@ impl UserRepository for MockUserRepository {
             middle_name: new_user.middle_name,
             last_name: new_user.last_name,
             suffix: new_user.suffix,
+            face_photo: new_user.face_photo,
             created_at: OffsetDateTime::now_utc(),
             updated_at: OffsetDateTime::now_utc(),
         };
@@ -103,6 +104,9 @@ impl UserRepository for MockUserRepository {
             }
             if let Some(suffix) = update.suffix {
                 user.suffix = Some(suffix);
+            }
+            if let Some(face_photo) = update.face_photo {
+                user.face_photo = Some(face_photo);
             }
             user.updated_at = OffsetDateTime::now_utc();
             return Ok(user.clone());

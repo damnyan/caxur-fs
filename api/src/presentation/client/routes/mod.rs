@@ -20,6 +20,11 @@ pub fn routes(state: AppState) -> anyhow::Result<Router<AppState>> {
                 axum::routing::get(crate::presentation::client::handlers::profile::get_profile),
             ),
         )
+        .route(
+            "/upload",
+            axum::routing::post(crate::presentation::client::handlers::upload::upload_file)
+                .layer(axum::extract::DefaultBodyLimit::max(5 * 1024 * 1024)),
+        )
         .layer(
             crate::presentation::middleware::rate_limit::api_rate_limit_layer(
                 state.auth_service.clone(),

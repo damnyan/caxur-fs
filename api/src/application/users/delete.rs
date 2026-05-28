@@ -36,6 +36,7 @@ mod tests {
             middle_name: None,
             last_name: None,
             suffix: None,
+            face_photo: None,
             created_at: OffsetDateTime::now_utc(),
             updated_at: OffsetDateTime::now_utc(),
         });

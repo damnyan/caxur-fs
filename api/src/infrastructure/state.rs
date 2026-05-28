@@ -3,6 +3,7 @@ use crate::infrastructure::db::DbPool;
 use std::sync::Arc;
 
 use crate::domain::cache::CacheService;
+use crate::domain::storage::StorageService;
 use crate::infrastructure::email::EmailService;
 
 /// Application state shared across handlers
@@ -12,6 +13,7 @@ pub struct AppState {
     pub auth_service: Arc<JwtAuthService>,
     pub email_service: Arc<dyn EmailService>,
     pub cache_service: Arc<dyn CacheService>,
+    pub storage_service: Arc<dyn StorageService>,
     pub admin_url: String,
     pub client_url: String,
 }
@@ -22,6 +24,7 @@ impl AppState {
         auth_service: Arc<JwtAuthService>,
         email_service: Arc<dyn EmailService>,
         cache_service: Arc<dyn CacheService>,
+        storage_service: Arc<dyn StorageService>,
         admin_url: String,
         client_url: String,
     ) -> Self {
@@ -30,6 +33,7 @@ impl AppState {
             auth_service,
             email_service,
             cache_service,
+            storage_service,
             admin_url,
             client_url,
         }
@@ -53,8 +57,15 @@ impl axum::extract::FromRef<AppState> for Arc<dyn EmailService> {
         app_state.email_service.clone()
     }
 }
+
 impl axum::extract::FromRef<AppState> for Arc<dyn CacheService> {
     fn from_ref(app_state: &AppState) -> Self {
         app_state.cache_service.clone()
+    }
+}
+
+impl axum::extract::FromRef<AppState> for Arc<dyn StorageService> {
+    fn from_ref(app_state: &AppState) -> Self {
+        app_state.storage_service.clone()
     }
 }

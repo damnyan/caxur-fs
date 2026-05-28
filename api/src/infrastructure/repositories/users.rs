@@ -25,9 +25,9 @@ impl PostgresUserRepository {
         for new_user in new_users {
             let user_db = sqlx::query_as::<_, UserDbModel>(
                 r#"
-                INSERT INTO users (email, password_hash, first_name, middle_name, last_name, suffix)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                RETURNING id, email, password_hash, first_name, middle_name, last_name, suffix, created_at, updated_at
+                INSERT INTO users (email, password_hash, first_name, middle_name, last_name, suffix, face_photo)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                RETURNING id, email, password_hash, first_name, middle_name, last_name, suffix, face_photo, created_at, updated_at
                 "#,
             )
             .bind(new_user.email)
@@ -36,6 +36,7 @@ impl PostgresUserRepository {
             .bind(new_user.middle_name)
             .bind(new_user.last_name)
             .bind(new_user.suffix)
+            .bind(new_user.face_photo)
             .fetch_one(&mut *tx)
             .await?;
 
@@ -55,7 +56,7 @@ impl PostgresUserRepository {
     ) -> impl Stream<Item = Result<User, sqlx::Error>> + '_ {
         sqlx::query_as::<_, UserDbModel>(
             r#"
-            SELECT id, email, password_hash, first_name, middle_name, last_name, suffix, created_at, updated_at
+            SELECT id, email, password_hash, first_name, middle_name, last_name, suffix, face_photo, created_at, updated_at
             FROM users
             ORDER BY created_at DESC
             LIMIT $1 OFFSET $2
@@ -72,12 +73,11 @@ impl PostgresUserRepository {
 impl UserRepository for PostgresUserRepository {
     #[tracing::instrument(skip(self, new_user))]
     async fn create(&self, new_user: NewUser) -> Result<User, anyhow::Error> {
-        // TODO: Switch to sqlx::query_as! macro for compile-time verification once DB is connected
         let user_db = sqlx::query_as::<_, UserDbModel>(
             r#"
-            INSERT INTO users (email, password_hash, first_name, middle_name, last_name, suffix)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING id, email, password_hash, first_name, middle_name, last_name, suffix, created_at, updated_at
+            INSERT INTO users (email, password_hash, first_name, middle_name, last_name, suffix, face_photo)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id, email, password_hash, first_name, middle_name, last_name, suffix, face_photo, created_at, updated_at
             "#,
         )
         .bind(new_user.email)
@@ -86,6 +86,7 @@ impl UserRepository for PostgresUserRepository {
         .bind(new_user.middle_name)
         .bind(new_user.last_name)
         .bind(new_user.suffix)
+        .bind(new_user.face_photo)
         .fetch_one(&self.pool)
         .await?;
 
@@ -96,7 +97,7 @@ impl UserRepository for PostgresUserRepository {
     async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, anyhow::Error> {
         let user_db = sqlx::query_as::<_, UserDbModel>(
             r#"
-            SELECT id, email, password_hash, first_name, middle_name, last_name, suffix, created_at, updated_at
+            SELECT id, email, password_hash, first_name, middle_name, last_name, suffix, face_photo, created_at, updated_at
             FROM users
             WHERE id = $1
             "#,
@@ -112,7 +113,7 @@ impl UserRepository for PostgresUserRepository {
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, anyhow::Error> {
         let user_db = sqlx::query_as::<_, UserDbModel>(
             r#"
-            SELECT id, email, password_hash, first_name, middle_name, last_name, suffix, created_at, updated_at
+            SELECT id, email, password_hash, first_name, middle_name, last_name, suffix, face_photo, created_at, updated_at
             FROM users
             WHERE email = $1
             "#,
@@ -128,7 +129,7 @@ impl UserRepository for PostgresUserRepository {
     async fn find_all(&self, limit: i64, offset: i64) -> Result<Vec<User>, anyhow::Error> {
         let users_db = sqlx::query_as::<_, UserDbModel>(
             r#"
-            SELECT id, email, password_hash, first_name, middle_name, last_name, suffix, created_at, updated_at
+            SELECT id, email, password_hash, first_name, middle_name, last_name, suffix, face_photo, created_at, updated_at
             FROM users
             ORDER BY created_at DESC
             LIMIT $1 OFFSET $2
@@ -187,6 +188,10 @@ impl UserRepository for PostgresUserRepository {
             updates.push(format!("suffix = ${}", param_count));
             param_count += 1;
         }
+        if update.face_photo.is_some() {
+            updates.push(format!("face_photo = ${}", param_count));
+            param_count += 1;
+        }
 
         if updates.is_empty() {
             return Err(anyhow::anyhow!("No fields to update"));
@@ -195,7 +200,7 @@ impl UserRepository for PostgresUserRepository {
         updates.push("updated_at = NOW()".to_string());
         query.push_str(&updates.join(", "));
         query.push_str(&format!(
-            " WHERE id = ${} RETURNING id, email, password_hash, first_name, middle_name, last_name, suffix, created_at, updated_at",
+            " WHERE id = ${} RETURNING id, email, password_hash, first_name, middle_name, last_name, suffix, face_photo, created_at, updated_at",
             param_count
         ));
 
@@ -218,6 +223,9 @@ impl UserRepository for PostgresUserRepository {
         }
         if let Some(suffix) = update.suffix {
             query_builder = query_builder.bind(suffix);
+        }
+        if let Some(face_photo) = update.face_photo {
+            query_builder = query_builder.bind(face_photo);
         }
         query_builder = query_builder.bind(id);
 

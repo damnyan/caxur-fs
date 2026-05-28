@@ -39,7 +39,11 @@ pub async fn complete_onboarding(
     let use_case = CompleteOnboardingUseCase::new(user_repo);
 
     let user = use_case.execute(user_id, req).await?;
-    let resource = JsonApiResource::new("users", user.id.to_string(), UserResource::from(user));
+    let resource = JsonApiResource::new(
+        "users",
+        user.id.to_string(),
+        UserResource::from_user(user, &*state.storage_service).await,
+    );
 
     Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
 }
@@ -71,10 +75,15 @@ pub async fn update_profile(
         .map_err(|e| AppError::Unauthorized(e.to_string()))?;
     let user_repo = Arc::new(PostgresUserRepository::new(state.pool.clone()));
     let password_service = Arc::new(crate::infrastructure::password::PasswordService::new());
-    let use_case = UpdateUserUseCase::new(user_repo, password_service);
+    let use_case =
+        UpdateUserUseCase::new(user_repo, password_service, state.storage_service.clone());
 
     let user = use_case.execute(user_id, req).await?;
-    let resource = JsonApiResource::new("users", user.id.to_string(), UserResource::from(user));
+    let resource = JsonApiResource::new(
+        "users",
+        user.id.to_string(),
+        UserResource::from_user(user, &*state.storage_service).await,
+    );
 
     Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
 }
@@ -107,8 +116,11 @@ pub async fn get_profile(
 
     match user {
         Some(user) => {
-            let resource =
-                JsonApiResource::new("users", user.id.to_string(), UserResource::from(user));
+            let resource = JsonApiResource::new(
+                "users",
+                user.id.to_string(),
+                UserResource::from_user(user, &*state.storage_service).await,
+            );
             Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
         }
         None => Err(AppError::NotFound(format!(

@@ -1628,6 +1628,62 @@
         ]
       }
     },
+    "/api/v1/upload": {
+      "post": {
+        "tags": [
+          "Client / Upload"
+        ],
+        "summary": "Upload face photo handler\nAccepts a multipart form file, uploads to S3 /tmp directory, and returns presigned URL.",
+        "operationId": "upload_file",
+        "responses": {
+          "201": {
+            "description": "File uploaded successfully to temp storage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiResponse_JsonApiResource_UploadedFileResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file or payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/users": {
       "get": {
         "tags": [
@@ -2315,6 +2371,50 @@
           }
         }
       },
+      "JsonApiResource_UploadedFileResource": {
+        "type": "object",
+        "description": "JSON:API compliant resource wrapper",
+        "required": [
+          "type",
+          "id",
+          "attributes"
+        ],
+        "properties": {
+          "attributes": {
+            "type": "object",
+            "required": [
+              "facePhoto",
+              "facePhotoUrl"
+            ],
+            "properties": {
+              "facePhoto": {
+                "type": "string"
+              },
+              "facePhotoUrl": {
+                "type": "string"
+              }
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "relationships": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonApiRelationship"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
       "JsonApiResource_UserResource": {
         "type": "object",
         "description": "JSON:API compliant resource wrapper",
@@ -2338,6 +2438,18 @@
               },
               "email": {
                 "type": "string"
+              },
+              "facePhoto": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "facePhotoUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "firstName": {
                 "type": [
@@ -2710,6 +2822,86 @@
           }
         }
       },
+      "JsonApiResponse_JsonApiResource_UploadedFileResource": {
+        "type": "object",
+        "description": "JSON:API compliant response for single resource or collection",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "object",
+            "description": "JSON:API compliant resource wrapper",
+            "required": [
+              "type",
+              "id",
+              "attributes"
+            ],
+            "properties": {
+              "attributes": {
+                "type": "object",
+                "required": [
+                  "facePhoto",
+                  "facePhotoUrl"
+                ],
+                "properties": {
+                  "facePhoto": {
+                    "type": "string"
+                  },
+                  "facePhotoUrl": {
+                    "type": "string"
+                  }
+                }
+              },
+              "id": {
+                "type": "string"
+              },
+              "relationships": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonApiRelationship"
+                },
+                "propertyNames": {
+                  "type": "string"
+                }
+              },
+              "type": {
+                "type": "string"
+              }
+            }
+          },
+          "included": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {}
+          },
+          "links": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonApiLinks"
+              }
+            ]
+          },
+          "meta": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonApiMeta"
+              }
+            ]
+          }
+        }
+      },
       "JsonApiResponse_JsonApiResource_UserResource": {
         "type": "object",
         "description": "JSON:API compliant response for single resource or collection",
@@ -2740,6 +2932,18 @@
                   },
                   "email": {
                     "type": "string"
+                  },
+                  "facePhoto": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "facePhotoUrl": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   },
                   "firstName": {
                     "type": [
@@ -3201,6 +3405,18 @@
                     "email": {
                       "type": "string"
                     },
+                    "facePhoto": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "facePhotoUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "firstName": {
                       "type": [
                         "string",
@@ -3592,6 +3808,21 @@
           }
         }
       },
+      "UploadedFileResource": {
+        "type": "object",
+        "required": [
+          "facePhoto",
+          "facePhotoUrl"
+        ],
+        "properties": {
+          "facePhoto": {
+            "type": "string"
+          },
+          "facePhotoUrl": {
+            "type": "string"
+          }
+        }
+      },
       "UserResource": {
         "type": "object",
         "required": [
@@ -3606,6 +3837,18 @@
           },
           "email": {
             "type": "string"
+          },
+          "facePhoto": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "facePhotoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "firstName": {
             "type": [
@@ -3706,6 +3949,10 @@
     {
       "name": "Client / Profile",
       "description": "User profile and onboarding endpoints"
+    },
+    {
+      "name": "Client / Upload",
+      "description": "File upload endpoints"
     }
   ]
 }

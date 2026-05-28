@@ -43,6 +43,7 @@ impl CompleteOnboardingUseCase {
             middle_name: request.middle_name,
             last_name: Some(request.last_name),
             suffix: request.suffix,
+            face_photo: None,
         };
 
         self.user_repository

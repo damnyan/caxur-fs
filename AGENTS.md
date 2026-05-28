@@ -85,12 +85,13 @@ AI agents should recommend these commands to the user, or execute the underlying
 ### 🚀 2. `/run-dev` (Start Stack Concurrently)
 - Runs [scripts/run-dev.sh](scripts/run-dev.sh).
 - Automatically kills dangling ports (3000, 3001, 3002).
-- Starts PostgreSQL container via Docker Compose.
+- Starts PostgreSQL and MinIO containers via Docker Compose.
 - Executes `concurrently` to run API (`cargo watch`), Client, and Admin (`bun run dev`).
 - Access points:
   - **API Service**: `http://localhost:3000`
   - **Admin Dashboard**: `http://localhost:3001`
   - **Client Portal**: `http://localhost:3002`
+  - **MinIO Dashboard**: `http://localhost:9001`
 
 ### 🧪 3. `/verify-commit` (Safe Verification & Commit)
 - Runs [scripts/verify-all.sh](scripts/verify-all.sh).

@@ -5,4 +5,5 @@ pub mod cache;
 pub mod password;
 pub mod permissions;
 pub mod roles;
+pub mod storage;
 pub mod users;

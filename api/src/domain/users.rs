@@ -14,6 +14,7 @@ pub struct User {
     pub middle_name: Option<String>,
     pub last_name: Option<String>,
     pub suffix: Option<String>,
+    pub face_photo: Option<String>,
 
     #[serde(with = "time::serde::iso8601")]
     pub created_at: OffsetDateTime,
@@ -29,6 +30,7 @@ pub struct NewUser {
     pub middle_name: Option<String>,
     pub last_name: Option<String>,
     pub suffix: Option<String>,
+    pub face_photo: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -39,6 +41,7 @@ pub struct UpdateUser {
     pub middle_name: Option<String>,
     pub last_name: Option<String>,
     pub suffix: Option<String>,
+    pub face_photo: Option<String>,
 }
 
 #[async_trait]
@@ -65,6 +68,7 @@ mod tests {
             middle_name: None,
             last_name: None,
             suffix: None,
+            face_photo: None,
         };
 
         assert_eq!(user.email, "test@example.com");
@@ -80,6 +84,7 @@ mod tests {
             middle_name: None,
             last_name: None,
             suffix: None,
+            face_photo: None,
         };
 
         assert_eq!(update.email, Some("new@example.com".to_string()));

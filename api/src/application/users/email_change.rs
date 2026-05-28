@@ -215,6 +215,7 @@ impl VerifyUserEmailChangeUseCase {
             suffix: None,
             email: Some(pending.new_email.clone()),
             password_hash: None,
+            face_photo: None,
         };
 
         self.repo

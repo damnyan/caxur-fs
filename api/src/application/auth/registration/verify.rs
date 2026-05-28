@@ -101,6 +101,7 @@ impl VerifyRegistrationUseCase {
             middle_name: None,
             last_name: None,
             suffix: None,
+            face_photo: None,
         };
 
         let user = self

@@ -39,6 +39,7 @@ use utoipa::OpenApi;
         crate::presentation::client::handlers::auth::register_verify,
         crate::presentation::client::handlers::profile::complete_onboarding,
         crate::presentation::client::handlers::profile::get_profile,
+        crate::presentation::client::handlers::upload::upload_file,
         crate::presentation::admin::handlers::auth::admin_login,
         crate::presentation::admin::handlers::auth::refresh_token,
         crate::presentation::admin::handlers::auth::admin_logout,
@@ -93,10 +94,12 @@ use utoipa::OpenApi;
             RoleResource,
             PermissionResource,
             AuthTokenResource,
+            crate::presentation::client::handlers::upload::UploadedFileResource,
             JsonApiResource<UserResource>,
             JsonApiResource<RoleResource>,
             JsonApiResource<PermissionResource>,
             JsonApiResource<AuthTokenResource>,
+            JsonApiResource<crate::presentation::client::handlers::upload::UploadedFileResource>,
 
             // JSON:API Response types
             JsonApiResponse<JsonApiResource<UserResource>>,
@@ -106,7 +109,9 @@ use utoipa::OpenApi;
             JsonApiResponse<Vec<JsonApiResource<PermissionResource>>>,
             JsonApiResponse<Vec<PermissionDto>>,
             JsonApiResponse<JsonApiResource<AuthTokenResource>>,
+            JsonApiResponse<JsonApiResource<crate::presentation::client::handlers::upload::UploadedFileResource>>,
             JsonApiResponse<serde_json::Value>,
+
 
             // JSON:API Metadata and Links
             JsonApiMeta,
@@ -125,7 +130,8 @@ use utoipa::OpenApi;
         (name = "Admin / User Management", description = "User management endpoints"),
         (name = "Admin / Role Management", description = "Role management endpoints"),
         (name = "Admin / Permission Management", description = "Permission management endpoints"),
-        (name = "Client / Profile", description = "User profile and onboarding endpoints")
+        (name = "Client / Profile", description = "User profile and onboarding endpoints"),
+        (name = "Client / Upload", description = "File upload endpoints")
     ),
     modifiers(&SecurityAddon)
 )]

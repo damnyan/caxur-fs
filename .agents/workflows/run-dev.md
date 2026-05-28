@@ -13,7 +13,7 @@ This workflow spins up the entire `caxur-fs` project stack for local development
    - Execute the workspace script located at `scripts/run-dev.sh`.
    - This script:
      - Terminates dangling processes on ports `3000` (API), `3001` (Admin), and `3002` (Client).
-     - Starts the Postgres database container for the API (`docker compose up -d db`).
+     - Starts the Postgres database and MinIO storage containers (`docker compose up -d db minio`).
      - Starts the API (`cargo watch`), Client (`bun run dev`), and Admin (`bun run dev`) concurrently using `bunx concurrently`.
 
 2. **Monitor Logs & Startup**:
@@ -25,3 +25,5 @@ This workflow spins up the entire `caxur-fs` project stack for local development
      - **API Service**: `http://localhost:3000`
      - **Admin Portal**: `http://localhost:3001`
      - **Client Portal**: `http://localhost:3002`
+     - **MinIO S3 Console**: `http://localhost:9001` (Username/Password: `minioadmin` / `minioadmin`)
+     - **MinIO S3 API**: `http://localhost:9000`

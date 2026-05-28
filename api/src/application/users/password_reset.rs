@@ -148,6 +148,7 @@ impl ConfirmPasswordResetUseCase {
             middle_name: None,
             last_name: None,
             suffix: None,
+            face_photo: None,
         };
 
         self.repo

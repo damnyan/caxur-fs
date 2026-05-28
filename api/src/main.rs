@@ -114,6 +114,12 @@ async fn bootstrap(
 
     let cache_service = std::sync::Arc::new(infrastructure::cache::MokaCacheService::new(1000));
 
+    let storage_service = std::sync::Arc::new(infrastructure::storage::s3::S3StorageService::new());
+    storage_service
+        .init_bucket()
+        .await
+        .context("Failed to initialize storage bucket")?;
+
     let admin_url = env::var("ADMIN_URL").context("ADMIN_URL must be set")?;
     let client_url = env::var("CLIENT_URL").context("CLIENT_URL must be set")?;
 
@@ -122,9 +128,11 @@ async fn bootstrap(
         auth_service,
         email_service,
         cache_service,
+        storage_service,
         admin_url,
         client_url,
     );
+
     let app = presentation::router::app(state)?;
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));

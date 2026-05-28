@@ -48,6 +48,7 @@ coverage/
 
 #Docker image files
 /postgres_data
+/minio_data
 
 # Scratch files
 scratch
