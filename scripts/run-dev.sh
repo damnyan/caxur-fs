@@ -3,7 +3,27 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
+# Print versions before starting services
+API_VERSION=$(cargo metadata --format-version 1 2>/dev/null | node -e "
+const fs = require('fs');
+try {
+  const data = JSON.parse(fs.readFileSync(0));
+  const pkg = data.packages.find(p => p.name === 'caxur');
+  console.log(pkg ? pkg.version : '0.1.0');
+} catch (e) {
+  console.log('0.1.0');
+}
+" || echo "0.1.0")
+
+CLIENT_VERSION=$(node -p "require('./client/package.json').version" 2>/dev/null || echo "0.1.0")
+ADMIN_VERSION=$(node -p "require('./admin/package.json').version" 2>/dev/null || echo "0.0.0")
+
+echo "=================================================="
 echo "🚀 Starting Caxur Development Environment..."
+echo "🔹 Rust Axum API version:    v$API_VERSION"
+echo "🔹 Next.js Client version:   v$CLIENT_VERSION"
+echo "🔹 React Vite Admin version:  v$ADMIN_VERSION"
+echo "=================================================="
 
 # Function to kill process running on a specific port
 kill_port() {

@@ -1,14 +1,29 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, Navigate, NavLink, Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { LayoutDashboard, Users, Shield, UserCircle, LogOut } from 'lucide-react';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { apiClient } from '@/lib/api';
+import axios from 'axios';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || 'Caxur-FS Admin';
 
 export default function AdminLayout() {
   const { isAuthenticated, user, updateUser, logout, refreshToken } = useAuthStore();
+  const [apiVersion, setApiVersion] = useState<string>('');
+
+  useEffect(() => {
+    const healthUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1').replace('/api/v1', '/health');
+    axios.get(healthUrl)
+      .then((res) => {
+        if (res.data?.version) {
+          setApiVersion(res.data.version);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch API version:', err);
+      });
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -116,9 +131,14 @@ export default function AdminLayout() {
               <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                 {user ? ([user.firstName, user.lastName].filter(Boolean).join(' ') || (user as any).name || 'Administrator') : ''}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {user?.email}
-              </p>
+              <div className="flex flex-col gap-0.5 mt-0.5">
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {user?.email}
+                </p>
+                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono tracking-tight">
+                  UI: v{import.meta.env.VITE_APP_VERSION} {apiVersion && `| API: v${apiVersion}`}
+                </span>
+              </div>
               {user?.roles && user.roles.length > 0 && (
                 <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate uppercase tracking-wider mt-0.5 font-semibold">
                   {user.roles.map((r) => r.name).join(', ')}
