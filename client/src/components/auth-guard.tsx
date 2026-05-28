@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useIdleTimeout } from "@/hooks/use-idle-timeout"
 import { config } from "@/lib/config"
+import { logoutAction } from "@/app/actions/auth"
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { token, refreshToken, logout } = useAuthStore()
@@ -24,6 +25,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         console.error("Logout failed", error)
       }
     }
+    await logoutAction()
     logout()
   }
 

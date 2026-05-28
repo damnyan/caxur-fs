@@ -34,12 +34,19 @@ impl SmtpEmailService {
         from_email: String,
         app_name: String,
     ) -> Result<Self, anyhow::Error> {
-        let creds = Credentials::new(username.to_string(), password.to_string());
+        let mut builder = AsyncSmtpTransport::<Tokio1Executor>::relay(host)?.port(port);
 
-        let mailer = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(host)?
-            .port(port)
-            .credentials(creds)
-            .build();
+        if host == "localhost" || host == "127.0.0.1" || host == "mailpit" {
+            builder = builder.tls(lettre::transport::smtp::client::Tls::None);
+        } else {
+            let creds = Credentials::new(username.to_string(), password.to_string());
+            builder = builder.credentials(creds);
+
+            let tls_params = lettre::transport::smtp::client::TlsParameters::new(host.to_string())?;
+            builder = builder.tls(lettre::transport::smtp::client::Tls::Required(tls_params));
+        }
+
+        let mailer = builder.build();
 
         Ok(Self {
             mailer,

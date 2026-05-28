@@ -11,8 +11,8 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 
-import { config } from "@/lib/config"
 import { useAuthStore } from "@/lib/auth-store"
+import { verifyAction } from "@/app/actions/auth"
 
 const verifySchema = z.object({
   otp: z.string().length(6, "Verification code must be 6 digits"),
@@ -49,24 +49,15 @@ export function VerifyForm() {
 
     setIsLoading(true)
     try {
-      const response = await fetch(`${config.apiUrl}/api/v1/auth/register/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          otp: values.otp,
-        }),
-      })
+      const response = await verifyAction(email, values.otp)
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.errors?.[0]?.detail || "Verification failed")
+      if (response.error || !response.data) {
+        throw new Error(response.error || "Verification failed")
       }
 
       // Store token and user
-      const { accessToken, user } = data.data.attributes
-      setToken(accessToken)
+      const { accessToken, refreshToken, user } = response.data
+      setToken(accessToken, refreshToken)
       if (user) setUser(user)
 
       toast.success("Account verified successfully!")

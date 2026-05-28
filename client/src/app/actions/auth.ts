@@ -44,6 +44,47 @@ export async function loginAction(email: string, password: string) {
   }
 }
 
+export async function verifyAction(email: string, otp: string) {
+  try {
+    const response = await fetch(`${config.apiUrl}/api/v1/auth/register/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, otp }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      return { error: data.errors?.[0]?.detail || "Verification failed" }
+    }
+
+    const { accessToken, refreshToken } = data.data.attributes
+
+    const cookieStore = await cookies()
+    cookieStore.set("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 15 // 15 mins
+    })
+    
+    if (refreshToken) {
+      cookieStore.set("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7 // 7 days
+      })
+    }
+
+    return { success: true, data: data.data.attributes }
+  } catch (error: any) {
+    return { error: error.message || "An unexpected error occurred" }
+  }
+}
+
 export async function logoutAction() {
   const cookieStore = await cookies()
   cookieStore.delete("accessToken")

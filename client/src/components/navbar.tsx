@@ -17,6 +17,7 @@ import { config } from "@/lib/config"
 import { useAuthStore } from "@/lib/auth-store"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { logoutAction } from "@/app/actions/auth"
 
 export function Navbar() {
   const pathname = usePathname()
@@ -46,6 +47,7 @@ export function Navbar() {
         console.error("Logout failed", error);
       }
     }
+    await logoutAction();
     logout()
     router.push("/")
   }
