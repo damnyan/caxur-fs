@@ -26,7 +26,7 @@ This workflow enforces code quality standards and automates the git commit and p
    - The subject line must be imperative and max 50 characters.
 
 4. **Execute Git Operations**:
-   - Present the staged changes/git status output first, followed by the proposed commit message.
+   - Present the full output of the `verify-all.sh` script and the proposed commit message to the user before presenting the interactive multiple-choice question on what to do next.
    - Present the user with an interactive multiple-choice question to select the next action:
      1. Commit and push
      2. Commit only

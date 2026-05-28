@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -26,6 +26,36 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
+
+  const [apiVersion, setApiVersion] = useState<string>('Loading...');
+  const [apiStatus, setApiStatus] = useState<'loading' | 'online' | 'offline'>('loading');
+
+  useEffect(() => {
+    const fetchApiVersion = async () => {
+      try {
+        const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+        const healthUrl = apiBase.replace(/\/api\/v1\/?$/, '/health');
+        const response = await fetch(healthUrl);
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.version) {
+            setApiVersion(`v${data.version}`);
+            setApiStatus('online');
+          } else {
+            setApiVersion('Unknown');
+            setApiStatus('offline');
+          }
+        } else {
+          setApiVersion('Offline');
+          setApiStatus('offline');
+        }
+      } catch {
+        setApiVersion('Offline');
+        setApiStatus('offline');
+      }
+    };
+    fetchApiVersion();
+  }, []);
 
   const {
     register,
@@ -91,57 +121,78 @@ export default function LoginPage() {
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl text-center">Sign in</CardTitle>
-        <CardDescription className="text-center">
-          Enter your email and password to access the admin portal
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <CardContent className="space-y-4">
-          {error && (
-            <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
-              {error}
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="admin@example.com"
-              {...register('email')}
-            />
-            {errors.email && (
-              <p className="text-sm text-red-500">{errors.email.message}</p>
+    <div className="space-y-4">
+      <Card className="w-full">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl text-center">Sign in</CardTitle>
+          <CardDescription className="text-center">
+            Enter your email and password to access the admin portal
+          </CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <CardContent className="space-y-4">
+            {error && (
+              <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
+                {error}
+              </div>
             )}
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <Link
-                to="/forgot-password"
-                className="text-sm font-medium text-muted-foreground hover:text-primary"
-              >
-                Forgot password?
-              </Link>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="admin@example.com"
+                {...register('email')}
+              />
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email.message}</p>
+              )}
             </div>
-            <PasswordInput
-              id="password"
-              {...register('password')}
-            />
-            {errors.password && (
-              <p className="text-sm text-red-500">{errors.password.message}</p>
-            )}
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Signing in...' : 'Sign in'}
-          </Button>
-        </CardFooter>
-      </form>
-    </Card>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link
+                  to="/forgot-password"
+                  className="text-sm font-medium text-muted-foreground hover:text-primary"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <PasswordInput
+                id="password"
+                {...register('password')}
+              />
+              {errors.password && (
+                <p className="text-sm text-red-500">{errors.password.message}</p>
+              )}
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Signing in...' : 'Sign in'}
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
+
+      <div className="flex items-center justify-between px-1 text-xs text-muted-foreground/60">
+        <div className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Admin v{import.meta.env.VITE_APP_VERSION || '0.0.0'}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              apiStatus === 'loading'
+                ? 'bg-amber-500 animate-pulse'
+                : apiStatus === 'online'
+                ? 'bg-emerald-500 animate-pulse'
+                : 'bg-red-500 animate-pulse'
+            }`}
+          />
+          <span>API {apiVersion}</span>
+        </div>
+      </div>
+    </div>
   );
 }

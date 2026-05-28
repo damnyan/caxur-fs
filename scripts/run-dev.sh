@@ -3,6 +3,9 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
+# Resolve script directory absolutely to prevent relative path bugs
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # Print versions before starting services
 API_VERSION=$(cargo metadata --format-version 1 2>/dev/null | node -e "
 const fs = require('fs');
@@ -50,12 +53,21 @@ fi
 
 # Cleanup function to shut down docker containers on exit or interrupt
 cleanup() {
+  if [ "${CLEANUP_DONE:-false}" = "true" ]; then
+    return
+  fi
+  CLEANUP_DONE=true
+
   echo ""
   echo "🛑 Shutting down development environment..."
+  
+  # Mark services as offline in urls.md
+  "$SCRIPT_DIR/write-urls.sh" offline 2>/dev/null || true
+
   if [ "$DOCKER_AVAILABLE" = true ]; then
     echo "🐳 Running docker compose down..."
     # Always run from the api folder relative to the script location
-    cd "$(dirname "$0")/../api"
+    cd "$SCRIPT_DIR/../api" || true
     docker compose down || true
   fi
 }
@@ -106,12 +118,6 @@ cd api
 cargo sqlx database setup
 cd ..
 
-echo "⚡ Starting all services concurrently..."
-# Use bunx concurrently to run all services
-bunx concurrently \
-  -c "green,blue,magenta,yellow" \
-  -n "API,CLIENT,ADMIN,MCP" \
-  "cd api && cargo watch --ignore postgres_data --ignore minio_data -x run" \
-  "cd client && bun run dev" \
-  "cd admin && bun run dev" \
-  "bunx @modelcontextprotocol/inspector bun scripts/mcp-api-docs.ts"
+# Start all services concurrently via our custom orchestrator which keeps
+# active service URLs pinned as a sticky footer at the bottom of the terminal output
+bun run "$SCRIPT_DIR/run-dev-orchestrator.ts"

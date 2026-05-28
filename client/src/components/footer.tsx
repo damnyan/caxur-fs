@@ -11,8 +11,14 @@ export async function Footer() {
       const data = await res.json()
       apiVersion = data.version || "unknown"
     }
-  } catch (e) {
-    console.error("Failed to query API version in footer:", e)
+  } catch (err: any) {
+    const code = err?.cause?.code || err?.code;
+    if (code === 'ECONNREFUSED') {
+      // Subtle warning to keep terminal output clean during startup compiling phase
+      console.warn(`[API Offline] Backend is booting or unreachable at ${config.apiUrl}`);
+    } else {
+      console.warn(`Failed to query API version in footer: ${err?.message || err}`);
+    }
   }
 
   return (
