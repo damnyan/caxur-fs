@@ -219,8 +219,8 @@ export default function AdministratorsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Administrators</h1>
-          <p className="text-gray-500 dark:text-gray-400">
+          <h1 className="font-serif text-3xl md:text-4xl tracking-tight text-foreground">Administrators</h1>
+          <p className="text-sm text-muted-foreground font-mono mt-1">
             Manage your portal administrators.
           </p>
         </div>
@@ -471,15 +471,15 @@ export default function AdministratorsPage() {
         </Popover>
       </div>
 
-      <div className="border rounded-md bg-white dark:bg-gray-950">
+      <div className="border border-border rounded-lg bg-card shadow-none overflow-hidden">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-[#F4F3EC]/30 dark:bg-[#1E1E1E]/30">
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Roles</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Name</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Roles</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Email</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Status</TableHead>
+              <TableHead className="text-right font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -505,32 +505,32 @@ export default function AdministratorsPage() {
                     <TableCell className="font-medium">
                       {admin.firstName} {admin.middleName ? admin.middleName + ' ' : ''}{admin.lastName} {admin.suffix ? admin.suffix : ''}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="font-mono text-sm">
                       {admin.roles && admin.roles.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {admin.roles.map((r: string) => (
-                            <span key={r} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
+                            <span key={r} className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[10px] uppercase tracking-widest bg-[#E1F3FE] text-[#1F6C9F] dark:bg-[#1F6C9F]/20 dark:text-[#E1F3FE]">
                               {r}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className="text-gray-400 text-xs italic">No roles</span>
+                        <span className="text-muted-foreground text-xs italic font-mono">No roles</span>
                       )}
                     </TableCell>
-                    <TableCell>{admin.email}</TableCell>
+                    <TableCell className="font-mono text-sm">{admin.email}</TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         {isRevoked ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200 w-fit">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full font-mono text-[10px] uppercase tracking-widest bg-[#FDEBEC] text-[#9F2F2D] dark:bg-[#9F2F2D]/20 dark:text-[#FDEBEC] w-fit">
                             Revoked
                           </span>
                         ) : isVerified ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200 w-fit">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full font-mono text-[10px] uppercase tracking-widest bg-[#EDF3EC] text-[#346538] dark:bg-[#346538]/20 dark:text-[#EDF3EC] w-fit">
                             Verified
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200 w-fit">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full font-mono text-[10px] uppercase tracking-widest bg-[#FBF3DB] text-[#956400] dark:bg-[#956400]/20 dark:text-[#FBF3DB] w-fit">
                             Unverified
                           </span>
                         )}

@@ -94,11 +94,11 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="h-screen overflow-hidden bg-gray-100 dark:bg-gray-900 flex">
+    <div className="h-screen overflow-hidden bg-background text-foreground flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 flex flex-col hidden md:flex">
-        <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-800">
-          <Link to="/" className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+      <aside className="w-64 bg-[#FBFBFA] dark:bg-[#111111] border-r border-border flex flex-col hidden md:flex">
+        <div className="h-16 flex items-center px-6 border-b border-border">
+          <Link to="/" className="font-serif text-xl font-bold tracking-tight text-foreground">
             {APP_NAME}
           </Link>
         </div>
@@ -111,57 +111,57 @@ export default function AdminLayout() {
                   key={item.name}
                   to={item.path}
                   className={({ isActive }) =>
-                    `flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    `flex items-center px-3 py-2 text-sm font-mono uppercase tracking-wider rounded-md transition-colors ${
                       isActive
-                        ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white'
+                        ? 'bg-[#F4F3EC] text-[#111111] dark:bg-[#1E1E1E] dark:text-[#F5F5F5]'
+                        : 'text-muted-foreground hover:bg-[#F4F3EC]/50 hover:text-foreground dark:hover:bg-[#1E1E1E]/50 dark:hover:text-foreground'
                     }`
                   }
                 >
-                  <Icon className="mr-3 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                  <Icon className="mr-3 h-4 w-4 flex-shrink-0" aria-hidden="true" />
                   {item.name}
                 </NavLink>
               );
             })}
           </nav>
         </div>
-        <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+        <div className="p-4 border-t border-border bg-[#F4F3EC]/20 dark:bg-[#1E1E1E]/20">
           <div className="flex items-center w-full">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+              <p className="text-sm font-medium text-foreground truncate">
                 {user ? ([user.firstName, user.lastName].filter(Boolean).join(' ') || (user as any).name || 'Administrator') : ''}
               </p>
               <div className="flex flex-col gap-0.5 mt-0.5">
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                <p className="text-xs text-muted-foreground truncate font-mono">
                   {user?.email}
                 </p>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono tracking-tight">
+                <span className="text-[10px] text-muted-foreground font-mono tracking-tight">
                   UI: v{import.meta.env.VITE_APP_VERSION} {apiVersion && `| API: v${apiVersion}`}
                 </span>
               </div>
               {user?.roles && user.roles.length > 0 && (
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate uppercase tracking-wider mt-0.5 font-semibold">
+                <p className="text-[10px] text-muted-foreground truncate uppercase tracking-widest mt-1 font-mono font-semibold">
                   {user.roles.map((r) => r.name).join(', ')}
                 </p>
               )}
             </div>
             <button
               onClick={handleLogout}
-              className="ml-2 p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="ml-2 p-2 text-muted-foreground hover:text-foreground hover:bg-[#F4F3EC] dark:hover:bg-[#1E1E1E] rounded-md transition-colors"
               title="Logout"
             >
-              <LogOut className="h-5 w-5" />
+              <LogOut className="h-4 w-4" />
             </button>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
         {/* Mobile Header */}
-        <header className="md:hidden bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 h-16 flex items-center justify-between px-4">
-          <span className="text-xl font-bold">{APP_NAME}</span>
-          <button onClick={handleLogout} className="p-2 text-gray-500">
+        <header className="md:hidden bg-[#FBFBFA] dark:bg-[#111111] border-b border-border h-16 flex items-center justify-between px-4">
+          <span className="font-serif text-xl font-bold">{APP_NAME}</span>
+          <button onClick={handleLogout} className="p-2 text-muted-foreground">
             <LogOut className="h-5 w-5" />
           </button>
         </header>

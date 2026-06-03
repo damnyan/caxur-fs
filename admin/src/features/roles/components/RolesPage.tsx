@@ -149,11 +149,11 @@ export default function RolesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 bg-background">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Roles & Permissions</h1>
-          <p className="text-gray-500 dark:text-gray-400">
+          <h1 className="font-serif text-3xl md:text-4xl tracking-tight text-foreground">Roles & Permissions</h1>
+          <p className="text-sm text-muted-foreground font-mono mt-1">
             Manage system roles and their associated permissions.
           </p>
         </div>
@@ -162,21 +162,21 @@ export default function RolesPage() {
         </Button>
       </div>
 
-      <Card>
+      <Card className="border border-border shadow-none rounded-lg bg-card overflow-hidden">
         <CardHeader>
-          <CardTitle>System Roles</CardTitle>
-          <CardDescription>
+          <CardTitle className="font-serif text-xl tracking-tight text-foreground">System Roles</CardTitle>
+          <CardDescription className="text-xs text-muted-foreground">
             These are the predefined roles available in the system.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-[#F4F3EC]/30 dark:bg-[#1E1E1E]/30">
               <TableRow>
-                <TableHead>Role Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Created At</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Role Name</TableHead>
+                <TableHead className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Description</TableHead>
+                <TableHead className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Created At</TableHead>
+                <TableHead className="text-right font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
