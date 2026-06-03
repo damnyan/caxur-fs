@@ -90,7 +90,7 @@ impl RequestPasswordResetUseCase {
 pub struct ConfirmPasswordResetRequest {
     #[validate(length(min = 1, message = "Token is required"))]
     pub token: String,
-    #[validate(length(min = 6, message = "New password must be at least 6 characters"))]
+    #[validate(custom(function = "crate::shared::validation::validate_password_strength"))]
     pub new_password: String,
 }
 

@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { apiClient } from '@/lib/api';
-import { AxiosError } from 'axios';
+import { apiClient, isApiError } from '@/lib/api';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const forgotPasswordSchema = z.object({
@@ -38,7 +37,7 @@ export default function ForgotPasswordPage() {
       await apiClient.post('/admin/auth/forgot-password', data);
       setIsSuccess(true);
     } catch (err) {
-      if (err instanceof AxiosError && err.response?.data?.errors?.[0]?.detail) {
+      if (isApiError(err) && err.response?.data?.errors?.[0]?.detail) {
         setError(err.response.data.errors[0].detail);
       } else {
         setError('An error occurred. Please try again.');

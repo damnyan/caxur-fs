@@ -10,7 +10,7 @@
     "license": {
       "name": ""
     },
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "paths": {
     "/api/v1/admin/administrators": {
@@ -3776,8 +3776,8 @@
               "string",
               "null"
             ],
-            "example": "newpassword123",
-            "minLength": 6
+            "example": "P@ssword12345",
+            "minLength": 12
           },
           "suffix": {
             "type": [

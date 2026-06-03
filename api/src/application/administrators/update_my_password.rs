@@ -12,8 +12,8 @@ use validator::Validate;
 pub struct UpdateMyPasswordRequest {
     #[validate(length(min = 1, message = "Current password is required"))]
     pub current_password: String,
-    #[validate(length(min = 6, message = "New password must be at least 6 characters"))]
-    #[schema(example = "newpassword123", min_length = 6)]
+    #[validate(custom(function = "crate::shared::validation::validate_password_strength"))]
+    #[schema(example = "P@ssword12345", min_length = 12)]
     pub new_password: String,
 }
 
@@ -51,6 +51,13 @@ impl UpdateMyPasswordUseCase {
             return Err(AppError::ValidationError(vec![FieldError::new(
                 "currentPassword",
                 "Incorrect current password",
+            )]));
+        }
+
+        if req.new_password == req.current_password {
+            return Err(AppError::ValidationError(vec![FieldError::new(
+                "newPassword",
+                "New password cannot be the same as the current password",
             )]));
         }
 

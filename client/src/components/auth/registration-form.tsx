@@ -2,12 +2,13 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
+import { PasswordStrength } from "@/components/ui/password-strength"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,7 +17,12 @@ import { config } from "@/lib/config"
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string()
+    .min(12, "Password must be at least 12 characters")
+    .regex(/[a-z]/, "Must contain at least one lowercase letter")
+    .regex(/[A-Z]/, "Must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Must contain at least one digit")
+    .regex(/[^a-zA-Z0-9]/, "Must contain at least one special character"),
   confirmPassword: z.string()
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
@@ -28,10 +34,12 @@ type RegisterValues = z.infer<typeof registerSchema>
 export function RegistrationForm() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false)
 
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
@@ -41,6 +49,9 @@ export function RegistrationForm() {
       confirmPassword: "",
     },
   })
+
+  const passwordValue = useWatch({ control, name: "password", defaultValue: "" })
+  const passwordRegister = register("password")
 
   const onSubmit = async (values: RegisterValues) => {
     setIsLoading(true)
@@ -98,8 +109,14 @@ export function RegistrationForm() {
             <PasswordInput
               id="password"
               className="bg-background/50 border-primary/10 focus-visible:ring-primary/30"
-              {...register("password")}
+              {...passwordRegister}
+              onFocus={() => setIsPasswordFocused(true)}
+              onBlur={(e) => {
+                passwordRegister.onBlur(e)
+                setIsPasswordFocused(false)
+              }}
             />
+            <PasswordStrength value={passwordValue} isFocused={isPasswordFocused} />
             {errors.password && <p className="text-xs font-medium text-destructive">{errors.password.message}</p>}
           </div>
           <div className="space-y-2">

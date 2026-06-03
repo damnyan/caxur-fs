@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
+import { PasswordStrength } from '@/components/ui/PasswordStrength';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
@@ -22,11 +23,19 @@ const profileSchema = z.object({
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
-  newPassword: z.string().min(6, 'New password must be at least 6 characters'),
-  confirmPassword: z.string().min(1, 'Confirm password is required'),
+  newPassword: z.string()
+    .min(12, 'New password must be at least 12 characters')
+    .regex(/[a-z]/, 'Must contain at least one lowercase letter')
+    .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Must contain at least one digit')
+    .regex(/[^a-zA-Z0-9]/, 'Must contain at least one special character'),
+  confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
+}).refine((data) => data.newPassword !== data.currentPassword, {
+  message: "New password cannot be the same as the current password",
+  path: ["newPassword"],
 });
 
 const emailInitiateSchema = z.object({
@@ -50,6 +59,7 @@ export default function ProfilePage() {
   const [isInitiatingEmail, setIsInitiatingEmail] = useState(false);
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
   const [isWaitingForOtp, setIsWaitingForOtp] = useState(false);
+  const [isNewPasswordFocused, setIsNewPasswordFocused] = useState(false);
 
   const {
     register: registerProfile,
@@ -85,10 +95,14 @@ export default function ProfilePage() {
     handleSubmit: handlePasswordSubmit,
     setError: setPasswordError,
     reset: resetPasswordForm,
+    control: controlPassword,
     formState: { errors: passwordErrors },
   } = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordSchema),
   });
+
+  const newPasswordValue = useWatch({ control: controlPassword, name: 'newPassword', defaultValue: '' });
+  const newPasswordRegister = registerPassword('newPassword');
 
   const {
     register: registerEmailInitiate,
@@ -353,7 +367,16 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="newPassword">New Password</Label>
-              <PasswordInput id="newPassword" {...registerPassword('newPassword')} />
+              <PasswordInput 
+                id="newPassword" 
+                {...newPasswordRegister} 
+                onFocus={() => setIsNewPasswordFocused(true)}
+                onBlur={(e) => {
+                  newPasswordRegister.onBlur(e)
+                  setIsNewPasswordFocused(false)
+                }}
+              />
+              <PasswordStrength value={newPasswordValue} isFocused={isNewPasswordFocused} />
               {passwordErrors.newPassword && <p className="text-sm text-red-500">{passwordErrors.newPassword.message}</p>}
             </div>
             <div className="space-y-2">

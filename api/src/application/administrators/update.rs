@@ -19,8 +19,8 @@ pub struct UpdateAdministratorRequest {
     pub contact_number: Option<String>,
     #[validate(email)]
     pub email: Option<String>,
-    #[validate(length(min = 6, message = "Password must be at least 6 characters"))]
-    #[schema(example = "newpassword123", min_length = 6)]
+    #[validate(custom(function = "crate::shared::validation::validate_password_strength"))]
+    #[schema(example = "P@ssword12345", min_length = 12)]
     pub password: Option<String>,
 }
 

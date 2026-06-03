@@ -9,7 +9,7 @@ use axum::{
 use crate::infrastructure::state::AppState;
 
 pub fn routes(state: AppState) -> Router<AppState> {
-    Router::new()
+    let protected = Router::new()
         .route("/", post(administrators::create_admin))
         .route("/", get(administrators::list_admins))
         .route(
@@ -28,10 +28,13 @@ pub fn routes(state: AppState) -> Router<AppState> {
             "/{id}/resend-verification",
             post(administrators::resend_verification_admin),
         )
-        .route("/verify", post(administrators::verify_admin))
         .route_layer(middleware::from_fn_with_state(state, check_permissions))
         .route_layer(Extension(RequiredPermissions {
             user_type: "admin",
             permissions: vec![Permission::AdministratorManagement],
-        }))
+        }));
+
+    Router::new()
+        .route("/verify", post(administrators::verify_admin))
+        .merge(protected)
 }

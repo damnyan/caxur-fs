@@ -12,8 +12,8 @@ pub struct CreateUserRequest {
     #[validate(email(message = "Invalid email format"))]
     #[schema(example = "john@example.com")]
     pub email: String,
-    #[validate(length(min = 6, message = "Password must be at least 6 characters"))]
-    #[schema(example = "password123", min_length = 6)]
+    #[validate(custom(function = "crate::shared::validation::validate_password_strength"))]
+    #[schema(example = "P@ssword12345", min_length = 12)]
     pub password: String,
 }
 
@@ -89,7 +89,7 @@ mod tests {
 
         let req = CreateUserRequest {
             email: "test@example.com".to_string(),
-            password: "password123".to_string(),
+            password: "P@ssword12345".to_string(),
         };
 
         let result = use_case.execute(req).await;
@@ -97,7 +97,7 @@ mod tests {
 
         let user = result.unwrap();
         assert_eq!(user.email, "test@example.com");
-        assert_eq!(user.password_hash, "password123_hashed");
+        assert_eq!(user.password_hash, "P@ssword12345_hashed");
 
         let saved = repo.find_by_email("test@example.com").await.unwrap();
         assert!(saved.is_some());
@@ -126,7 +126,7 @@ mod tests {
 
         let req = CreateUserRequest {
             email: "existing@example.com".to_string(),
-            password: "password123".to_string(),
+            password: "P@ssword12345".to_string(),
         };
 
         let result = use_case.execute(req).await;

@@ -4,7 +4,6 @@ import { useAuthStore } from '@/store/authStore';
 import { LayoutDashboard, Users, Shield, UserCircle, LogOut } from 'lucide-react';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { apiClient } from '@/lib/api';
-import axios from 'axios';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || 'Caxur-FS Admin';
 
@@ -14,10 +13,11 @@ export default function AdminLayout() {
 
   useEffect(() => {
     const healthUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1').replace('/api/v1', '/health');
-    axios.get(healthUrl)
-      .then((res) => {
-        if (res.data?.version) {
-          setApiVersion(res.data.version);
+    fetch(healthUrl)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.version) {
+          setApiVersion(data.version);
         }
       })
       .catch((err) => {

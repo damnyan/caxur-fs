@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PasswordInput } from '@/components/ui/password-input';
+import { PasswordStrength } from '@/components/ui/PasswordStrength';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { apiClient } from '@/lib/api';
@@ -12,7 +13,12 @@ import { toast } from 'sonner';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const setPasswordSchema = z.object({
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string()
+    .min(12, 'Password must be at least 12 characters')
+    .regex(/[a-z]/, 'Must contain at least one lowercase letter')
+    .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Must contain at least one digit')
+    .regex(/[^a-zA-Z0-9]/, 'Must contain at least one special character'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -25,6 +31,7 @@ export default function SetPasswordPage() {
   useDocumentTitle('Set Password');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
@@ -32,10 +39,14 @@ export default function SetPasswordPage() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<SetPasswordFormValues>({
     resolver: zodResolver(setPasswordSchema),
   });
+
+  const passwordValue = useWatch({ control, name: 'password', defaultValue: '' });
+  const passwordRegister = register('password');
 
   const onSubmit = async (data: SetPasswordFormValues) => {
     if (!token) {
@@ -103,8 +114,14 @@ export default function SetPasswordPage() {
             <Label htmlFor="password">New Password</Label>
             <PasswordInput
               id="password"
-              {...register('password')}
+              {...passwordRegister}
+              onFocus={() => setIsPasswordFocused(true)}
+              onBlur={(e) => {
+                passwordRegister.onBlur(e)
+                setIsPasswordFocused(false)
+              }}
             />
+            <PasswordStrength value={passwordValue} isFocused={isPasswordFocused} />
             {errors.password && (
               <p className="text-sm text-red-500">{errors.password.message}</p>
             )}

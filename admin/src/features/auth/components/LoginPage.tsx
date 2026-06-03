@@ -9,8 +9,7 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { apiClient } from '@/lib/api';
-import { AxiosError } from 'axios';
+import { apiClient, isApiError } from '@/lib/api';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const loginSchema = z.object({
@@ -110,7 +109,7 @@ export default function LoginPage() {
       login(user, accessToken, refreshToken);
       navigate('/');
     } catch (err) {
-      if (err instanceof AxiosError && err.response?.data?.errors?.[0]?.detail) {
+      if (isApiError(err) && err.response?.data?.errors?.[0]?.detail) {
         setError(err.response.data.errors[0].detail);
       } else {
         setError('An error occurred during login');

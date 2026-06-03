@@ -12,7 +12,7 @@ use validator::Validate;
 #[serde(rename_all = "camelCase")]
 pub struct VerifyAndSetPasswordRequest {
     pub token: String,
-    #[validate(length(min = 8))]
+    #[validate(custom(function = "crate::shared::validation::validate_password_strength"))]
     pub password: String,
 }
 

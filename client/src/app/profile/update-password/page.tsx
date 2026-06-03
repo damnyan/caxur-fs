@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { PasswordInput } from "@/components/ui/password-input"
+import { PasswordStrength } from "@/components/ui/password-strength"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -10,7 +11,7 @@ import { useAuthStore } from "@/lib/auth-store"
 import { config } from "@/lib/config"
 import { useState } from "react"
 import { toast } from "sonner"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { handleApiErrors } from "@/lib/utils/api-errors"
@@ -18,11 +19,19 @@ import { fetchApi } from "@/lib/api-client"
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string()
+    .min(12, "Password must be at least 12 characters")
+    .regex(/[a-z]/, "Must contain at least one lowercase letter")
+    .regex(/[A-Z]/, "Must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Must contain at least one digit")
+    .regex(/[^a-zA-Z0-9]/, "Must contain at least one special character"),
+  confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
+}).refine((data) => data.password !== data.currentPassword, {
+  message: "New password cannot be the same as the current password",
+  path: ["password"],
 })
 
 type PasswordValues = z.infer<typeof passwordSchema>
@@ -31,11 +40,13 @@ export default function UpdatePasswordPage() {
   const router = useRouter()
   const { token } = useAuthStore()
   const [isLoading, setIsLoading] = useState(false)
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false)
 
   const {
     register,
     handleSubmit,
     setError,
+    control,
     formState: { errors },
   } = useForm<PasswordValues>({
     resolver: zodResolver(passwordSchema),
@@ -45,6 +56,9 @@ export default function UpdatePasswordPage() {
       confirmPassword: "",
     },
   })
+
+  const passwordValue = useWatch({ control, name: "password", defaultValue: "" })
+  const passwordRegister = register("password")
 
   const onSubmit = async (values: PasswordValues) => {
     if (!token) {
@@ -107,7 +121,16 @@ export default function UpdatePasswordPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">New Password</Label>
-              <PasswordInput id="password" {...register("password")} />
+              <PasswordInput 
+                id="password" 
+                {...passwordRegister} 
+                onFocus={() => setIsPasswordFocused(true)}
+                onBlur={(e) => {
+                  passwordRegister.onBlur(e)
+                  setIsPasswordFocused(false)
+                }}
+              />
+              <PasswordStrength value={passwordValue} isFocused={isPasswordFocused} />
               {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
             </div>
             <div className="space-y-2">

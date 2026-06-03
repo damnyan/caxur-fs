@@ -13,16 +13,22 @@ import {
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { PasswordInput } from "@/components/ui/password-input"
+import { PasswordStrength } from "@/components/ui/password-strength"
 import { useState } from "react"
 import { config } from "@/lib/config"
 import { toast } from "sonner"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 
 const resetPasswordSchema = z.object({
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string()
+    .min(12, "Password must be at least 12 characters")
+    .regex(/[a-z]/, "Must contain at least one lowercase letter")
+    .regex(/[A-Z]/, "Must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Must contain at least one digit")
+    .regex(/[^a-zA-Z0-9]/, "Must contain at least one special character"),
+  confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
@@ -38,10 +44,12 @@ export function ResetPasswordForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false)
 
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<ResetPasswordValues>({
     resolver: zodResolver(resetPasswordSchema),
@@ -50,6 +58,9 @@ export function ResetPasswordForm() {
       confirmPassword: "",
     },
   })
+
+  const passwordValue = useWatch({ control, name: "password", defaultValue: "" })
+  const passwordRegister = register("password")
 
   const onSubmit = async (values: ResetPasswordValues) => {
     if (!token) {
@@ -143,8 +154,14 @@ export function ResetPasswordForm() {
             <PasswordInput 
               id="password" 
               className="bg-background/50 border-primary/10 focus-visible:ring-primary/30"
-              {...register("password")}
+              {...passwordRegister}
+              onFocus={() => setIsPasswordFocused(true)}
+              onBlur={(e) => {
+                passwordRegister.onBlur(e)
+                setIsPasswordFocused(false)
+              }}
             />
+            <PasswordStrength value={passwordValue} isFocused={isPasswordFocused} />
             {errors.password && (
               <p className="text-xs font-medium text-destructive mt-1">
                 {errors.password.message}

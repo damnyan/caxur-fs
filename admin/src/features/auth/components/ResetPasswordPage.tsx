@@ -1,18 +1,23 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PasswordInput } from '@/components/ui/password-input';
+import { PasswordStrength } from '@/components/ui/PasswordStrength';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { apiClient } from '@/lib/api';
-import { AxiosError } from 'axios';
+import { apiClient, isApiError } from '@/lib/api';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const resetPasswordSchema = z.object({
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string()
+    .min(12, 'Password must be at least 12 characters')
+    .regex(/[a-z]/, 'Must contain at least one lowercase letter')
+    .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Must contain at least one digit')
+    .regex(/[^a-zA-Z0-9]/, 'Must contain at least one special character'),
   confirmPassword: z.string()
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -26,6 +31,7 @@ export default function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
@@ -34,10 +40,14 @@ export default function ResetPasswordPage() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<ResetPasswordValues>({
     resolver: zodResolver(resetPasswordSchema),
   });
+
+  const passwordValue = useWatch({ control, name: 'password', defaultValue: '' });
+  const passwordRegister = register('password');
 
   const onSubmit = async (data: ResetPasswordValues) => {
     if (!token) {
@@ -55,7 +65,7 @@ export default function ResetPasswordPage() {
       setIsSuccess(true);
       setTimeout(() => navigate('/login'), 3000);
     } catch (err) {
-      if (err instanceof AxiosError && err.response?.data?.errors?.[0]?.detail) {
+      if (isApiError(err) && err.response?.data?.errors?.[0]?.detail) {
         setError(err.response.data.errors[0].detail);
       } else {
         setError('An error occurred. The token may be invalid or expired.');
@@ -122,8 +132,14 @@ export default function ResetPasswordPage() {
             <Label htmlFor="password">New Password</Label>
             <PasswordInput
               id="password"
-              {...register('password')}
+              {...passwordRegister}
+              onFocus={() => setIsPasswordFocused(true)}
+              onBlur={(e) => {
+                passwordRegister.onBlur(e)
+                setIsPasswordFocused(false)
+              }}
             />
+            <PasswordStrength value={passwordValue} isFocused={isPasswordFocused} />
             {errors.password && (
               <p className="text-sm text-red-500">{errors.password.message}</p>
             )}

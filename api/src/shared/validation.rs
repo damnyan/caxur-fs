@@ -88,6 +88,42 @@ pub fn flatten_validation_errors(e: validator::ValidationErrors) -> Vec<FieldErr
         .collect()
 }
 
+pub fn validate_password_strength(password: &str) -> Result<(), validator::ValidationError> {
+    if password.len() < 12 {
+        let mut err = validator::ValidationError::new("password_too_short");
+        err.message = Some("Password must be at least 12 characters long".into());
+        return Err(err);
+    }
+
+    let has_uppercase = password.chars().any(|c| c.is_uppercase());
+    let has_lowercase = password.chars().any(|c| c.is_lowercase());
+    let has_digit = password.chars().any(|c| c.is_numeric());
+    let has_special = password.chars().any(|c| !c.is_alphanumeric());
+
+    if !has_uppercase {
+        let mut err = validator::ValidationError::new("password_missing_uppercase");
+        err.message = Some("Password must contain at least one uppercase letter".into());
+        return Err(err);
+    }
+    if !has_lowercase {
+        let mut err = validator::ValidationError::new("password_missing_lowercase");
+        err.message = Some("Password must contain at least one lowercase letter".into());
+        return Err(err);
+    }
+    if !has_digit {
+        let mut err = validator::ValidationError::new("password_missing_digit");
+        err.message = Some("Password must contain at least one number".into());
+        return Err(err);
+    }
+    if !has_special {
+        let mut err = validator::ValidationError::new("password_missing_special");
+        err.message = Some("Password must contain at least one special character".into());
+        return Err(err);
+    }
+
+    Ok(())
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ValidatedJson<T>(pub T);
 
