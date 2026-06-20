@@ -33,9 +33,9 @@ fi
 # 3. SQLx CLI
 if ! command -v sqlx &> /dev/null; then
     echo "🗄️ SQLx CLI is not installed. Installing..."
-    cargo install sqlx-cli
+    cargo install sqlx-cli --no-default-features --features rustls,postgres
 else
-    echo "✅ SQLx CLI is already installed: $(sqlx --version)"
+    echo "✅ SQLx CLI is already installed: \$(sqlx --version)"
 fi
 
 # 4. Docker
