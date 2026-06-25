@@ -1,5 +1,5 @@
 ---
-name: Rust Axum API
+name: rust-axum-api
 description: Specialized skill for the Rust Axum API project, enforcing strict Clean Architecture layers, Domain-Driven Design, JSON:API compliance, and Axum/SQLx standards.
 ---
 
@@ -13,7 +13,15 @@ This skill governs development within the `api` project. It enforces strict adhe
 - **Domain-Driven Design (DDD)**: Maintain a rich domain model; avoid anemic models. Encapsulate business logic, use factory methods (e.g., `Claims::new_access_token(...)`), and enforce validity within the entity.
 - **KISS, DRY, YAGNI**: Keep implementation simple. Use dependency injection via constructors. Centralize common logic in the `shared` module. Implement only what is strictly necessary.
 
-## 2. Project Structure & Layers
+## 2. Workspace MCP Servers & Tools
+
+To ensure contract correctness and maximize development efficiency, you MUST leverage the following workspace-registered Model Context Protocol (MCP) servers:
+- **`caxur-api-docs`**: 
+  - Use `search_endpoints` or `get_endpoint_details` to inspect and cross-verify that Axum HTTP handlers, routers, and request/response DTO schemas exactly match the OpenAPI specification.
+- **`context7`**:
+  - Use `resolve-library-id` and `query-docs` to retrieve targeted, up-to-date documentation on Rust crates, including Axum, SQLx, Tower-HTTP, Tower-Governor, and Serde.
+
+## 3. Project Structure & Layers
 
 1. **Domain (`src/domain/`)**: Pure entities and repository interfaces (Traits). No external dependencies (NO `sqlx`, NO `axum`, NO `utoipa`). `serde`, `time`, `uuid` are allowed.
 2. **Application (`src/application/`)**: Business logic, use cases, and commands. Depends only on Domain.
@@ -25,7 +33,7 @@ This skill governs development within the `api` project. It enforces strict adhe
    - Do NOT use domain entities directly for API requests/responses.
 5. **Shared (`src/shared/`)**: Common utilities (like `AppError`, `ValidatedJson`) used across layers.
 
-## 3. Coding Standards & API Design
+## 4. Coding Standards & API Design
 
 - **Naming Conventions**:
   - Domain Entities: `User`, `Role` (No suffix)
@@ -34,7 +42,7 @@ This skill governs development within the `api` project. It enforces strict adhe
   - Repositories: `PostgresUserRepository` (Implementation), `UserRepository` (Trait)
 - **JSON:API Compliance (Strict)**: 
   - ALL responses (success and error) MUST strictly follow the JSON:API specification. Wrap success responses in `ApiResponse::new(data)`.
-  - **Relationships**: The AI MUST NEVER inject related entities into top-level `attributes`. Related data requested via `?include=` MUST be placed in the top-level `included` array. The main resource must reference these inclusions via a standard `relationships` object.
+  - **Relationships**: Related data requested via `?include=` MUST be placed in the top-level `included` array. The main resource must reference these inclusions via a standard `relationships` object. NEVER inject related entities into top-level `attributes`.
 - **Mandatory Pagination**: Every API endpoint returning a list of records from the database MUST be paginated strictly using the JSON:API standard parameters: `page[number]` and `page[size]`.
 - **Error Handling & Validation**:
   - Use `AppError` (from `shared/error.rs`) for all errors, mapping to appropriate HTTP status codes.
@@ -54,7 +62,7 @@ This skill governs development within the `api` project. It enforces strict adhe
   - The Footer MUST include a "Fallback Link" section (e.g., "If the button doesn't work, copy this link...").
   - The Application Name MUST NEVER be hardcoded; it MUST be configurable via the `APP_NAME` environment variable.
 
-## 4. Implementation Workflow
+## 5. Implementation Workflow
 
 When adding a new feature, follow this strict order:
 
@@ -65,24 +73,25 @@ When adding a new feature, follow this strict order:
 5. **Presentation**: Create Handler function, use `ValidatedJson`, call Use Case, return `ApiResponse`. Document all public API endpoints using `utoipa` macros.
 6. **Router**: Register the new handler.
 
-## 5. Technology Stack
+## 6. Helper & Verification Scripts
 
-- **Language**: Rust
-- **Web Framework**: Axum (with Tokio runtime)
-- **Database**: PostgreSQL with SQLx
-- **Documentation**: utoipa (OpenAPI)
-- **Validation**: validator
-- **Middlewares**: tower-http (CORS), tower-governor (Rate Limiting)
-
-## 6. Helper Scripts
-
-- **Verification**: Run `scripts/verify.sh` to check formatting, linting, and tests.
+- **Verification**: 
+  - To verify the API locally, run `scripts/verify.sh` inside the `api` directory (which checks formatting, linting, and tests).
+  - To verify the entire monorepo before committing, run `./scripts/verify-all.sh` from the workspace root.
 - **Setup**: Run `scripts/setup.sh` to ensure SQLx and the project environment are ready.
 
 ## 7. Testing
 
 - **Strict Unit Testing**: The AI MUST ALWAYS write unit tests for the core logic implemented. We exclusively use unit testing for this project. DO NOT write integration tests.
 
-## 8. AI Agent Guidelines
+## 8. Common Mistakes to Avoid
 
-- **Temporary Files**: If an AI agent creates a file for testing, debugging, or validation, it MUST delete that file after its usage is complete or after the task is done to prevent cluttering the repository.
+- **Writing Integration Tests**: Attempting to write integration tests (e.g., loading real database connections or starting HTTP listeners in Rust test blocks) instead of focused unit tests.
+- **Using Fully Qualified Names (FQN)**: Writing FQN imports like `crate::domain::User::new()` in the middle of functions instead of declaring a `use` statement at the top.
+- **Leaking DB Models**: Exposing infrastructure database models directly to handlers or presentation DTOs without mapping them to proper Domain entities first.
+- **Bypassing Rate Limiters**: Omitting rate limiting middleware configuration on new routes or placing health-checks inside a rate-limiting tier.
+- **Anemic Domain Entities**: Putting all core business validation and state transition logic into handlers or application use cases instead of encapsulating it within the domain entity.
+
+## 9. Temporary File & Lifecycle Policy
+
+- **Clean Repository Guarantee**: If you create a temporary file, diagnostic script, or mock file in this directory to test or validate your changes, **you MUST delete it immediately** after verification to prevent cluttering the repository.

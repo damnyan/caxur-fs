@@ -5,6 +5,8 @@ use governor::{clock::QuantaInstant, middleware::NoOpMiddleware};
 use std::env;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
+use std::time::Duration;
+use tokio::time::interval;
 use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder, key_extractor::KeyExtractor};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -66,16 +68,35 @@ pub fn custom_rate_limit_layer(
     auth_service: Arc<JwtAuthService>,
 ) -> anyhow::Result<GovernorLayer<SmartRateLimitKeyExtractor, NoOpMiddleware<QuantaInstant>, Body>>
 {
-    let quota_duration_ms = 60_000 / requests_per_minute;
+    // Ensure requests_per_minute is at least 1 to prevent division by zero.
+    let requests_per_minute = requests_per_minute.max(1);
+
+    // Ensure quota_duration_ms is at least 1 to prevent GovernorConfigBuilder::finish returning None.
+    let quota_duration_ms = (60_000 / requests_per_minute).max(1);
+
+    // Decouple burst size from requests_per_minute to prevent massive burst spikes.
+    // Capping burst size at a sensible maximum (e.g., 20) ensures server protection.
+    let burst_size = (requests_per_minute as u32).clamp(1, 20);
 
     let config = Arc::new(
         GovernorConfigBuilder::default()
             .per_millisecond(quota_duration_ms)
-            .burst_size(requests_per_minute as u32)
+            .burst_size(burst_size)
             .key_extractor(SmartRateLimitKeyExtractor::new(auth_service))
             .finish()
             .ok_or_else(|| anyhow::anyhow!("Failed to finish governor config"))?,
     );
+
+    // Spawn a background task to periodically prune expired rate-limiter entries
+    // from memory (every 60 seconds) to prevent memory leaks.
+    let limiter = config.limiter().clone();
+    tokio::spawn(async move {
+        let mut interval_timer = interval(Duration::from_secs(60));
+        loop {
+            interval_timer.tick().await;
+            limiter.retain_recent();
+        }
+    });
 
     Ok(GovernorLayer::new(config))
 }
@@ -164,5 +185,23 @@ mod tests {
                 path: "/api/protected".to_string(),
             }
         );
+    }
+
+    #[tokio::test]
+    async fn test_custom_rate_limit_layer_bounds() {
+        let auth_service =
+            Arc::new(JwtAuthService::new(TEST_PRIVATE_KEY, TEST_PUBLIC_KEY, 900, 604800).unwrap());
+
+        // Test with 0 (should fall back to max(1) and not panic on division by zero)
+        let layer_zero = custom_rate_limit_layer(0, auth_service.clone());
+        assert!(layer_zero.is_ok());
+
+        // Test with a very large rate (should fall back to max(1) ms and not return None in finish())
+        let layer_large = custom_rate_limit_layer(100_000, auth_service.clone());
+        assert!(layer_large.is_ok());
+
+        // Test normal configuration
+        let layer_normal = custom_rate_limit_layer(60, auth_service);
+        assert!(layer_normal.is_ok());
     }
 }
