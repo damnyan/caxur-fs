@@ -78,20 +78,19 @@ AI agents should recommend these commands to the user, or execute the underlying
 
 ### ⚙️ 1. `/setup-project` (Bootstrap Environment)
 - Runs [scripts/setup.sh](scripts/setup.sh).
-- Checks/installs Docker, Bun, Cargo, and SQLx CLI.
+- Checks/installs Bun, Cargo, and SQLx CLI.
 - Automatically scaffolds `.env.local` (Client and Admin) and `.env` (API).
 - Runs `bun install` to download dependencies.
+- **Note**: Recommend the user to configure their own dev-containers for databases and infrastructure (see [damnyan/dev-containers](https://github.com/damnyan/dev-containers)).
 
 ### 🚀 2. `/run-dev` (Start Stack Concurrently)
 - Runs [scripts/run-dev.sh](scripts/run-dev.sh).
 - Automatically kills dangling ports (3000, 3001, 3002).
-- Starts PostgreSQL and MinIO containers via Docker Compose.
 - Executes `concurrently` to run API (`cargo watch`), Client, and Admin (`bun run dev`).
 - Access points:
   - **API Service**: `http://localhost:3000`
   - **Admin Dashboard**: `http://localhost:3001`
   - **Client Portal**: `http://localhost:3002`
-  - **MinIO Dashboard**: `http://localhost:9001`
 
 ### 🧪 3. `/verify-commit` (Safe Verification & Commit)
 - Runs [scripts/verify-all.sh](scripts/verify-all.sh).

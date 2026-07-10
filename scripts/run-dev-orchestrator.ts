@@ -88,17 +88,7 @@ const cleanup = () => {
     } catch {}
   }
 
-  // Gracefully stop S3, DB and SMTP containers
-  console.log('🐳 Running docker compose down...');
-  const composeDown = spawn('docker compose down', {
-    cwd: path.resolve(SCRIPT_DIR, '../api'),
-    shell: true,
-    stdio: 'inherit'
-  });
-  
-  composeDown.on('exit', () => {
-    process.exit(0);
-  });
+  process.exit(0);
 };
 
 process.on('SIGINT', cleanup);

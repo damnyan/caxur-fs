@@ -12,7 +12,7 @@ This workflow automates bootstrapping the `caxur-fs` project stack on a new mach
 1. **Run Setup Script**:
    - Execute the workspace script located at `scripts/setup.sh`.
    - This script will:
-     - Check for required system dependencies (`bun`, `cargo`, `sqlx`, `docker`) and install them if missing.
+     - Check for required system dependencies (`bun`, `cargo`, `sqlx`) and install them if missing.
      - Automatically create `.env.local` for the `client` and `admin` portals using their respective `.env.example` templates.
      - Automatically create `.env` for the `api` service using its `.env.example` template.
      - Run `bun install` for both the `client` and `admin` directories.
@@ -24,3 +24,4 @@ This workflow automates bootstrapping the `caxur-fs` project stack on a new mach
 
 3. **Next Steps**:
    - Once setup completes, tell the user they can now run the `/run-dev` command to start development.
+   - Recommend the user to configure their own dev-containers for databases and infrastructure. Reference this repository: https://github.com/damnyan/dev-containers

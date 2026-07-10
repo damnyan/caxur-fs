@@ -38,19 +38,7 @@ else
     echo "✅ SQLx CLI is already installed: $(sqlx --version)"
 fi
 
-# 4. Docker
-if ! command -v docker &> /dev/null; then
-    echo "🐳 Docker is not installed."
-    if command -v brew &> /dev/null; then
-        echo "🍺 Installing Docker via Homebrew..."
-        brew install --cask docker
-    else
-        echo "⚠️  Homebrew not found. Please install Docker manually from https://docs.docker.com/get-docker/"
-        exit 1
-    fi
-else
-    echo "✅ Docker is already installed: $(docker --version)"
-fi
+
 
 echo "------------------------------------------------"
 echo "📄 Setting up Environment Files..."
