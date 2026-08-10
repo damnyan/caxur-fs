@@ -130,16 +130,16 @@ impl UpdateUserUseCase {
                 let filename = new_photo.strip_prefix("tmp/").unwrap();
                 let dest_key = format!("uploads/{}", filename);
 
-                // Move file from tmp/ to uploads/ in S3
+                // Move file from tmp/ to uploads/ in storage
                 self.storage_service
                     .move_object(new_photo, &dest_key)
                     .await
                     .map_err(|e| {
-                        tracing::error!("Failed to move face photo in S3: {}", e);
+                        tracing::error!("Failed to move face photo in storage: {}", e);
                         AppError::InternalServerError(e)
                     })?;
 
-                // Move old file to deleted/ in S3 if one exists in uploads/
+                // Move old file to deleted/ in storage if one exists in uploads/
                 if let Some(old_photo) = existing
                     .face_photo
                     .as_ref()

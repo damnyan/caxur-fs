@@ -17,16 +17,17 @@ impl Default for S3StorageService {
 
 impl S3StorageService {
     pub fn new() -> Self {
-        let bucket = std::env::var("AWS_S3_BUCKET").unwrap_or_else(|_| "caxur-uploads".to_string());
+        let bucket =
+            std::env::var("STORAGE_BUCKET").unwrap_or_else(|_| "caxur-uploads".to_string());
 
-        let endpoint = std::env::var("AWS_S3_ENDPOINT").ok();
+        let endpoint = std::env::var("STORAGE_ENDPOINT").ok();
         let region = aws_sdk_s3::config::Region::new(
-            std::env::var("AWS_S3_REGION").unwrap_or_else(|_| "us-east-1".to_string()),
+            std::env::var("STORAGE_REGION").unwrap_or_else(|_| "us-east-1".to_string()),
         );
 
         let credentials = aws_sdk_s3::config::Credentials::new(
-            std::env::var("AWS_ACCESS_KEY_ID").unwrap_or_else(|_| "minioadmin".to_string()),
-            std::env::var("AWS_SECRET_ACCESS_KEY").unwrap_or_else(|_| "minioadmin".to_string()),
+            std::env::var("STORAGE_ACCESS_KEY_ID").unwrap_or_else(|_| "minioadmin".to_string()),
+            std::env::var("STORAGE_SECRET_ACCESS_KEY").unwrap_or_else(|_| "minioadmin".to_string()),
             None,
             None,
             "Static",
@@ -83,7 +84,7 @@ impl StorageService for S3StorageService {
         }
         put.send()
             .await
-            .map_err(|e| anyhow::anyhow!("S3 upload error: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Storage upload error: {}", e))?;
         Ok(())
     }
 
@@ -97,7 +98,7 @@ impl StorageService for S3StorageService {
             .key(dest_key)
             .send()
             .await
-            .map_err(|e| anyhow::anyhow!("S3 copy error: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Storage copy error: {}", e))?;
 
         // 2. Delete source object
         self.client
@@ -106,7 +107,7 @@ impl StorageService for S3StorageService {
             .key(source_key)
             .send()
             .await
-            .map_err(|e| anyhow::anyhow!("S3 delete error: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Storage delete error: {}", e))?;
 
         Ok(())
     }

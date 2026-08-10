@@ -10,7 +10,7 @@
     "license": {
       "name": ""
     },
-    "version": "0.1.2"
+    "version": "0.2.0"
   },
   "paths": {
     "/api/v1/admin/administrators": {
@@ -1633,7 +1633,7 @@
         "tags": [
           "Client / Upload"
         ],
-        "summary": "Upload face photo handler\nAccepts a multipart form file, uploads to S3 /tmp directory, and returns presigned URL.",
+        "summary": "Upload face photo handler\nAccepts a multipart form file, uploads to temp storage, and returns presigned URL.",
         "operationId": "upload_file",
         "responses": {
           "201": {

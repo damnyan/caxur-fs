@@ -95,14 +95,15 @@ AI agents should recommend these commands to the user, or execute the underlying
 ### 🧪 3. `/verify-commit` (Safe Verification & Commit)
 - Runs [scripts/verify-all.sh](scripts/verify-all.sh).
 - Verifies Client builds, Admin builds, SQLx preparation, API type checks, and runs OpenAPI specs generation (`cargo test`).
+- Enforces **zero build warnings** and **zero compilation errors** across all services, requiring automatic fixes if warnings or errors arise.
 - Analyzes changes and prompts the user with an interactive selector to:
   1. Commit and push (with high-quality Conventional Commit message).
   2. Commit only.
   3. Regenerate commit message.
 
-### 📋 4. `/bhu` (Agent Task Creation & Planning)
+### 📋 4. `/bhu` (Agent Task Creation & Planning via AGY `/plan`)
 - Governed by [`.agents/workflows/bhu.md`](.agents/workflows/bhu.md).
-- Enforces rigorous requirement ingestion, custom Model Context Protocol (MCP) server mapping, workspace-specific skill alignment, and sub-agent workload decomposition prior to writing any production code.
+- Combines the standard AGY CLI `/plan` workflow (structured implementation plan artifacts, GitHub alerts, component diffs, verification plans) with `caxur-fs` guardrails (skill matching, MCP server mapping, sub-agent allocation, and zero-warning/error build verification).
 
 ---
 

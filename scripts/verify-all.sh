@@ -11,8 +11,8 @@ bun scripts/increment-versions.ts
 # 1. Client Verification
 echo "📦 Verification: Next.js Client..."
 cd client
-echo "   🧹 Running Linter..."
-bun run lint
+echo "   🧹 Running Linter (Zero Warnings Enforced)..."
+bun run lint --max-warnings 0
 echo "   📦 Building Production Bundle..."
 bun run build
 cd ..
@@ -21,8 +21,8 @@ echo "✅ Client verification successful."
 # 2. Admin Verification
 echo "📦 Verification: React Admin..."
 cd admin
-echo "   🧹 Running Linter..."
-bun run lint
+echo "   🧹 Running Linter (Zero Warnings Enforced)..."
+bun run lint -- --max-warnings 0
 echo "   📦 Building Production Bundle..."
 bun run build
 cd ..

@@ -1,56 +1,94 @@
 ---
 name: bhu
-description: "Create and plan tasks for AI agents, establishing strict architectural mappings, skill matching, and sub-agent allocation guidelines."
+description: "Create and plan tasks for AI agents using the AGY CLI /plan workflow, establishing strict architectural mappings, skill matching, sub-agent allocation guidelines, and zero-warning/error build verification."
 ---
 
 # 🤖 Agent Task Creation & Planning Workflow (bhu)
 
-This workflow defines the mandatory onboarding, decomposition, and planning process for any AI agent tasked with introducing features or refactoring codebase logic within the **`caxur-fs`** monorepo.
+This workflow defines the mandatory onboarding, decomposition, planning, and verification process for any AI agent tasked with introducing features, refactoring logic, or modifying code within the **`caxur-fs`** monorepo.
 
-All agents must follow this workflow to ensure that proposed changes adhere strictly to the repository's architectural guardrails, utilize existing skills, leverage workspace MCP servers, and structure sub-agent workloads efficiently.
+It combines the standard **Antigravity (AGY CLI) `/plan` workflow** with **`caxur-fs` architectural guardrails**, workspace skills, custom MCP tools, sub-agent allocation guidelines, and strict build verification.
 
 ---
 
-## 📋 Steps
+## 📋 Planning Phase Steps
 
 ### 1. Ingest & Research
 Before drafting any implementation steps, perform thorough discovery:
-- Use standard research tools (`grep_search`, `list_dir`, `view_file`) to understand the impacted directories.
-- Review target-specific guardrails in `.agents/rules/` (`rust-axum-api.md`, `nextjs-client.md`, `react-admin.md`).
+- Use standard research tools (`grep_search`, `list_dir`, `view_file`) to inspect impacted directories.
+- Review target-specific system rules in `.agents/rules/`:
+  - [`rust-axum-api.md`](file:///.agents/rules/rust-axum-api.md): Rules for the Rust Axum API backend.
+  - [`nextjs-client.md`](file:///.agents/rules/nextjs-client.md): Rules for the Next.js frontend client portal.
+  - [`react-admin.md`](file:///.agents/rules/react-admin.md): Rules for the Vite React admin dashboard.
 
-### 2. Generate the Implementation Plan
-The agent **MUST** create or update the `implementation_plan.md` artifact. This plan acts as the blueprint for the task and must include the following specific sections:
+### 2. Generate the Implementation Plan Artifact
+The agent **MUST** create or update an implementation plan artifact at `<Artifact Directory>/<plan_name>.md`.
 
-#### A. Planned Skills to be Used
-Explicitly list which of the workspace's `.agents/skills/` will be activated and followed:
-- [`rust-axum-api/SKILL.md`](file:///.agents/skills/rust-axum-api/SKILL.md): Activated for any backend API handler, model, repository, database migration, or JSON:API compliance work.
-- [`nextjs-client/SKILL.md`](file:///.agents/skills/nextjs-client/SKILL.md): Activated for any client portal layout, form handling, or React Server Component (RSC) work.
-- [`react-admin/SKILL.md`](file:///.agents/skills/react-admin/SKILL.md): Activated for administrative dashboard features, Zustand state management, or React Query integrations.
+The artifact metadata **MUST** set:
+- `user_facing: true`
+- `request_feedback: true`
 
-#### B. MCP Servers to be Used
-Map exact workspace Model Context Protocol (MCP) servers and tools to be utilized during execution to avoid guessing or manual duplication:
-- **`caxur-api-docs`**:
-  - Use `search_endpoints` and `get_endpoint_details` to verify Axum endpoint contracts.
-  - Use `generate_typescript_types` to produce clean, type-safe API helper functions and fetch interfaces.
-- **`context7`**:
-  - Use `resolve-library-id` and `query-docs` to retrieve up-to-date documentation on backend crates (e.g., SQLx, Axum, Tower) or frontend technologies (Tailwind CSS v4, Next.js, Shadcn).
+The implementation plan document **MUST** adhere to the official AGY CLI `/plan` schema:
 
-#### C. Sub-Agent Spawning Recommendation
-Evaluate the task scope and recommend the optimal number of sub-agents to spawn:
-- **Rule 1: Single-Service / Low Complexity**: Recommend `0` sub-agents. Work should be executed directly by the primary coordinator.
-- **Rule 2: Cross-Service / High Complexity (Full-Stack Features)**: Recommend `2` to `3` sub-agents.
-  - *Example*: Spawn `1` sub-agent isolated to `api/` (Rust API changes), `1` sub-agent isolated to `client/` (Next.js client view), and `1` sub-agent isolated to `admin/` (React admin view).
-  - *Rationale*: Isolating sub-agents to specific directories avoids context window pollution, prevents parallel merge conflicts, and ensures service-specific skills are applied cleanly.
+#### Required Implementation Plan Sections:
+
+1. **`## Goal Description`**:
+   - Provide a brief description of the problem, background context, and what the proposed changes accomplish.
+
+2. **`## User Review Required`**:
+   - Document any breaking changes, significant architectural decisions, or items requiring explicit user feedback.
+   - Use GitHub alert syntax (`> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]`) to highlight critical items.
+
+3. **`## Open Questions`**:
+   - List any clarifying technical or design questions for the user that impact execution.
+
+4. **`## Proposed Changes`**:
+   - Group proposed file modifications by monorepo component (`api`, `client`, `admin`, `.agents` / shared scripts) and order logically.
+   - Separate components with horizontal rules (`---`).
+   - For specific files, explicitly use action markers:
+     - `#### [MODIFY] file_basename`
+     - `#### [NEW] file_basename`
+     - `#### [DELETE] file_basename`
+   - Include clear code snippets, diffs, and architectural details.
+
+   - **Mandatory `caxur-fs` Integrations inside Proposed Changes**:
+     - **A. Workspace Skills Activation**: Explicitly specify which `.agents/skills/` will be activated:
+       - [`rust-axum-api/SKILL.md`](file:///.agents/skills/rust-axum-api/SKILL.md): Backend API handlers, models, repositories, migrations, JSON:API v1.1 compliance.
+       - [`nextjs-client/SKILL.md`](file:///.agents/skills/nextjs-client/SKILL.md): Next.js App Router, RSC boundaries, URL-synced search/filters, Zod forms.
+       - [`react-admin/SKILL.md`](file:///.agents/skills/react-admin/SKILL.md): Feature-based structure, Zustand global state, TanStack Query server state, URL search params sync.
+     - **B. Workspace MCP Servers**: Map tools to avoid manual type duplication or outdated docs:
+       - **`caxur-api-docs`**: Run `search_endpoints` -> `get_endpoint_details` -> `generate_typescript_types` to integrate endpoints programmatically.
+       - **`context7`**: Run `resolve-library-id` -> `query-docs` for up-to-date documentation on Rust crates or React/Next/Tailwind libraries.
+     - **C. Sub-Agent Allocation Strategy**:
+       - *Single-Service / Low Complexity*: Recommend `0` sub-agents. Primary agent handles execution directly.
+       - *Cross-Service / High Complexity (Full-Stack)*: Recommend `2` to `3` sub-agents isolated by service directory (`api/`, `client/`, `admin/`) to avoid context window pollution and parallel merge conflicts.
+
+5. **`## Verification Plan`**:
+   - **Automated Tests**: Specify exact commands (`bash scripts/verify-all.sh`, unit tests, type-checks).
+   - **Manual Verification**: Detailed steps for manual testing.
+
+---
 
 ### 3. Obtain User Approval
-- Set `request_feedback = true` in the plan's metadata.
-- **STOP** execution immediately and wait for the user's explicit approval. DO NOT perform any write operations or run modifying commands until approved.
+- **STOP** execution immediately after creating the implementation plan artifact.
+- Do NOT make code changes or run modifying commands until the user explicitly approves the plan artifact.
 
-### 4. Granular Checklist Execution (`task.md`)
-- Create a `task.md` checklist detailing the precise, atomic tasks.
-- Keep `task.md` up-to-date, marking in-progress tasks with `[/]` and completed tasks with `[x]`.
+---
 
-### 5. Verification & Clean-up
-- Run `scripts/verify-all.sh` to ensure all type-checks, tests, and specs build successfully.
-- **Delete all temporary or diagnostic files immediately** after validation to comply with the repo's Clean Repository Guarantee.
-- Create a `walkthrough.md` to present verified changes to the user.
+## 🚀 Execution & Verification Phase Steps
+
+### 4. Checklist Tracking (`task.md`)
+- Create `<Artifact Directory>/task.md` checklist detailing atomic tasks.
+- Keep `task.md` updated during execution: mark in-progress tasks with `[/]` and completed tasks with `[x]`.
+
+### 5. Build Verification & Automatic Warning/Error Fixes
+- Run `bash scripts/verify-all.sh` to execute full monorepo verification:
+  - Client linting (`--max-warnings 0`) & production build (`bun run build`).
+  - Admin linting (`--max-warnings 0`) & production build (`bun run build`).
+  - API formatting (`cargo fmt --check`), SQLx prepare (`cargo sqlx prepare`), Clippy lints (`cargo clippy -D warnings`), and unit tests (`cargo test --lib`).
+- **CRITICAL**: The build MUST pass with **zero warnings** and **zero errors**.
+- If any build warnings, compilation errors, lint errors, or type errors arise, the agent **MUST automatically inspect the logs and fix all warnings and errors** before declaring victory.
+
+### 6. Clean-up & Walkthrough (`walkthrough.md`)
+- Delete all temporary diagnostic files, scripts, or mockups created during execution to satisfy the Clean Repository Guarantee.
+- Create `<Artifact Directory>/walkthrough.md` summarizing changes made, test results, and visual/code evidence.

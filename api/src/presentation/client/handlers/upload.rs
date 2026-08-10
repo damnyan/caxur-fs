@@ -17,7 +17,7 @@ pub struct UploadedFileResource {
 }
 
 /// Upload face photo handler
-/// Accepts a multipart form file, uploads to S3 /tmp directory, and returns presigned URL.
+/// Accepts a multipart form file, uploads to temp storage, and returns presigned URL.
 #[utoipa::path(
     post,
     path = "/api/v1/upload",
@@ -98,24 +98,24 @@ pub async fn upload_file(
         ]));
     }
 
-    // Generate a unique S3 key in the temp folder
+    // Generate a unique storage key in the temp folder
     let uuid = Uuid::new_v4();
-    let s3_key = format!("tmp/{}.{}", uuid, ext);
+    let storage_key = format!("tmp/{}.{}", uuid, ext);
 
-    // Upload to S3
+    // Upload to storage
     state
         .storage_service
-        .upload(&s3_key, file_bytes, content_type.as_deref())
+        .upload(&storage_key, file_bytes, content_type.as_deref())
         .await
         .map_err(|e| {
-            tracing::error!("Failed to upload face photo to S3: {}", e);
+            tracing::error!("Failed to upload face photo to storage: {}", e);
             AppError::InternalServerError(e)
         })?;
 
     // Generate immediate presigned URL for frontend preview
     let presigned_url = state
         .storage_service
-        .get_presigned_url(&s3_key, 3600)
+        .get_presigned_url(&storage_key, 3600)
         .await
         .map_err(|e| {
             tracing::error!("Failed to generate presigned URL for upload: {}", e);
@@ -123,7 +123,7 @@ pub async fn upload_file(
         })?;
 
     let data = UploadedFileResource {
-        face_photo: s3_key,
+        face_photo: storage_key,
         face_photo_url: presigned_url,
     };
 
