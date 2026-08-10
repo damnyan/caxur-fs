@@ -45,6 +45,14 @@ To ensure contract correctness and maximize development efficiency, you MUST lev
   - ALL responses (success and error) MUST strictly follow the JSON:API specification. Wrap success responses in `ApiResponse::new(data)`.
   - **Relationships**: Related data requested via `?include=` MUST be placed in the top-level `included` array. The main resource must reference these inclusions via a standard `relationships` object. NEVER inject related entities into top-level `attributes`.
 - **Mandatory Pagination**: Every API endpoint returning a list of records from the database MUST be paginated strictly using the JSON:API standard parameters: `page[number]` and `page[size]`.
+- **Aggregations & Analytics Endpoints (Strict)**:
+  - NEVER reuse general resource listing endpoints (`GET /users`, `GET /orders`) to compute summary statistics, counts, or metrics.
+  - ALWAYS create dedicated aggregation endpoints following the Dual-Pattern REST standard:
+    - **Resource-Specific**: `GET /api/{resources}/statistics` (e.g., `GET /users/statistics`)
+    - **Cross-Domain / Global Dashboards**: `GET /api/analytics/{domain}` (e.g., `GET /analytics/dashboard`)
+  - Execute SQL aggregate queries (`COUNT(*)`, `SUM()`, `AVG()`, `GROUP BY`) directly at the database layer via SQLx. NEVER load raw entity tables into Rust memory to iterate or calculate stats.
+- **Mandatory Date Range Filtering**:
+  - Any API query or resource that contains timestamp/date fields MUST accept date range filtering parameters (`from` and `to` in ISO 8601 UTC format, e.g. `?from=2026-01-01T00:00:00Z&to=2026-08-10T23:59:59Z`). Optional preset parameter `period=7d|30d|90d|12m` may be supported as a shortcut.
 - **Error Handling & Validation**:
   - Use `AppError` (from `shared/error.rs`) for all errors, mapping to appropriate HTTP status codes.
   - Use `validator` crate and `ValidatedJson` extractor from `shared` to automatically validate requests.
@@ -92,6 +100,8 @@ When adding a new feature, follow this strict order:
 - **Leaking DB Models**: Exposing infrastructure database models directly to handlers or presentation DTOs without mapping them to proper Domain entities first.
 - **Bypassing Rate Limiters**: Omitting rate limiting middleware configuration on new routes or placing health-checks inside a rate-limiting tier.
 - **Anemic Domain Entities**: Putting all core business validation and state transition logic into handlers or application use cases instead of encapsulating it within the domain entity.
+- **Reusing Listing Endpoints for Analytics**: Fetching or returning paged entity listings when the client requested summary statistics or dashboard KPIs.
+- **Omitting Date Range Filters**: Failing to implement `from` and `to` date range query parameters on resource endpoints that include timestamp columns.
 
 ## 9. Temporary File & Lifecycle Policy
 

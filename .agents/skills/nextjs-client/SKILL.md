@@ -50,52 +50,62 @@ src/
 ## 5. State Management & URL Syncing
 
 - **React Context + Server State**: Rely on Next.js Server State and URL parameters for the vast majority of state. For purely global UI state (like Theme), use React Context. Do not introduce Zustand, Redux, or other global state managers.
-- **URL State Management (Strict)**: For all data tables, lists, and paginated views, you MUST synchronize state (filters, search inputs, active tabs, and pagination) directly to the URL parameters (e.g., `?page=1&search=term` via `useSearchParams` or Next.js searchParams). Do not use isolated local state (`useState`) for these features. This ensures that refreshing the page, navigating back, or sharing the link preserves the exact user view. Debounce text inputs before pushing to the URL to prevent excessive re-renders or API calls.
+- **URL State Management (Strict)**: For all data tables, lists, paginated views, and analytics dashboards, you MUST synchronize state (filters, search inputs, active tabs, date range pickers `?from=...&to=...`, and pagination) directly to the URL parameters (e.g., `?page=1&search=term&from=2026-01-01T00:00:00Z&to=2026-08-10T23:59:59Z` via `useSearchParams` or Next.js searchParams). Do not use isolated local state (`useState`) for these features. This ensures that refreshing the page, navigating back, or sharing the link preserves the exact user view. Debounce text inputs before pushing to the URL to prevent excessive re-renders or API calls.
 - **Internationalization (i18n)**: Hardcode all strings in English. Do not introduce `next-intl` or other i18n libraries (adhering to the YAGNI principle) unless explicitly required by a new feature request.
 
-## 6. Tailwind CSS v4 Standards
+## 6. Analytics, Dashboards & Interactive Chart Standards
+
+- **Dedicated Aggregation Fetching**: Fetch dashboard summary stats, KPIs, and metrics directly from dedicated backend statistics endpoints (`GET /api/{resources}/statistics` or `GET /api/analytics/{domain}`). NEVER over-fetch listing endpoints (`?page[size]=1000`) or iterate pagination to aggregate values client-side.
+- **Mandatory Date Range Filters**: Any list page or analytics dashboard displaying timestamp-based resources MUST incorporate Date Range Picker controls synced directly to URL search parameters (`?from=...&to=...`).
+- **High-End Graph Aesthetics**: All dashboard charts MUST present modern, aesthetically pleasing visuals (e.g. Recharts or Shadcn Charts with tailored color tokens, dark mode compatibility, smooth gradients, responsive containers, and rich hover tooltips).
+- **Interactive Chart Type Toggling**: Charts MUST feature interactive controls (e.g., segmented tabs or dropdown toggles) allowing users to switch dynamically between compatible visualization styles (e.g., Line Chart, Bar Chart, Area Chart, Donut/Pie Chart).
+
+## 7. Tailwind CSS v4 Standards
 
 - **Utility First**: Use Tailwind utility classes directly in the `className`. Avoid inline `style={{}}` attributes.
 - **Vite/PostCSS Plugin**: The project uses `@tailwindcss/postcss` for Tailwind v4. Rely on CSS variables in `app/globals.css` (or `index.css`) for theme extensions.
 - **Merge Classes**: When building reusable components that accept `className` props, use `cn` (from `clsx` and `tailwind-merge`) to merge classes dynamically without conflicts.
 - **Dark Mode**: Support both Light and Dark modes. Use the `dark:` variant extensively for text, backgrounds, and borders.
 
-## 7. Shadcn UI Standards
+## 8. Shadcn UI Standards
 
 - **Usage**: Prioritize using Shadcn components over building custom UI primitives from scratch.
 - **Customization**: Customize the Shadcn component within `src/components/ui` or compose them together. Do not edit Shadcn primitives unless necessary.
 - **Client Components**: Remember that many interactive Shadcn components require `'use client'`. Ensure they are imported and used correctly within server or client components.
 - **Password Inputs**: All password fields must have a "peek password" (show/hide) toggle. Use a dedicated `PasswordInput` component wrapping the standard `Input`.
 
-## 8. TypeScript & Code Quality
+## 9. TypeScript & Code Quality
 
 - **Strict Typing**: Avoid `any`. Define comprehensive `interface` or `type` definitions for component props and API responses.
 - **Linting**: Address all ESLint and TypeScript compilation warnings (`tsc`). 
 - **Imports**: Prefer absolute imports using the configured `@/` alias.
 
-## 9. Formatting Standards
+## 10. Formatting Standards
 
 - **Dates and Times**: Always display dates and datetimes in a standard, human-readable format across the application. Do not use raw ISO strings or default `.toString()`. If the backend response includes a time component (e.g., `createdAt`, `updatedAt`), you MUST use `formatDateTime` (e.g. Oct 24, 2026, 3:30 PM) to ensure the time is visible. Use `formatDate` (e.g. Oct 24, 2026) ONLY for strict date-only values (e.g. birth dates). These utility functions are provided in `src/lib/utils.ts`.
 
-## 10. Notifications
+## 11. Notifications
 
 - **Toast Notifications**: Use `sonner` for all user-facing success, error, and informational messages. Standardize on `toast.success("Message")` and `toast.error("Message")` for immediate feedback following API mutations or critical client-side actions. Do not use standard `console.log` or generic browser `alert` boxes for user feedback.
 - **No Native Alerts**: Do not use `window.alert` or `window.confirm`. Use standardized UI components (e.g., Shadcn Dialog, Alert Dialog, or Sonner Toasts) for all notifications and confirmations.
 
-## 11. Helper & Verification Scripts
+## 12. Helper & Verification Scripts
 
 - **Verification**: 
   - To verify the client project locally, run `scripts/verify.sh` inside the `client` directory.
   - To verify the entire monorepo before committing, run `./scripts/verify-all.sh` from the workspace root.
 - **Setup**: Run `scripts/setup.sh` when initializing or restoring the project dependencies.
 
-## 12. Common Mistakes to Avoid
+## 13. Common Mistakes to Avoid
 
-- **Bypassing URL Synchronization**: Using local `useState` hooks for search filters, sorting, active tabs, or table pagination, which prevents page refreshing or link sharing from retaining user state.
+- **Bypassing URL Synchronization**: Using local `useState` hooks for search filters, sorting, active tabs, date range pickers, or table pagination, which prevents page refreshing or link sharing from retaining user state.
+- **Over-fetching Listing Endpoints for Analytics**: Fetching raw listing endpoints to compute totals or statistics on the client instead of querying dedicated backend analytics routes.
+- **Missing Date Range Filters**: Omitting date range pickers on list views or analytics dashboards handling date-based entities.
+- **Static & Monochrome Charts**: Rendering fixed, non-toggleable, or unstyled charts without dynamic chart type switching (Line, Bar, Area, Donut, Pie).
 - **Hand-writing API Contracts**: Manually writing TypeScript interfaces and fetch URLs instead of generating them programmatically using the `caxur-api-docs` MCP tools.
 - **Hardcoding Date/Time Parsers**: Displaying unformatted ISO strings or forgetting to show times via `formatDateTime` for database timestamp columns.
 - **Using Native Alerts**: Calling `window.alert` or `window.confirm` instead of using the custom Shadcn Dialogs or Sonner Toasts.
 
-## 13. Temporary File & Lifecycle Policy
+## 14. Temporary File & Lifecycle Policy
 
 - **Clean Repository Guarantee**: If you create a temporary file, diagnostic script, or mock file in this directory to test or validate your changes, **you MUST delete it immediately** after verification to prevent cluttering the repository.

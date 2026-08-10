@@ -119,6 +119,11 @@ Before modifying code, the agent MUST review the strict boundaries defined for e
   - Success responses must be wrapped in `ApiResponse`.
   - Relations requested via `?include=` MUST be placed in the top-level `included` array. Never inject relationships into primary `attributes`.
   - Pagination is mandatory on all list queries using `page[number]` and `page[size]`.
+* **Aggregations & Analytics**: Never reuse general resource listing endpoints for statistics or totals. Always create dedicated aggregation endpoints following the Dual-Pattern REST convention:
+  - **Resource-Specific**: `GET /api/{resources}/statistics` (e.g., `GET /users/statistics`)
+  - **Cross-Domain Dashboards**: `GET /api/analytics/{domain}` (e.g., `GET /analytics/dashboard`)
+  Execute SQL aggregations (`COUNT`, `SUM`, `AVG`, `GROUP BY`) directly at the database layer via SQLx. Never fetch raw entity rows into application memory to compute summary stats.
+* **Date Range Filters**: Any resource containing date/timestamp fields MUST support date range filtering parameters (`from` and `to` in ISO 8601 UTC with optional preset `period=7d|30d|90d|12m`) at the API layer.
 * **Validation**: Wrap parameters in `ValidatedJson` extractor. Validation errors must trigger a `422 Unprocessable Entity` containing a JSON:API compliant error mapping the exact path with `source.pointer`.
 * **Rate Limiting**: Apply corresponding middleware per endpoint:
   - **Auth/Strict**: `auth_rate_limit_layer` (default: 10/min).
@@ -128,7 +133,8 @@ Before modifying code, the agent MUST review the strict boundaries defined for e
 
 ### 🖥️ 2. Next.js Client Portal (`client/`)
 * **Server-First Approach**: Default to React Server Components (RSC). Keep `'use client'` boundaries as low and small as possible.
-* **URL Syncing**: **All** filters, paginated tables, search boxes, and active tabs MUST bind state directly to search parameters in the URL (`?page=1&search=term`). Do not store search/filter state in isolated local hooks. Debounce text inputs before pushing.
+* **URL Syncing**: **All** filters, paginated tables, search boxes, active tabs, and date range pickers MUST bind state directly to search parameters in the URL (`?page=1&search=term&from=...&to=...`). Do not store search/filter/date state in isolated local hooks. Debounce text inputs before pushing.
+* **Analytics & Graphs**: Dashboards and analytics views MUST consume dedicated backend aggregation endpoints. Any page listing date-based resources MUST include date range picker controls. All graphs MUST be visually stunning, responsive, and provide interactive controls to toggle between compatible chart types (Line, Bar, Area, Donut, Pie).
 * **Forms**: Always validate fields using React Hook Form combined with Zod schemas. Explicitly mark optional field labels with `(optional)`.
 * **Notifications**: Standardize notifications using `sonner` (`toast.success` / `toast.error`). No native `window.alert` or `window.confirm`.
 * **Dates & Times**: Always format dates using the shared `formatDateTime` utility to ensure time visibility.
@@ -136,7 +142,8 @@ Before modifying code, the agent MUST review the strict boundaries defined for e
 ### 👔 3. React Admin Portal (`admin/`)
 * **Feature-Based Structure**: Organize files logically under features (e.g., `features/users/components/`).
 * **State Boundaries**: Zustand is strictly reserved for *global client state* (sessions, layout toggles, theme). Use React Query (TanStack Query) exclusively for *server state* (data fetching, mutations, and caching).
-* **Forms & Tables**: Strictly sync table pagination/filters to the URL via `useSearchParams`. Use Zod for form contracts.
+* **Forms & Tables**: Strictly sync table pagination, filters, and date range pickers to the URL via `useSearchParams`. Use Zod for form contracts.
+* **Analytics & Graphs**: Fetch dedicated analytics DTOs from statistics endpoints using TanStack Query. Render high-end aesthetic dashboard charts with dynamic chart type switching (Line, Bar, Area, Donut, Pie).
 * **Notifications**: Use `sonner` toasts and Shadcn Dialogs / Alert Dialogs. No native UI confirmations.
 
 ---
