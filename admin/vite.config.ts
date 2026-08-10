@@ -5,7 +5,7 @@ import path from 'path'
 import fs from 'fs'
 
 // Load package.json details
-const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, './package.json'), 'utf-8'));
+const pkg = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, './package.json'), 'utf-8'));
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        "@": path.resolve(__dirname, "./src"),
+        "@": path.resolve(import.meta.dirname, "./src"),
       },
     },
     server: {

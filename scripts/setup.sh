@@ -70,27 +70,31 @@ if [ ! -f "api/.env" ]; then
         echo "📝 Creating api/.env from example..."
         cp api/.env.example api/.env
         
-        echo "🔑 Generating JWT keys..."
-        # Generate private key (EC prime256v1 is the P-256 curve)
-        PRIVATE_KEY_SEC1=$(openssl ecparam -name prime256v1 -genkey -noout)
-        # Convert to PKCS#8 format required by jsonwebtoken crate
-        PRIVATE_KEY=$(echo "$PRIVATE_KEY_SEC1" | openssl pkcs8 -topk8 -nocrypt)
-        # Extract public key from private key
-        PUBLIC_KEY=$(echo "$PRIVATE_KEY_SEC1" | openssl ec -pubout 2>/dev/null)
-        
-        # Format keys for .env (replace newlines with literal \n)
-        PRIVATE_KEY_VALUE=$(echo "$PRIVATE_KEY" | awk '{printf "%s\\\\n", $0}')
-        PUBLIC_KEY_VALUE=$(echo "$PUBLIC_KEY" | awk '{printf "%s\\\\n", $0}')
-        
-        # Replace the placeholders in api/.env using sed
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s|JWT_PRIVATE_KEY=\".*\"|JWT_PRIVATE_KEY=\"$PRIVATE_KEY_VALUE\"|" api/.env
-            sed -i '' "s|JWT_PUBLIC_KEY=\".*\"|JWT_PUBLIC_KEY=\"$PUBLIC_KEY_VALUE\"|" api/.env
+        if command -v openssl &> /dev/null; then
+            echo "🔑 Generating JWT keys..."
+            # Generate private key (EC prime256v1 is the P-256 curve)
+            PRIVATE_KEY_SEC1=$(openssl ecparam -name prime256v1 -genkey -noout)
+            # Convert to PKCS#8 format required by jsonwebtoken crate
+            PRIVATE_KEY=$(echo "$PRIVATE_KEY_SEC1" | openssl pkcs8 -topk8 -nocrypt)
+            # Extract public key from private key
+            PUBLIC_KEY=$(echo "$PRIVATE_KEY_SEC1" | openssl ec -pubout 2>/dev/null)
+            
+            # Format keys for .env (replace newlines with literal \n)
+            PRIVATE_KEY_VALUE=$(echo "$PRIVATE_KEY" | awk '{printf "%s\\\\n", $0}')
+            PUBLIC_KEY_VALUE=$(echo "$PUBLIC_KEY" | awk '{printf "%s\\\\n", $0}')
+            
+            # Replace the placeholders in api/.env using sed
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                sed -i '' "s|JWT_PRIVATE_KEY=\".*\"|JWT_PRIVATE_KEY=\"$PRIVATE_KEY_VALUE\"|" api/.env
+                sed -i '' "s|JWT_PUBLIC_KEY=\".*\"|JWT_PUBLIC_KEY=\"$PUBLIC_KEY_VALUE\"|" api/.env
+            else
+                sed -i "s|JWT_PRIVATE_KEY=\".*\"|JWT_PRIVATE_KEY=\"$PRIVATE_KEY_VALUE\"|" api/.env
+                sed -i "s|JWT_PUBLIC_KEY=\".*\"|JWT_PUBLIC_KEY=\"$PUBLIC_KEY_VALUE\"|" api/.env
+            fi
+            echo "✅ JWT keys generated and added to api/.env"
         else
-            sed -i "s|JWT_PRIVATE_KEY=\".*\"|JWT_PRIVATE_KEY=\"$PRIVATE_KEY_VALUE\"|" api/.env
-            sed -i "s|JWT_PUBLIC_KEY=\".*\"|JWT_PUBLIC_KEY=\"$PUBLIC_KEY_VALUE\"|" api/.env
+            echo "⚠️ OpenSSL is not installed. Please generate JWT keys manually."
         fi
-        echo "✅ JWT keys generated and added to api/.env"
     fi
 else
     echo "✅ api/.env already exists. Skipping..."
@@ -101,13 +105,9 @@ echo "📦 Installing Dependencies..."
 echo "------------------------------------------------"
 
 echo "Installing Client dependencies..."
-cd client
-bun install
-cd ..
+(cd client && bun install)
 
 echo "Installing Admin dependencies..."
-cd admin
-bun install
-cd ..
+(cd admin && bun install)
 
 echo "🎉 Setup complete! You can now run the development environment using './scripts/run-dev.sh'"

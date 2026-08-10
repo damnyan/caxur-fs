@@ -90,7 +90,7 @@ Use the established stack for data and state. **Do not introduce alternative lib
 
 ## 11. Helper & Verification Scripts
 - **Verification**: 
-  - To verify the admin dashboard locally, run `scripts/verify.sh` inside the `admin` directory.
+  - To verify the admin dashboard locally, run `bun run lint && bun run build` inside the `admin` directory.
   - To verify the entire monorepo before committing, run `./scripts/verify-all.sh` from the workspace root.
 
 ## 12. Common Mistakes to Avoid

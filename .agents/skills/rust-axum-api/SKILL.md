@@ -84,7 +84,7 @@ When adding a new feature, follow this strict order:
 ## 6. Helper & Verification Scripts
 
 - **Verification**: 
-  - To verify the API locally, run `scripts/verify.sh` inside the `api` directory (which checks formatting, linting, and tests).
+  - To verify the API locally, run `cargo fmt --all -- --check && cargo clippy --all-targets -- -D warnings && cargo test --lib` inside the `api` directory.
   - To verify the entire monorepo before committing, run `./scripts/verify-all.sh` from the workspace root.
 - **Setup**: Run `scripts/setup.sh` to ensure SQLx and the project environment are ready.
 

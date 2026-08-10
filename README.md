@@ -130,6 +130,8 @@ caxur-fs/
 │   ├── run-dev.sh        # Runs local environment services concurrently
 │   ├── verify-all.sh     # Validates compilation, typings, and tests
 │   ├── generate_keys.sh  # Bootstraps cryptographic keys (JWT tokens, etc.)
+│   ├── increment-versions.ts  # Auto-analyzes git diffs to bump semver versions
+│   ├── run-dev-orchestrator.ts # Multicolored process manager & sticky URL bar
 │   └── mcp-api-docs.ts   # Script backing the local OpenAPI parsing tool
 ├── AGENTS.md             # Standard onboard guide for LLMs & AI engines
 └── README.md             # This file

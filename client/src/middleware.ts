@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const token = request.cookies.get('accessToken')?.value
 
   const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard') || 
@@ -13,7 +13,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Optional: Redirect authenticated users away from login/register
+  // Redirect authenticated users away from auth pages
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login') || 
                       request.nextUrl.pathname.startsWith('/register')
 

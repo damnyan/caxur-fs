@@ -87,11 +87,12 @@ src/
 
 ## 11. Helper & Verification Scripts
 - **Verification**: 
-  - To verify the client project locally, run `scripts/verify.sh` inside the `client` directory.
+  - To verify the client project locally, run `bun run lint && bun run build` inside the `client` directory.
   - To verify the entire monorepo before committing, run `./scripts/verify-all.sh` from the workspace root.
 
 ## 12. Common Mistakes to Avoid
 
+- **Forgetting Async `searchParams` in Next.js 15+**: Accessing `searchParams` or `params` as synchronous props in page components (`app/**/page.tsx`) without `await searchParams`.
 - **Bypassing URL Synchronization**: Using local `useState` hooks for search filters, sorting, active tabs, date range pickers, or table pagination, which prevents page refreshing or link sharing from retaining user state.
 - **Over-fetching Listing Endpoints for Analytics**: Fetching raw listing endpoints to compute totals or statistics on the client instead of querying dedicated backend analytics routes.
 - **Missing Date Range Filters**: Omitting date range pickers on list views or analytics dashboards handling date-based entities.
