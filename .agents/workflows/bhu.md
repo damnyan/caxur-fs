@@ -81,13 +81,18 @@ The implementation plan document **MUST** adhere to the official AGY CLI `/plan`
 - Create `<Artifact Directory>/task.md` checklist detailing atomic tasks.
 - Keep `task.md` updated during execution: mark in-progress tasks with `[/]` and completed tasks with `[x]`.
 
-### 5. Build Verification & Automatic Warning/Error Fixes
+### 5. Build Verification & Iterative Auto-Fix Loop
 - Run `bash scripts/verify-all.sh` to execute full monorepo verification:
   - Client linting (`--max-warnings 0`) & production build (`bun run build`).
   - Admin linting (`--max-warnings 0`) & production build (`bun run build`).
   - API formatting (`cargo fmt --check`), SQLx prepare (`cargo sqlx prepare`), Clippy lints (`cargo clippy -D warnings`), and unit tests (`cargo test --lib`).
 - **CRITICAL**: The build MUST pass with **zero warnings** and **zero errors**.
-- If any build warnings, compilation errors, lint errors, or type errors arise, the agent **MUST automatically inspect the logs and fix all warnings and errors** before declaring victory.
+- **Autonomous Fix Loop (Max 5 iterations)**:
+  - If any build warnings, compilation errors, lint errors, or type errors arise, the agent **MUST automatically inspect the logs, apply targeted fixes, and re-verify** (using `bash scripts/verify-all.sh --skip-bump`).
+  - If errors persist beyond 5 attempts, halt the loop and present a detailed diagnostic report to the user.
+- **Dependency Upgrade Protocol**:
+  - If a fix requires upgrading or adding a dependency, research compatibility and breaking changes first using `context7` MCP, release notes, and changelogs.
+  - Present a structured **Pros & Cons** report to the developer and obtain confirmation before modifying dependency manifests (`package.json` / `Cargo.toml`).
 
 ### 6. Clean-up & Walkthrough (`walkthrough.md`)
 - Delete all temporary diagnostic files, scripts, or mockups created during execution to satisfy the Clean Repository Guarantee.

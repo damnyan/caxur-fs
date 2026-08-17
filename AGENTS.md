@@ -93,9 +93,14 @@ AI agents should recommend these commands to the user, or execute the underlying
   - **Client Portal**: `http://localhost:3002`
 
 ### 🧪 3. `/verify-commit` (Safe Verification & Commit)
-- Runs [scripts/verify-all.sh](scripts/verify-all.sh).
-- Verifies Client builds, Admin builds, SQLx preparation, API type checks, and runs OpenAPI specs generation (`cargo test`).
-- Enforces **zero build warnings** and **zero compilation errors** across all services, requiring automatic fixes if warnings or errors arise.
+- Governed by [`.agents/workflows/verify-commit.md`](.agents/workflows/verify-commit.md).
+- Runs [scripts/verify-all.sh](scripts/verify-all.sh) to verify Client builds, Admin builds, SQLx preparation, API formatting, Clippy checks, and unit tests.
+- **Autonomous Verification & Auto-Fix Loop**:
+  - Enforces **zero build warnings** and **zero compilation errors** across all services (`--max-warnings 0` and `-D warnings`).
+  - Automatically isolates root causes, applies fixes, and re-verifies in an iterative loop (capped at 5 attempts before escalating to the developer).
+- **Dependency Upgrade Protocol**:
+  - If resolving an error or deprecation requires a dependency update, the agent must research compatibility first (using `context7` MCP, release notes, changelogs, peer dependency checks).
+  - Presents a structured **Pros & Cons** and compatibility report, prompting the developer for confirmation before modifying `package.json` or `Cargo.toml`.
 - Analyzes changes and prompts the user with an interactive selector to:
   1. Commit and push (with high-quality Conventional Commit message).
   2. Commit only.
