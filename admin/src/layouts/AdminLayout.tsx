@@ -1,15 +1,29 @@
 import { useEffect, useState } from 'react';
-import { Outlet, Navigate, NavLink, Link } from 'react-router-dom';
+import { Outlet, Navigate, NavLink, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { LayoutDashboard, Users, Shield, UserCircle, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Shield, UserCircle, LogOut, Menu } from 'lucide-react';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { apiClient } from '@/lib/api';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || 'Caxur-FS Admin';
 
 export default function AdminLayout() {
   const { isAuthenticated, user, updateUser, logout, refreshToken } = useAuthStore();
   const [apiVersion, setApiVersion] = useState<string>('');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const location = useLocation();
+
+  // Auto-close mobile navigation drawer on route changes
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     const healthUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1').replace('/api/v1', '/health');
@@ -95,7 +109,7 @@ export default function AdminLayout() {
 
   return (
     <div className="h-screen overflow-hidden bg-background text-foreground flex">
-      {/* Sidebar */}
+      {/* Desktop Sidebar */}
       <aside className="w-64 bg-[#FBFBFA] dark:bg-[#111111] border-r border-border flex flex-col hidden md:flex">
         <div className="h-16 flex items-center px-6 border-b border-border">
           <Link to="/" className="font-serif text-xl font-bold tracking-tight text-foreground">
@@ -160,8 +174,94 @@ export default function AdminLayout() {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
         {/* Mobile Header */}
         <header className="md:hidden bg-[#FBFBFA] dark:bg-[#111111] border-b border-border h-16 flex items-center justify-between px-4">
-          <span className="font-serif text-xl font-bold">{APP_NAME}</span>
-          <button onClick={handleLogout} className="p-2 text-muted-foreground">
+          <div className="flex items-center gap-3">
+            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+              <SheetTrigger render={
+                <button
+                  type="button"
+                  className="p-2 -ml-2 text-muted-foreground hover:text-foreground hover:bg-[#F4F3EC] dark:hover:bg-[#1E1E1E] rounded-md transition-colors"
+                  aria-label="Open navigation menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+              } />
+              <SheetContent side="left" className="w-72 p-0 flex flex-col justify-between bg-[#FBFBFA] dark:bg-[#111111] border-r border-border">
+                <SheetHeader className="h-16 flex flex-row items-center px-6 border-b border-border space-y-0">
+                  <SheetTitle className="font-serif text-xl font-bold tracking-tight text-foreground">
+                    {APP_NAME}
+                  </SheetTitle>
+                </SheetHeader>
+
+                <div className="flex-1 overflow-y-auto py-4">
+                  <nav className="px-3 space-y-1">
+                    {navItems.filter(item => hasPermission(item.permission)).map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <NavLink
+                          key={item.name}
+                          to={item.path}
+                          onClick={() => setMobileNavOpen(false)}
+                          className={({ isActive }) =>
+                            `flex items-center px-3 py-2 text-sm font-mono uppercase tracking-wider rounded-md transition-colors ${
+                              isActive
+                                ? 'bg-[#F4F3EC] text-[#111111] dark:bg-[#1E1E1E] dark:text-[#F5F5F5]'
+                                : 'text-muted-foreground hover:bg-[#F4F3EC]/50 hover:text-foreground dark:hover:bg-[#1E1E1E]/50 dark:hover:text-foreground'
+                            }`
+                          }
+                        >
+                          <Icon className="mr-3 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                          {item.name}
+                        </NavLink>
+                      );
+                    })}
+                  </nav>
+                </div>
+
+                <div className="p-4 border-t border-border bg-[#F4F3EC]/20 dark:bg-[#1E1E1E]/20">
+                  <div className="flex items-center w-full">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {user ? ([user.firstName, user.lastName].filter(Boolean).join(' ') || (user as any).name || 'Administrator') : ''}
+                      </p>
+                      <div className="flex flex-col gap-0.5 mt-0.5">
+                        <p className="text-xs text-muted-foreground truncate font-mono">
+                          {user?.email}
+                        </p>
+                        <span className="text-[10px] text-muted-foreground font-mono tracking-tight">
+                          UI: v{import.meta.env.VITE_APP_VERSION} {apiVersion && `| API: v${apiVersion}`}
+                        </span>
+                      </div>
+                      {user?.roles && user.roles.length > 0 && (
+                        <p className="text-[10px] text-muted-foreground truncate uppercase tracking-widest mt-1 font-mono font-semibold">
+                          {user.roles.map((r) => r.name).join(', ')}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setMobileNavOpen(false);
+                        handleLogout();
+                      }}
+                      className="ml-2 p-2 text-muted-foreground hover:text-foreground hover:bg-[#F4F3EC] dark:hover:bg-[#1E1E1E] rounded-md transition-colors"
+                      title="Logout"
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            <Link to="/" className="font-serif text-xl font-bold tracking-tight text-foreground">
+              {APP_NAME}
+            </Link>
+          </div>
+
+          <button
+            onClick={handleLogout}
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-[#F4F3EC] dark:hover:bg-[#1E1E1E] rounded-md transition-colors"
+            title="Logout"
+          >
             <LogOut className="h-5 w-5" />
           </button>
         </header>
