@@ -17,6 +17,10 @@ pub struct UpdateAdministratorRequest {
     pub last_name: Option<String>,
     pub suffix: Option<String>,
     pub contact_number: Option<String>,
+    #[serde(
+        default,
+        deserialize_with = "crate::shared::validation::deserialize_optional_email"
+    )]
     #[validate(email)]
     pub email: Option<String>,
     #[validate(custom(function = "crate::shared::validation::validate_password_strength"))]

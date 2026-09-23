@@ -68,7 +68,10 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await apiClient.post('/admin/auth/login', data);
+      const response = await apiClient.post('/admin/auth/login', {
+        ...data,
+        email: data.email.trim().toLowerCase(),
+      });
       
       const attributes = response.data.data.attributes;
       const accessToken = attributes.accessToken;

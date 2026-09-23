@@ -51,7 +51,7 @@ export function LoginForm() {
     setIsLoading(true)
 
     try {
-      const response = await loginAction(values.email, values.password)
+      const response = await loginAction(values.email.trim().toLowerCase(), values.password)
 
       if (response.error) {
         throw new Error(response.error)

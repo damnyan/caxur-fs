@@ -55,12 +55,13 @@ export function RegistrationForm() {
 
   const onSubmit = async (values: RegisterValues) => {
     setIsLoading(true)
+    const normalizedEmail = values.email.trim().toLowerCase()
     try {
       const response = await fetch(`${config.apiUrl}/api/v1/auth/register/initiate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: values.email,
+          email: normalizedEmail,
           password: values.password,
         }),
       })
@@ -71,7 +72,7 @@ export function RegistrationForm() {
       }
 
       toast.success("Verification code sent to your email")
-      router.push(`/register/verify?email=${encodeURIComponent(values.email)}`)
+      router.push(`/register/verify?email=${encodeURIComponent(normalizedEmail)}`)
     } catch (error: any) {
       toast.error(error.message)
     } finally {

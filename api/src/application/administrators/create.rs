@@ -16,6 +16,7 @@ pub struct CreateAdministratorRequest {
     pub last_name: String,
     pub suffix: Option<String>,
     pub contact_number: Option<String>,
+    #[serde(deserialize_with = "crate::shared::validation::deserialize_email")]
     #[validate(email)]
     pub email: String,
 }

@@ -11,6 +11,7 @@ use validator::Validate;
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiateRegistrationRequest {
+    #[serde(deserialize_with = "crate::shared::validation::deserialize_email")]
     #[validate(email(message = "Invalid email format"))]
     pub email: String,
     #[validate(custom(function = "crate::shared::validation::validate_password_strength"))]

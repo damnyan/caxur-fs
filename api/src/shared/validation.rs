@@ -3,8 +3,32 @@ use axum::{
     Json,
     extract::{FromRequest, Request},
 };
+use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use validator::Validate;
+
+/// Trims whitespace and converts an email address to ASCII lowercase.
+pub fn normalize_email(email: &str) -> String {
+    email.trim().to_ascii_lowercase()
+}
+
+/// Serde deserializer helper to trim and lowercase a required email string.
+pub fn deserialize_email<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    Ok(normalize_email(&s))
+}
+
+/// Serde deserializer helper to trim and lowercase an optional email string.
+pub fn deserialize_optional_email<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let opt = Option::<String>::deserialize(deserializer)?;
+    Ok(opt.map(|s| normalize_email(&s)))
+}
 
 fn format_validation_error(err: &validator::ValidationError) -> String {
     // 1. Check if a custom message is provided
@@ -243,5 +267,39 @@ mod tests {
             }
             _ => panic!("Expected ValidationError"),
         }
+    }
+
+    #[test]
+    fn test_normalize_email() {
+        assert_eq!(normalize_email("  User@Example.COM  "), "user@example.com");
+        assert_eq!(
+            normalize_email("JOHN.DOE+TAG@DOMAIN.CO.UK"),
+            "john.doe+tag@domain.co.uk"
+        );
+        assert_eq!(
+            normalize_email("\tAdmin@Sub.Domain.com\n"),
+            "admin@sub.domain.com"
+        );
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct EmailDto {
+        #[serde(deserialize_with = "deserialize_email")]
+        email: String,
+        #[serde(default, deserialize_with = "deserialize_optional_email")]
+        secondary_email: Option<String>,
+    }
+
+    #[test]
+    fn test_deserialize_normalized_email() {
+        let json = r#"{"email": "  Hello@World.COM ", "secondary_email": "  ANOTHER@test.com  "}"#;
+        let parsed: EmailDto = serde_json::from_str(json).unwrap();
+        assert_eq!(parsed.email, "hello@world.com");
+        assert_eq!(parsed.secondary_email, Some("another@test.com".to_string()));
+
+        let json_none = r#"{"email": "USER@DOMAIN.COM"}"#;
+        let parsed_none: EmailDto = serde_json::from_str(json_none).unwrap();
+        assert_eq!(parsed_none.email, "user@domain.com");
+        assert_eq!(parsed_none.secondary_email, None);
     }
 }

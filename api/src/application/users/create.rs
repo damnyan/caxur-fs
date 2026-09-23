@@ -9,6 +9,7 @@ use validator::Validate;
 #[derive(Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateUserRequest {
+    #[serde(deserialize_with = "crate::shared::validation::deserialize_email")]
     #[validate(email(message = "Invalid email format"))]
     #[schema(example = "john@example.com")]
     pub email: String,

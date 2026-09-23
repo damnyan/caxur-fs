@@ -8,7 +8,7 @@ export async function loginAction(email: string, password: string) {
     const response = await fetch(`${config.apiUrl}/api/v1/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
     })
 
     const data = await response.json()
@@ -49,7 +49,7 @@ export async function verifyAction(email: string, otp: string) {
     const response = await fetch(`${config.apiUrl}/api/v1/auth/register/verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, otp }),
+      body: JSON.stringify({ email: email.trim().toLowerCase(), otp }),
     })
 
     const data = await response.json()

@@ -162,7 +162,11 @@ export default function AdministratorsPage() {
 
   const onCreateSubmit = async (data: CreateFormValues) => {
     const { roleIds, ...adminData } = data;
-    createMutation.mutate(adminData, {
+    const normalizedData = {
+      ...adminData,
+      email: adminData.email.trim().toLowerCase(),
+    };
+    createMutation.mutate(normalizedData, {
       onSuccess: async (createdAdmin) => {
         if (roleIds && roleIds.length > 0) {
           try {
@@ -188,7 +192,11 @@ export default function AdministratorsPage() {
   const onEditSubmit = (data: UpdateFormValues) => {
     if (!editAdmin) return;
     const { roleIds, ...adminData } = data;
-    updateMutation.mutate({ id: editAdmin.id, data: adminData as any }, {
+    const normalizedData = {
+      ...adminData,
+      ...(adminData.email ? { email: adminData.email.trim().toLowerCase() } : {}),
+    };
+    updateMutation.mutate({ id: editAdmin.id, data: normalizedData as any }, {
       onSuccess: async () => {
         if (roleIds) {
           try {

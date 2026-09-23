@@ -54,8 +54,9 @@ export default function UpdateEmailPage() {
 
   const handleInitiate = async (values: InitiateValues) => {
     setError("")
+    const normalizedNewEmail = values.newEmail.trim().toLowerCase()
     
-    if (values.newEmail === user?.email) {
+    if (normalizedNewEmail === user?.email?.toLowerCase()) {
       setError("New email cannot be the same as your current email.")
       return
     }
@@ -66,7 +67,7 @@ export default function UpdateEmailPage() {
         method: "POST",
         body: JSON.stringify({ 
           currentPassword: values.currentPassword, 
-          newEmail: values.newEmail 
+          newEmail: normalizedNewEmail 
         })
       })
 

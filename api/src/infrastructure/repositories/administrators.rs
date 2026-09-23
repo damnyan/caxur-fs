@@ -3,6 +3,7 @@ use crate::domain::administrators::{
 };
 use crate::infrastructure::db::DbPool;
 use crate::infrastructure::db::models::administrators::AdministratorDbModel;
+use crate::shared::validation::normalize_email;
 use async_trait::async_trait;
 use uuid::Uuid;
 
@@ -35,7 +36,7 @@ impl AdministratorRepository for PostgresAdministratorRepository {
         .bind(new_admin.last_name)
         .bind(new_admin.suffix)
         .bind(new_admin.contact_number)
-        .bind(new_admin.email)
+        .bind(normalize_email(&new_admin.email))
         .bind(new_admin.password_hash)
         .fetch_one(&self.pool)
         .await?;
@@ -76,7 +77,7 @@ impl AdministratorRepository for PostgresAdministratorRepository {
             GROUP BY a.id
             "#,
         )
-        .bind(email)
+        .bind(normalize_email(email))
         .fetch_optional(&self.pool)
         .await?;
 
@@ -246,7 +247,7 @@ impl AdministratorRepository for PostgresAdministratorRepository {
             query_builder = query_builder.bind(contact_number);
         }
         if let Some(email) = update.email {
-            query_builder = query_builder.bind(email);
+            query_builder = query_builder.bind(normalize_email(&email));
         }
         if let Some(password_hash) = update.password_hash {
             query_builder = query_builder.bind(password_hash);

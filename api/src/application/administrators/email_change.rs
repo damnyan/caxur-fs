@@ -15,6 +15,7 @@ use validator::Validate;
 pub struct InitiateEmailChangeRequest {
     #[validate(length(min = 1, message = "Current password is required"))]
     pub current_password: String,
+    #[serde(deserialize_with = "crate::shared::validation::deserialize_email")]
     #[validate(email(message = "Invalid email format"))]
     pub new_email: String,
 }

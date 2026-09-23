@@ -34,7 +34,10 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
     setError(null);
     try {
-      await apiClient.post('/admin/auth/forgot-password', data);
+      await apiClient.post('/admin/auth/forgot-password', {
+        ...data,
+        email: data.email.trim().toLowerCase(),
+      });
       setIsSuccess(true);
     } catch (err) {
       if (isApiError(err) && err.response?.data?.errors?.[0]?.detail) {

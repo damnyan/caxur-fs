@@ -171,7 +171,8 @@ export default function ProfilePage() {
   };
 
   const onEmailInitiateSubmit = async (data: EmailInitiateFormValues) => {
-    if (data.newEmail === user?.email) {
+    const normalizedNewEmail = data.newEmail.trim().toLowerCase();
+    if (normalizedNewEmail === user?.email?.toLowerCase()) {
       setEmailInitiateError('newEmail', { message: 'New email cannot be the same as current email' });
       return;
     }
@@ -180,7 +181,7 @@ export default function ProfilePage() {
     try {
       await apiClient.post('/admin/my/profile/email/initiate', {
         currentPassword: data.currentPassword,
-        newEmail: data.newEmail,
+        newEmail: normalizedNewEmail,
       });
       
       setIsWaitingForOtp(true);

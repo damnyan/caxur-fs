@@ -1,6 +1,7 @@
 use crate::domain::users::{NewUser, UpdateUser, User, UserRepository};
 use crate::infrastructure::db::DbPool;
 use crate::infrastructure::db::models::users::UserDbModel;
+use crate::shared::validation::normalize_email;
 use async_trait::async_trait;
 use futures::StreamExt;
 use futures::stream::Stream;
@@ -30,7 +31,7 @@ impl PostgresUserRepository {
                 RETURNING id, email, password_hash, first_name, middle_name, last_name, suffix, face_photo, created_at, updated_at
                 "#,
             )
-            .bind(new_user.email)
+            .bind(normalize_email(&new_user.email))
             .bind(new_user.password_hash)
             .bind(new_user.first_name)
             .bind(new_user.middle_name)
@@ -80,7 +81,7 @@ impl UserRepository for PostgresUserRepository {
             RETURNING id, email, password_hash, first_name, middle_name, last_name, suffix, face_photo, created_at, updated_at
             "#,
         )
-        .bind(new_user.email)
+        .bind(normalize_email(&new_user.email))
         .bind(new_user.password_hash)
         .bind(new_user.first_name)
         .bind(new_user.middle_name)
@@ -118,7 +119,7 @@ impl UserRepository for PostgresUserRepository {
             WHERE email = $1
             "#,
         )
-        .bind(email)
+        .bind(normalize_email(email))
         .fetch_optional(&self.pool)
         .await?;
 
@@ -207,7 +208,7 @@ impl UserRepository for PostgresUserRepository {
         let mut query_builder = sqlx::query_as::<_, UserDbModel>(&query);
 
         if let Some(email) = update.email {
-            query_builder = query_builder.bind(email);
+            query_builder = query_builder.bind(normalize_email(&email));
         }
         if let Some(password_hash) = update.password_hash {
             query_builder = query_builder.bind(password_hash);

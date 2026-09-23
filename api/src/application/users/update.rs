@@ -11,6 +11,10 @@ use validator::Validate;
 #[derive(Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateUserRequest {
+    #[serde(
+        default,
+        deserialize_with = "crate::shared::validation::deserialize_optional_email"
+    )]
     #[validate(email(message = "Invalid email format"))]
     #[schema(example = "newemail@example.com")]
     pub email: Option<String>,
