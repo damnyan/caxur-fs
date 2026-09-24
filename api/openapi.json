@@ -10,7 +10,7 @@
     "license": {
       "name": ""
     },
-    "version": "0.2.1"
+    "version": "0.3.0"
   },
   "paths": {
     "/api/v1/admin/administrators": {
@@ -1633,7 +1633,7 @@
         "tags": [
           "Client / Upload"
         ],
-        "summary": "Upload face photo handler\nAccepts a multipart form file, uploads to temp storage, and returns presigned URL.",
+        "summary": "Generic authenticated file upload handler\nAccepts a multipart form file, uploads to temp storage, and returns presigned URL.",
         "operationId": "upload_file",
         "responses": {
           "201": {
@@ -1668,6 +1668,16 @@
           },
           "413": {
             "description": "Payload too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2383,14 +2393,31 @@
           "attributes": {
             "type": "object",
             "required": [
-              "facePhoto",
-              "facePhotoUrl"
+              "storageKey",
+              "url",
+              "fileName",
+              "fileSize",
+              "mimeType",
+              "extension"
             ],
             "properties": {
-              "facePhoto": {
+              "extension": {
                 "type": "string"
               },
-              "facePhotoUrl": {
+              "fileName": {
+                "type": "string"
+              },
+              "fileSize": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "storageKey": {
+                "type": "string"
+              },
+              "url": {
                 "type": "string"
               }
             }
@@ -2841,14 +2868,31 @@
               "attributes": {
                 "type": "object",
                 "required": [
-                  "facePhoto",
-                  "facePhotoUrl"
+                  "storageKey",
+                  "url",
+                  "fileName",
+                  "fileSize",
+                  "mimeType",
+                  "extension"
                 ],
                 "properties": {
-                  "facePhoto": {
+                  "extension": {
                     "type": "string"
                   },
-                  "facePhotoUrl": {
+                  "fileName": {
+                    "type": "string"
+                  },
+                  "fileSize": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "mimeType": {
+                    "type": "string"
+                  },
+                  "storageKey": {
+                    "type": "string"
+                  },
+                  "url": {
                     "type": "string"
                   }
                 }
@@ -3811,14 +3855,31 @@
       "UploadedFileResource": {
         "type": "object",
         "required": [
-          "facePhoto",
-          "facePhotoUrl"
+          "storageKey",
+          "url",
+          "fileName",
+          "fileSize",
+          "mimeType",
+          "extension"
         ],
         "properties": {
-          "facePhoto": {
+          "extension": {
             "type": "string"
           },
-          "facePhotoUrl": {
+          "fileName": {
+            "type": "string"
+          },
+          "fileSize": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "storageKey": {
+            "type": "string"
+          },
+          "url": {
             "type": "string"
           }
         }

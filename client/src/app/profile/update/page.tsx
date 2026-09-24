@@ -98,8 +98,8 @@ export default function UpdateProfilePage() {
       }
 
       const uploaded = data.data.attributes
-      setValue("facePhoto", uploaded.facePhoto)
-      setPreviewUrl(uploaded.facePhotoUrl)
+      setValue("facePhoto", uploaded.storageKey)
+      setPreviewUrl(uploaded.url)
       toast.success("Photo uploaded successfully")
     } catch (error: any) {
       toast.error(error.message || "Failed to upload photo")

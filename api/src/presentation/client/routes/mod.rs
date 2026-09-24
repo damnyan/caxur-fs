@@ -11,6 +11,11 @@ pub fn routes(state: AppState) -> anyhow::Result<Router<AppState>> {
         )?,
     );
 
+    let max_upload_size_mb: usize = std::env::var("MAX_UPLOAD_SIZE_MB")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(10);
+
     let standard_router = Router::new()
         .nest("/profile", profile::routes())
         .nest(
@@ -22,8 +27,9 @@ pub fn routes(state: AppState) -> anyhow::Result<Router<AppState>> {
         )
         .route(
             "/upload",
-            axum::routing::post(crate::presentation::client::handlers::upload::upload_file)
-                .layer(axum::extract::DefaultBodyLimit::max(5 * 1024 * 1024)),
+            axum::routing::post(crate::presentation::client::handlers::upload::upload_file).layer(
+                axum::extract::DefaultBodyLimit::max(max_upload_size_mb * 1024 * 1024),
+            ),
         )
         .layer(
             crate::presentation::middleware::rate_limit::api_rate_limit_layer(
