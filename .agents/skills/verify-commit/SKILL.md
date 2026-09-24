@@ -1,15 +1,15 @@
 ---
 name: verify-commit
-description: "Run verification checks (build, lint, test), fix any warnings/errors automatically via an iterative loop, research dependency upgrades with pros/cons before applying, and commit/push code if successful."
+description: Run verification checks (build, lint, test), fix any warnings/errors automatically via an iterative loop, research dependency upgrades with pros/cons before applying, and commit/push code if successful.
 ---
 
-# 🧪 Verify and Commit Workflow
+# 🧪 Verify and Commit Skill
 
-This workflow enforces rigorous code quality standards, mandates **zero build/lint warnings and zero errors** across all monorepo services (`client`, `admin`, `api`), manages an autonomous auto-fix loop with dependency upgrade research protocols, and safely guides the git commit and push process.
+This skill enforces rigorous code quality standards, mandates **zero build/lint warnings and zero errors** across all monorepo services (`client`, `admin`, `api`), manages an autonomous auto-fix loop with dependency upgrade research protocols, and safely guides the git commit and push process.
 
 ---
 
-## 🔄 Workflow Execution Steps
+## 🔄 Execution Steps
 
 ```mermaid
 flowchart TD

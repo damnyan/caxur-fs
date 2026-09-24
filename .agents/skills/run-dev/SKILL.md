@@ -1,11 +1,11 @@
 ---
 name: run-dev
-description: "Start the entire development stack (API, Client, and Admin) concurrently."
+description: Start the entire development stack (API, Client, and Admin) concurrently.
 ---
 
-# Run Development Workflow
+# Run Development Skill
 
-This workflow spins up the entire `caxur-fs` project stack for local development.
+This skill spins up the entire `caxur-fs` project stack for local development.
 
 ## Steps
 

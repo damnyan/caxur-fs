@@ -1,11 +1,11 @@
 ---
 name: setup-project
-description: "Bootstrap the caxur-fs project stack: install dependencies and setup env files."
+description: Bootstrap the caxur-fs project stack: install dependencies and setup env files.
 ---
 
-# Setup Project Workflow
+# Setup Project Skill
 
-This workflow automates bootstrapping the `caxur-fs` project stack on a new machine or for a fresh development session.
+This skill automates bootstrapping the `caxur-fs` project stack on a new machine or for a fresh development session.
 
 ## Steps
 

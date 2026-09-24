@@ -48,15 +48,14 @@ All governance, architectural contracts, and automated developer aids are contai
   * [`nextjs-client.md`](.agents/rules/nextjs-client.md) — Next.js and RSC boundaries.
   * [`react-admin.md`](.agents/rules/react-admin.md) — State and cache boundaries.
   * [`rust-axum-api.md`](.agents/rules/rust-axum-api.md) — Rust layer isolation & JSON:API compliance.
-* **🧠 Core Skills (`.agents/skills/`)**: Deep-dive architectural instructions.
+* **🧠 Core Skills (`.agents/skills/`)**: Deep-dive architectural instructions & interactive agent skills.
   * [`nextjs-client/SKILL.md`](.agents/skills/nextjs-client/SKILL.md) — UI styling, forms, and server boundaries.
   * [`react-admin/SKILL.md`](.agents/skills/react-admin/SKILL.md) — Zustand, Query hydration, and view layouts.
   * [`rust-axum-api/SKILL.md`](.agents/skills/rust-axum-api/SKILL.md) — Strict domain isolation, SQLx models, and JSON:API error mapping.
-* **🔄 Active Workflows (`.agents/workflows/`)**: Step-by-step developer checklists.
-  * [`setup-project.md`](.agents/workflows/setup-project.md) — Bootstrapping the monorepo.
-  * [`run-dev.md`](.agents/workflows/run-dev.md) — Local concurrently-driven environment details.
-  * [`verify-commit.md`](.agents/workflows/verify-commit.md) — Verification pipeline rules.
-  * [`bhu.md`](.agents/workflows/bhu.md) — AI agent task creation & sub-agent planning guidelines.
+  * [`setup-project/SKILL.md`](.agents/skills/setup-project/SKILL.md) — Bootstrapping the monorepo.
+  * [`run-dev/SKILL.md`](.agents/skills/run-dev/SKILL.md) — Local concurrently-driven environment details.
+  * [`verify-commit/SKILL.md`](.agents/skills/verify-commit/SKILL.md) — Verification pipeline rules.
+  * [`bhu/SKILL.md`](.agents/skills/bhu/SKILL.md) — AI agent task creation & sub-agent planning guidelines.
 
 ---
 
@@ -94,11 +93,14 @@ caxur-fs/
 ├── .agents/              # AI agent resources, rules, and plugins
 │   ├── plugins/          # Custom workspace MCP servers (context7, caxur-api-docs)
 │   ├── rules/            # Context-triggered system rules
-│   ├── skills/           # Architectural code guides
-│   │   ├── nextjs-client/
-│   │   ├── react-admin/
-│   │   └── rust-axum-api/
-│   └── workflows/        # Interactive standard workflow guidelines
+│   └── skills/           # Architectural code guides & interactive skills
+│       ├── bhu/
+│       ├── nextjs-client/
+│       ├── react-admin/
+│       ├── run-dev/
+│       ├── rust-axum-api/
+│       ├── setup-project/
+│       └── verify-commit/
 ├── admin/                # React / Vite Administrative dashboard
 │   ├── public/           # Static assets
 │   ├── src/

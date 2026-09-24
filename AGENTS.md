@@ -35,15 +35,14 @@ All files related to AI Agent management, guidance, and tools are located in the
   - [`nextjs-client.md`](.agents/rules/nextjs-client.md): Rules for the Next.js frontend client.
   - [`react-admin.md`](.agents/rules/react-admin.md): Rules for the Vite React admin dashboard.
   - [`rust-axum-api.md`](.agents/rules/rust-axum-api.md): Rules for the Rust Axum API.
-- **`.agents/skills/`**: Rigid instructions and patterns for development.
-  - `nextjs-client/SKILL.md`: Design system, form rules, and server boundaries.
-  - `react-admin/SKILL.md`: Zustand stores, caching with React Query, and views.
-  - `rust-axum-api/SKILL.md`: Layer isolation, Domain mapping, database models, and error formatting.
-- **`.agents/workflows/`**: Step-by-step guidelines for automated tasks.
-  - [`setup-project.md`](.agents/workflows/setup-project.md): Initial bootstrapping workflow.
-  - [`run-dev.md`](.agents/workflows/run-dev.md): Development environment launch sequence.
-  - [`verify-commit.md`](.agents/workflows/verify-commit.md): Pre-commit verification and git push sequence.
-  - [`bhu.md`](.agents/workflows/bhu.md): Agent task creation, skill planning, and sub-agent allocation workflow.
+- **`.agents/skills/`**: Rigid instructions, patterns, and interactive agent skills.
+  - [`nextjs-client/SKILL.md`](.agents/skills/nextjs-client/SKILL.md): Design system, form rules, and server boundaries.
+  - [`react-admin/SKILL.md`](.agents/skills/react-admin/SKILL.md): Zustand stores, caching with React Query, and views.
+  - [`rust-axum-api/SKILL.md`](.agents/skills/rust-axum-api/SKILL.md): Layer isolation, Domain mapping, database models, and error formatting.
+  - [`setup-project/SKILL.md`](.agents/skills/setup-project/SKILL.md): Initial bootstrapping skill.
+  - [`run-dev/SKILL.md`](.agents/skills/run-dev/SKILL.md): Development environment launch sequence.
+  - [`verify-commit/SKILL.md`](.agents/skills/verify-commit/SKILL.md): Pre-commit verification and git push sequence.
+  - [`bhu/SKILL.md`](.agents/skills/bhu/SKILL.md): Agent task creation, skill planning, and sub-agent allocation skill.
 - **`.agents/plugins/`**: Custom workspace plugins exposing Model Context Protocol (MCP) servers.
 
 ---
@@ -72,11 +71,12 @@ To maximize efficiency and eliminate guessing, AI agents must leverage the two c
 
 ---
 
-## 🔄 AI Agent Workflows
+## 🔄 AI Agent Interactive Skills
 
-AI agents should recommend these commands to the user, or execute the underlying scripts directly in the terminal:
+AI agents should recommend these skills to the user, or execute their procedures directly:
 
 ### ⚙️ 1. `/setup-project` (Bootstrap Environment)
+- Governed by [`.agents/skills/setup-project/SKILL.md`](.agents/skills/setup-project/SKILL.md).
 - Runs [scripts/setup.sh](scripts/setup.sh).
 - Checks/installs Bun, Cargo, and SQLx CLI.
 - Automatically scaffolds `.env.local` (Client and Admin) and `.env` (API).
@@ -84,6 +84,7 @@ AI agents should recommend these commands to the user, or execute the underlying
 - **Note**: Recommend the user to configure their own dev-containers for databases and infrastructure (see [damnyan/dev-containers](https://github.com/damnyan/dev-containers)).
 
 ### 🚀 2. `/run-dev` (Start Stack Concurrently)
+- Governed by [`.agents/skills/run-dev/SKILL.md`](.agents/skills/run-dev/SKILL.md).
 - Runs [scripts/run-dev.sh](scripts/run-dev.sh).
 - Automatically kills dangling ports (3000, 3001, 3002).
 - Executes `concurrently` to run API (`cargo watch`), Client, and Admin (`bun run dev`).
@@ -93,7 +94,7 @@ AI agents should recommend these commands to the user, or execute the underlying
   - **Client Portal**: `http://localhost:3002`
 
 ### 🧪 3. `/verify-commit` (Safe Verification & Commit)
-- Governed by [`.agents/workflows/verify-commit.md`](.agents/workflows/verify-commit.md).
+- Governed by [`.agents/skills/verify-commit/SKILL.md`](.agents/skills/verify-commit/SKILL.md).
 - Runs [scripts/verify-all.sh](scripts/verify-all.sh) to verify Client builds, Admin builds, SQLx preparation, API formatting, Clippy checks, and unit tests.
 - **Autonomous Verification & Auto-Fix Loop**:
   - Enforces **zero build warnings** and **zero compilation errors** across all services (`--max-warnings 0` and `-D warnings`).
@@ -107,7 +108,7 @@ AI agents should recommend these commands to the user, or execute the underlying
   3. Regenerate commit message.
 
 ### 📋 4. `/bhu` (Agent Task Creation & Planning via AGY `/plan`)
-- Governed by [`.agents/workflows/bhu.md`](.agents/workflows/bhu.md).
+- Governed by [`.agents/skills/bhu/SKILL.md`](.agents/skills/bhu/SKILL.md).
 - Combines the standard AGY CLI `/plan` workflow (structured implementation plan artifacts, GitHub alerts, component diffs, verification plans) with `caxur-fs` guardrails (skill matching, MCP server mapping, sub-agent allocation, and zero-warning/error build verification).
 
 ---

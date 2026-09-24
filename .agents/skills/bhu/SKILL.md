@@ -1,11 +1,11 @@
 ---
 name: bhu
-description: "Create and plan tasks for AI agents using the AGY CLI /plan workflow, establishing strict architectural mappings, skill matching, sub-agent allocation guidelines, and zero-warning/error build verification."
+description: Create and plan tasks for AI agents using the AGY CLI /plan workflow, establishing strict architectural mappings, skill matching, sub-agent allocation guidelines, and zero-warning/error build verification.
 ---
 
-# 🤖 Agent Task Creation & Planning Workflow (bhu)
+# 🤖 Agent Task Creation & Planning Skill (bhu)
 
-This workflow defines the mandatory onboarding, decomposition, planning, and verification process for any AI agent tasked with introducing features, refactoring logic, or modifying code within the **`caxur-fs`** monorepo.
+This skill defines the mandatory onboarding, decomposition, planning, and verification process for any AI agent tasked with introducing features, refactoring logic, or modifying code within the **`caxur-fs`** monorepo.
 
 It combines the standard **Antigravity (AGY CLI) `/plan` workflow** with **`caxur-fs` architectural guardrails**, workspace skills, custom MCP tools, sub-agent allocation guidelines, and strict build verification.
 
