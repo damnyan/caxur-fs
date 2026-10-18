@@ -1,35 +1,16 @@
 use crate::domain::access_scope::AccessScope;
 use crate::domain::permissions::Permission;
-use serde::Serialize;
-use utoipa::ToSchema;
+use crate::shared::pagination::PageParams;
+use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 
-#[derive(serde::Deserialize, utoipa::IntoParams, utoipa::ToSchema, Debug)]
+#[derive(Deserialize, IntoParams, ToSchema, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct PageParams {
-    /// Page number (1-indexed)
-    #[serde(default = "crate::shared::pagination::default_page_number")]
-    #[param(example = 1, minimum = 1)]
-    pub number: i64,
-    /// Number of items per page
-    #[serde(default = "crate::shared::pagination::default_page_size")]
-    #[param(example = 20, minimum = 1, maximum = 100)]
-    pub size: i64,
-}
-
-impl Default for PageParams {
-    fn default() -> Self {
-        Self {
-            number: crate::shared::pagination::default_page_number(),
-            size: crate::shared::pagination::default_page_size(),
-        }
-    }
-}
-
-#[derive(serde::Deserialize, utoipa::IntoParams, utoipa::ToSchema, Debug)]
-#[serde(rename_all = "camelCase")]
+#[into_params(parameter_in = Query)]
 pub struct ListPermissionsRequest {
     /// Pagination parameters
     #[serde(default)]
+    #[param(inline, style = DeepObject, explode = true)]
     pub page: PageParams,
 }
 

@@ -1,5 +1,13 @@
+use crate::application::administrators::email_change::{
+    InitiateEmailChangeRequest, VerifyEmailChangeRequest,
+};
+use crate::application::administrators::password_reset::{
+    ConfirmPasswordResetRequest as AdminConfirmPasswordResetRequest,
+    RequestPasswordResetRequest as AdminRequestPasswordResetRequest,
+};
+use crate::application::administrators::update_my_password::UpdateMyPasswordRequest;
+use crate::application::administrators::update_my_profile::UpdateMyProfileRequest;
 use crate::application::administrators::verify::VerifyAndSetPasswordRequest;
-#[allow(unused_imports)]
 use crate::application::auth::admin_login::AdminLoginRequest;
 use crate::application::auth::login::{LoginRequest, LoginResponse};
 use crate::application::auth::logout::LogoutRequest;
@@ -9,15 +17,29 @@ use crate::application::auth::registration::onboarding::OnboardingRequest;
 use crate::application::auth::registration::verify::VerifyRegistrationRequest;
 use crate::application::roles::create::CreateRoleRequest;
 use crate::application::roles::update::UpdateRoleRequest;
+use crate::application::users::email_change::{
+    InitiateUserEmailChangeRequest, VerifyUserEmailChangeRequest,
+};
 use crate::application::users::list::ListUsersRequest;
+use crate::application::users::password_reset::{
+    ConfirmPasswordResetRequest as UserConfirmPasswordResetRequest,
+    RequestPasswordResetRequest as UserRequestPasswordResetRequest,
+};
+use crate::application::users::update::UpdateUserRequest;
+use crate::presentation::admin::handlers::administrators::AdministratorResource;
+use crate::presentation::admin::handlers::auth::CancelEmailChangeRequest;
 use crate::presentation::admin::handlers::permissions::PermissionResource;
 use crate::presentation::admin::handlers::roles::{
     AttachPermissionRequest, DetachPermissionRequest, ListRolesQuery, RoleResource,
 };
+use crate::presentation::client::handlers::auth::CancelUserEmailChangeRequest;
+use crate::presentation::client::handlers::upload::UploadedFileResource;
 use crate::presentation::dtos::{AuthTokenResource, PermissionDto, UserResource};
 use crate::shared::error::{ErrorResponse, JsonApiError, JsonApiErrorSource};
+use crate::shared::pagination::PageParams;
 use crate::shared::response::{JsonApiLinks, JsonApiMeta, JsonApiResource, JsonApiResponse};
-use utoipa::OpenApi;
+use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
+use utoipa::{Modify, OpenApi};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -32,17 +54,32 @@ use utoipa::OpenApi;
     ),
 
     paths(
+        crate::presentation::client::handlers::health::health_check,
         crate::presentation::client::handlers::auth::login,
         crate::presentation::client::handlers::auth::refresh_token,
         crate::presentation::client::handlers::auth::logout,
         crate::presentation::client::handlers::auth::register_initiate,
         crate::presentation::client::handlers::auth::register_verify,
+        crate::presentation::client::handlers::auth::cancel_email_change,
+        crate::presentation::client::handlers::auth::forgot_password,
+        crate::presentation::client::handlers::auth::reset_password,
         crate::presentation::client::handlers::profile::complete_onboarding,
         crate::presentation::client::handlers::profile::get_profile,
+        crate::presentation::client::handlers::profile::update_profile,
+        crate::presentation::client::handlers::profile::initiate_email_change,
+        crate::presentation::client::handlers::profile::verify_email_change,
         crate::presentation::client::handlers::upload::upload_file,
         crate::presentation::admin::handlers::auth::admin_login,
         crate::presentation::admin::handlers::auth::refresh_token,
         crate::presentation::admin::handlers::auth::admin_logout,
+        crate::presentation::admin::handlers::auth::cancel_email_change,
+        crate::presentation::admin::handlers::auth::forgot_password,
+        crate::presentation::admin::handlers::auth::reset_password,
+        crate::presentation::admin::handlers::my::get_my_profile,
+        crate::presentation::admin::handlers::my::update_my_profile,
+        crate::presentation::admin::handlers::my::update_my_password,
+        crate::presentation::admin::handlers::my::initiate_email_change,
+        crate::presentation::admin::handlers::my::verify_email_change,
         crate::presentation::admin::handlers::users::list_users,
         crate::presentation::admin::handlers::administrators::create_admin,
         crate::presentation::admin::handlers::administrators::get_admin,
@@ -71,6 +108,7 @@ use utoipa::OpenApi;
             PermissionDto,
 
             // Request DTOs
+            PageParams,
             ListUsersRequest,
             VerifyAndSetPasswordRequest,
             CreateRoleRequest,
@@ -88,28 +126,45 @@ use utoipa::OpenApi;
             InitiateRegistrationRequest,
             VerifyRegistrationRequest,
             OnboardingRequest,
+            CancelUserEmailChangeRequest,
+            CancelEmailChangeRequest,
+            UserRequestPasswordResetRequest,
+            UserConfirmPasswordResetRequest,
+            AdminRequestPasswordResetRequest,
+            AdminConfirmPasswordResetRequest,
+            UpdateUserRequest,
+            InitiateUserEmailChangeRequest,
+            VerifyUserEmailChangeRequest,
+            UpdateMyProfileRequest,
+            UpdateMyPasswordRequest,
+            InitiateEmailChangeRequest,
+            VerifyEmailChangeRequest,
 
             // JSON:API Resource types
             UserResource,
+            AdministratorResource,
             RoleResource,
             PermissionResource,
             AuthTokenResource,
-            crate::presentation::client::handlers::upload::UploadedFileResource,
+            UploadedFileResource,
             JsonApiResource<UserResource>,
+            JsonApiResource<AdministratorResource>,
             JsonApiResource<RoleResource>,
             JsonApiResource<PermissionResource>,
             JsonApiResource<AuthTokenResource>,
-            JsonApiResource<crate::presentation::client::handlers::upload::UploadedFileResource>,
+            JsonApiResource<UploadedFileResource>,
 
             // JSON:API Response types
             JsonApiResponse<JsonApiResource<UserResource>>,
             JsonApiResponse<Vec<JsonApiResource<UserResource>>>,
+            JsonApiResponse<JsonApiResource<AdministratorResource>>,
+            JsonApiResponse<Vec<JsonApiResource<AdministratorResource>>>,
             JsonApiResponse<JsonApiResource<RoleResource>>,
             JsonApiResponse<Vec<JsonApiResource<RoleResource>>>,
             JsonApiResponse<Vec<JsonApiResource<PermissionResource>>>,
             JsonApiResponse<Vec<PermissionDto>>,
             JsonApiResponse<JsonApiResource<AuthTokenResource>>,
-            JsonApiResponse<JsonApiResource<crate::presentation::client::handlers::upload::UploadedFileResource>>,
+            JsonApiResponse<JsonApiResource<UploadedFileResource>>,
             JsonApiResponse<serde_json::Value>,
 
 
@@ -124,21 +179,20 @@ use utoipa::OpenApi;
         )
     ),
     tags(
+        (name = "Health", description = "System health check endpoints"),
         (name = "Client / Auth", description = "Client Authentication endpoints"),
         (name = "Admin / Auth", description = "Administrator Authentication endpoints"),
         (name = "Admin / Administrator Management", description = "Administrator management endpoints"),
         (name = "Admin / User Management", description = "User management endpoints"),
         (name = "Admin / Role Management", description = "Role management endpoints"),
         (name = "Admin / Permission Management", description = "Permission management endpoints"),
+        (name = "Admin / My Profile", description = "Current administrator profile management"),
         (name = "Client / Profile", description = "User profile and onboarding endpoints"),
         (name = "Client / Upload", description = "File upload endpoints")
     ),
     modifiers(&SecurityAddon)
 )]
 pub struct ApiDoc;
-
-use utoipa::Modify;
-use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 
 struct SecurityAddon;
 

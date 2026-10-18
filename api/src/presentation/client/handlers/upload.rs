@@ -1,12 +1,14 @@
 use crate::infrastructure::state::AppState;
 use crate::presentation::extractors::AuthUser;
-use crate::shared::error::{AppError, ErrorResponse};
+use crate::shared::error::{AppError, ErrorResponse, FieldError};
 use crate::shared::response::{JsonApiResource, JsonApiResponse};
 use axum::{
-    Json,
     extract::{Multipart, State},
     http::StatusCode,
 };
+use serde::Serialize;
+use std::path::Path;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 pub const ALLOWED_EXTENSIONS: &[&str] = &[
@@ -67,7 +69,7 @@ pub fn infer_mime_type(ext: &str, provided_mime: Option<String>) -> String {
     }
 }
 
-#[derive(serde::Serialize, utoipa::ToSchema)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UploadedFileResource {
     pub storage_key: String,
@@ -102,7 +104,7 @@ pub async fn upload_file(
 ) -> Result<
     (
         StatusCode,
-        Json<JsonApiResponse<JsonApiResource<UploadedFileResource>>>,
+        JsonApiResponse<JsonApiResource<UploadedFileResource>>,
     ),
     AppError,
 > {
@@ -110,12 +112,11 @@ pub async fn upload_file(
     let mut file_name = String::new();
     let mut content_type = None;
 
-    while let Some(field) = multipart.next_field().await.map_err(|e| {
-        AppError::ValidationError(vec![crate::shared::error::FieldError::new(
-            "file",
-            e.to_string(),
-        )])
-    })? {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::ValidationError(vec![FieldError::new("file", e.to_string())]))?
+    {
         let name = field.name().unwrap_or_default().to_string();
         if name == "file" || name == "image" || name == "document" || name == "attachment" {
             file_name = field.file_name().unwrap_or("file").to_string();
@@ -124,10 +125,7 @@ pub async fn upload_file(
                 .bytes()
                 .await
                 .map_err(|e| {
-                    AppError::ValidationError(vec![crate::shared::error::FieldError::new(
-                        "file",
-                        e.to_string(),
-                    )])
+                    AppError::ValidationError(vec![FieldError::new("file", e.to_string())])
                 })?
                 .to_vec();
             break;
@@ -135,9 +133,10 @@ pub async fn upload_file(
     }
 
     if file_bytes.is_empty() {
-        return Err(AppError::ValidationError(vec![
-            crate::shared::error::FieldError::new("file", "File is empty or missing"),
-        ]));
+        return Err(AppError::ValidationError(vec![FieldError::new(
+            "file",
+            "File is empty or missing",
+        )]));
     }
 
     // Body limit safety check
@@ -147,19 +146,17 @@ pub async fn upload_file(
         .unwrap_or(10);
     let max_bytes = max_upload_size_mb * 1024 * 1024;
     if file_bytes.len() > max_bytes {
-        return Err(AppError::ValidationError(vec![
-            crate::shared::error::FieldError::new(
-                "file",
-                format!(
-                    "File size exceeds maximum allowed limit of {} MB",
-                    max_upload_size_mb
-                ),
+        return Err(AppError::ValidationError(vec![FieldError::new(
+            "file",
+            format!(
+                "File size exceeds maximum allowed limit of {} MB",
+                max_upload_size_mb
             ),
-        ]));
+        )]));
     }
 
     // Extract extension
-    let ext = std::path::Path::new(&file_name)
+    let ext = Path::new(&file_name)
         .extension()
         .and_then(|s| s.to_str())
         .unwrap_or("bin")
@@ -167,9 +164,9 @@ pub async fn upload_file(
 
     // Validate extension
     if let Err(msg) = validate_file_extension(&ext) {
-        return Err(AppError::ValidationError(vec![
-            crate::shared::error::FieldError::new("file", msg),
-        ]));
+        return Err(AppError::ValidationError(vec![FieldError::new(
+            "file", msg,
+        )]));
     }
 
     let mime_type = infer_mime_type(&ext, content_type.clone());
@@ -209,7 +206,7 @@ pub async fn upload_file(
 
     let resource = JsonApiResource::new("uploads", uuid.to_string(), data);
 
-    Ok((StatusCode::CREATED, Json(JsonApiResponse::new(resource))))
+    Ok((StatusCode::CREATED, JsonApiResponse::new(resource)))
 }
 
 #[cfg(test)]

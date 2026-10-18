@@ -1,12 +1,13 @@
+use crate::domain::administrators::AdminPermissionsAndStatus;
+use crate::domain::cache::CacheService;
+use crate::domain::storage::StorageService;
 use crate::infrastructure::auth::JwtAuthService;
 use crate::infrastructure::db::DbPool;
+use crate::infrastructure::email::EmailService;
 use moka::sync::Cache;
 use std::sync::Arc;
 use std::time::Duration;
-
-use crate::domain::cache::CacheService;
-use crate::domain::storage::StorageService;
-use crate::infrastructure::email::EmailService;
+use uuid::Uuid;
 
 /// Application state shared across handlers
 #[derive(Clone)]
@@ -18,8 +19,7 @@ pub struct AppState {
     pub storage_service: Arc<dyn StorageService>,
     pub admin_url: String,
     pub client_url: String,
-    pub admin_permissions_cache:
-        Cache<uuid::Uuid, crate::domain::administrators::AdminPermissionsAndStatus>,
+    pub admin_permissions_cache: Cache<Uuid, AdminPermissionsAndStatus>,
 }
 
 impl AppState {

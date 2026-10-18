@@ -89,7 +89,8 @@ export default function AdministratorsPage() {
   const [confirmAction, setConfirmAction] = useState<{type: 'restore'|'revoke'|'delete', id: string} | null>(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const page = parseInt(searchParams.get('page') || '1', 10);
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const perPage = Math.max(1, parseInt(searchParams.get('per_page') || '10', 10) || 10);
   const search = searchParams.get('search') || '';
   const roleId = searchParams.get('roleId') || '';
 
@@ -115,13 +116,13 @@ export default function AdministratorsPage() {
   const queryClient = useQueryClient();
   const { data: response, isLoading } = useAdministrators({
     'page[number]': page,
-    'page[size]': 10,
+    'page[size]': perPage,
     search: search || undefined,
     roleId: roleId || undefined,
   });
   const administrators = response?.data || [];
   const meta = response?.meta;
-  const lastPage = meta ? Math.ceil((meta.total || 0) / (meta.perPage || 10)) : 1;
+  const lastPage = meta ? Math.ceil((meta.total || 0) / (meta.perPage || perPage)) : 1;
   
   // Fetch roles for selection
   const { data: rolesResp, isLoading: isLoadingRoles } = useQuery({

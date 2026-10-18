@@ -15,7 +15,7 @@ fi
 
 echo "Installing dependencies..."
 # Determine package manager
-if [ -f "bun.lockb" ]; then
+if [ -f "bun.lock" ] || [ -f "bun.lockb" ]; then
     echo "Detected bun lockfile. Using bun..."
     bun install
 elif [ -f "yarn.lock" ]; then

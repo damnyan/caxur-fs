@@ -171,6 +171,8 @@ where
     }
 }
 
+pub const MAX_JSON_BODY_BYTES: usize = 2 * 1024 * 1024;
+
 #[derive(Debug, Clone, Copy, Default)]
 pub struct MaybeValidatedJson<T>(pub Option<T>);
 
@@ -183,9 +185,11 @@ where
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let (parts, body) = req.into_parts();
-        let bytes = axum::body::to_bytes(body, usize::MAX).await.map_err(|e| {
-            AppError::ValidationError(vec![FieldError::new("request_body", e.to_string())])
-        })?;
+        let bytes = axum::body::to_bytes(body, MAX_JSON_BODY_BYTES)
+            .await
+            .map_err(|e| {
+                AppError::ValidationError(vec![FieldError::new("request_body", e.to_string())])
+            })?;
 
         if bytes.is_empty() {
             return Ok(MaybeValidatedJson(None));
@@ -266,6 +270,32 @@ mod tests {
                 assert_eq!(errors[0].field, "request_body");
             }
             _ => panic!("Expected ValidationError"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_maybe_validated_json_empty_body() {
+        let req = Request::builder().body(Body::empty()).unwrap();
+        let result = MaybeValidatedJson::<TestData>::from_request(req, &()).await;
+        assert!(result.is_ok());
+        assert!(result.unwrap().0.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_maybe_validated_json_oversized_body() {
+        let oversized = vec![b'a'; MAX_JSON_BODY_BYTES + 1];
+        let req = Request::builder()
+            .header("content-type", "application/json")
+            .body(Body::from(oversized))
+            .unwrap();
+
+        let result = MaybeValidatedJson::<TestData>::from_request(req, &()).await;
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            AppError::ValidationError(errors) => {
+                assert_eq!(errors[0].field, "request_body");
+            }
+            _ => panic!("Expected ValidationError for oversized body"),
         }
     }
 

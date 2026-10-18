@@ -15,10 +15,10 @@ else
     cd ../../../../../admin || cd ./admin || { echo "Could not find admin directory."; exit 1; }
 fi
 
-echo "Running TypeScript Compiler (tsc -b)..."
-npm run build --if-present || npx tsc -b
-
 echo "Running ESLint..."
-npm run lint --if-present || npx eslint .
+bun run lint -- --max-warnings 0 || { echo "Linting failed."; exit 1; }
+
+echo "Running TypeScript Compiler & Build (tsc -b && vite build)..."
+bun run build || { echo "Build failed."; exit 1; }
 
 echo "Verification complete!"

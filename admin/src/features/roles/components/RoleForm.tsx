@@ -42,7 +42,7 @@ export function RoleForm({ open, onOpenChange, onSubmit, role, isPending, title 
 
   // Fetch all system permissions
   const { data: allPermissionsResp, isLoading: isLoadingAll } = useQuery({
-    queryKey: ['permissions'],
+    queryKey: ['permissions', { 'page[number]': 1, 'page[size]': 100 }],
     queryFn: () => getPermissions(1, 100),
     enabled: open,
   });
@@ -54,7 +54,9 @@ export function RoleForm({ open, onOpenChange, onSubmit, role, isPending, title 
     queryFn: () => getRolePermissions(role!.id),
     enabled: open && !!role?.id,
   });
-  const rolePermissions = rolePermissionsResp?.data || [];
+  const rolePermissions = (rolePermissionsResp?.data || []).map((p) =>
+    typeof p === 'string' ? p : p.name
+  );
 
   // Reset form and selected permissions when the modal opens/closes or role changes
   useEffect(() => {
@@ -65,7 +67,11 @@ export function RoleForm({ open, onOpenChange, onSubmit, role, isPending, title 
       });
 
       if (role?.id && rolePermissionsResp) {
-        setSelectedPermissions(new Set(rolePermissionsResp.data));
+        setSelectedPermissions(
+          new Set(
+            rolePermissionsResp.data.map((p) => (typeof p === 'string' ? p : p.name))
+          )
+        );
       } else if (!role) {
         setSelectedPermissions(new Set()); // Clear on create
       }

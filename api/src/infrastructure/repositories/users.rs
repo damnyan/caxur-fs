@@ -127,33 +127,69 @@ impl UserRepository for PostgresUserRepository {
     }
 
     #[tracing::instrument(skip(self))]
-    async fn find_all(&self, limit: i64, offset: i64) -> Result<Vec<User>, anyhow::Error> {
-        let users_db = sqlx::query_as::<_, UserDbModel>(
+    async fn find_all(
+        &self,
+        search: Option<String>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<User>, anyhow::Error> {
+        let mut query_builder = sqlx::QueryBuilder::new(
             r#"
             SELECT id, email, password_hash, first_name, middle_name, last_name, suffix, face_photo, created_at, updated_at
             FROM users
-            ORDER BY created_at DESC
-            LIMIT $1 OFFSET $2
+            WHERE 1=1
             "#,
-        )
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&self.pool)
-        .await?;
+        );
+
+        if let Some(ref s) = search
+            && !s.trim().is_empty()
+        {
+            let pattern = format!("%{}%", s.trim());
+            query_builder.push(" AND (first_name ILIKE ");
+            query_builder.push_bind(pattern.clone());
+            query_builder.push(" OR last_name ILIKE ");
+            query_builder.push_bind(pattern.clone());
+            query_builder.push(" OR email ILIKE ");
+            query_builder.push_bind(pattern);
+            query_builder.push(")");
+        }
+
+        query_builder.push(" ORDER BY created_at DESC LIMIT ");
+        query_builder.push_bind(limit);
+        query_builder.push(" OFFSET ");
+        query_builder.push_bind(offset);
+
+        let query = query_builder.build_query_as::<UserDbModel>();
+        let users_db = query.fetch_all(&self.pool).await?;
 
         let users = users_db.into_iter().map(|u| u.into()).collect();
         Ok(users)
     }
 
     #[tracing::instrument(skip(self))]
-    async fn count(&self) -> Result<i64, anyhow::Error> {
-        let result: (i64,) = sqlx::query_as(
+    async fn count(&self, search: Option<String>) -> Result<i64, anyhow::Error> {
+        let mut query_builder = sqlx::QueryBuilder::new(
             r#"
             SELECT COUNT(*) FROM users
+            WHERE 1=1
             "#,
-        )
-        .fetch_one(&self.pool)
-        .await?;
+        );
+
+        if let Some(ref s) = search
+            && !s.trim().is_empty()
+        {
+            let pattern = format!("%{}%", s.trim());
+            query_builder.push(" AND (first_name ILIKE ");
+            query_builder.push_bind(pattern.clone());
+            query_builder.push(" OR last_name ILIKE ");
+            query_builder.push_bind(pattern.clone());
+            query_builder.push(" OR email ILIKE ");
+            query_builder.push_bind(pattern);
+            query_builder.push(")");
+        }
+
+        let query = query_builder.build_query_as::<(i64,)>();
+        let result = query.fetch_one(&self.pool).await?;
 
         Ok(result.0)
     }

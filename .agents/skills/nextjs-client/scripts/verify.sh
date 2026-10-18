@@ -14,9 +14,10 @@ else
     cd ../../../../../client || cd ./client || { echo "Could not find client directory."; exit 1; }
 fi
 
-# Run next build to type-check, lint, and verify build succeeds.
-# Next.js build automatically handles ESLint and TypeScript checks.
-echo "Running Next.js Build (Lint + Type Check)..."
-npm run build --if-present || npx next build
+echo "Running Next.js Lint..."
+bun run lint --max-warnings 0 || { echo "Linting failed."; exit 1; }
+
+echo "Running Next.js Build (Type Check + Production Bundle)..."
+bun run build || { echo "Build failed."; exit 1; }
 
 echo "Verification complete!"

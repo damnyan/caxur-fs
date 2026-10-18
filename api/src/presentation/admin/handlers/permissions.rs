@@ -1,10 +1,10 @@
 use crate::application::permissions::list::{ListPermissionsRequest, ListPermissionsUseCase};
 use crate::domain::access_scope::AccessScope;
-use crate::shared::error::AppError;
+use crate::shared::error::{AppError, ErrorResponse};
+use crate::shared::pagination::PaginationLinkBuilder;
 use crate::shared::query::Qs;
 use crate::shared::response::{JsonApiMeta, JsonApiResource, JsonApiResponse};
 use axum::{
-    Json,
     http::{StatusCode, Uri},
     response::IntoResponse,
 };
@@ -25,6 +25,11 @@ pub struct PermissionResource {
     params(ListPermissionsRequest),
     responses(
         (status = 200, description = "List of permissions", body = JsonApiResponse<Vec<JsonApiResource<PermissionResource>>>),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse)
+    ),
+    security(
+        ("bearer_auth" = [])
     ),
     tag = "Admin / Permission Management"
 )]
@@ -62,20 +67,12 @@ pub async fn list_permissions(
         .with_total(total);
 
     // Generate pagination links
-    let links = crate::shared::pagination::PaginationLinkBuilder::from_uri(
-        &uri,
-        page_number,
-        page_size,
-        total,
-    )
-    .build();
+    let links = PaginationLinkBuilder::from_uri(&uri, page_number, page_size, total).build();
 
     Ok((
         StatusCode::OK,
-        Json(
-            JsonApiResponse::new(resources)
-                .with_meta(meta)
-                .with_links(links),
-        ),
+        JsonApiResponse::new(resources)
+            .with_meta(meta)
+            .with_links(links),
     ))
 }

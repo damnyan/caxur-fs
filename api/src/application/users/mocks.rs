@@ -69,10 +69,28 @@ impl UserRepository for MockUserRepository {
         Ok(guard.iter().find(|u| u.email == email).cloned())
     }
 
-    async fn find_all(&self, limit: i64, offset: i64) -> Result<Vec<User>, anyhow::Error> {
+    async fn find_all(
+        &self,
+        search: Option<String>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<User>, anyhow::Error> {
         let guard = self.users.lock().unwrap();
+        let query = search.map(|s| s.trim().to_ascii_lowercase());
         let skipped = guard
             .iter()
+            .filter(|u| match &query {
+                Some(q) if !q.is_empty() => {
+                    u.email.to_ascii_lowercase().contains(q)
+                        || u.first_name
+                            .as_ref()
+                            .is_some_and(|n| n.to_ascii_lowercase().contains(q))
+                        || u.last_name
+                            .as_ref()
+                            .is_some_and(|n| n.to_ascii_lowercase().contains(q))
+                }
+                _ => true,
+            })
             .skip(offset as usize)
             .take(limit as usize)
             .cloned()
@@ -80,8 +98,25 @@ impl UserRepository for MockUserRepository {
         Ok(skipped)
     }
 
-    async fn count(&self) -> Result<i64, anyhow::Error> {
-        Ok(self.users.lock().unwrap().len() as i64)
+    async fn count(&self, search: Option<String>) -> Result<i64, anyhow::Error> {
+        let guard = self.users.lock().unwrap();
+        let query = search.map(|s| s.trim().to_ascii_lowercase());
+        let count = guard
+            .iter()
+            .filter(|u| match &query {
+                Some(q) if !q.is_empty() => {
+                    u.email.to_ascii_lowercase().contains(q)
+                        || u.first_name
+                            .as_ref()
+                            .is_some_and(|n| n.to_ascii_lowercase().contains(q))
+                        || u.last_name
+                            .as_ref()
+                            .is_some_and(|n| n.to_ascii_lowercase().contains(q))
+                }
+                _ => true,
+            })
+            .count();
+        Ok(count as i64)
     }
 
     async fn update(&self, id: Uuid, update: UpdateUser) -> Result<User, anyhow::Error> {

@@ -13,7 +13,10 @@ export const getRoles = async (
   perPage: number = 20
 ): Promise<JsonApiListResponse<Role>> => {
   const response = await apiClient.get<JsonApiListResponse<Role>>('/admin/roles', {
-    params: { page, perPage },
+    params: {
+      'page[number]': page,
+      'page[size]': perPage,
+    },
   });
   return response.data;
 };
@@ -56,8 +59,12 @@ export const getPermissions = async (
 // From GET /api/v1/admin/roles/{id}/permissions
 // Note: Backend returns `JsonApiResponse<Vec<PermissionDto>>`
 // So it returns `{ data: [ { name, description } ] }` but not JsonApiResource wrapped
-export const getRolePermissions = async (roleId: string): Promise<{ data: string[] }> => {
-  const response = await apiClient.get<{ data: string[] }>(`/admin/roles/${roleId}/permissions`);
+export const getRolePermissions = async (
+  roleId: string
+): Promise<{ data: Array<string | Permission> }> => {
+  const response = await apiClient.get<{ data: Array<string | Permission> }>(
+    `/admin/roles/${roleId}/permissions`
+  );
   return response.data;
 };
 

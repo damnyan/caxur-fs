@@ -1,6 +1,7 @@
 use crate::application::auth::token_utils::{TokenResponse, generate_and_store_tokens};
 use crate::domain::auth::{AuthService, RefreshTokenRepository};
-use crate::domain::users::UserRepository;
+use crate::domain::password::PasswordHashingService;
+use crate::domain::users::{User, UserRepository};
 use crate::shared::error::AppError;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -18,9 +19,6 @@ pub struct LoginRequest {
 }
 
 pub type LoginResponse = TokenResponse;
-
-use crate::domain::password::PasswordHashingService;
-use crate::domain::users::User;
 
 pub type LoginUseCaseResult = (LoginResponse, User);
 

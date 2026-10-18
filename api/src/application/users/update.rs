@@ -130,8 +130,7 @@ impl UpdateUserUseCase {
 
         // File lifecycle movement: tmp/ -> uploads/ -> deleted/
         let face_photo = if let Some(new_photo) = &req.face_photo {
-            if new_photo.starts_with("tmp/") {
-                let filename = new_photo.strip_prefix("tmp/").unwrap();
+            if let Some(filename) = new_photo.strip_prefix("tmp/") {
                 let dest_key = format!("uploads/{}", filename);
 
                 // Move file from tmp/ to uploads/ in storage
@@ -144,12 +143,11 @@ impl UpdateUserUseCase {
                     })?;
 
                 // Move old file to deleted/ in storage if one exists in uploads/
-                if let Some(old_photo) = existing
+                if let Some((old_photo, old_filename)) = existing
                     .face_photo
                     .as_ref()
-                    .filter(|p| p.starts_with("uploads/"))
+                    .and_then(|p| p.strip_prefix("uploads/").map(|name| (p, name)))
                 {
-                    let old_filename = old_photo.strip_prefix("uploads/").unwrap();
                     let deleted_key = format!("deleted/{}", old_filename);
 
                     if let Err(e) = self

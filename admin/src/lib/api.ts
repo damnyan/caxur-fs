@@ -98,7 +98,11 @@ async function request<T>(url: string, options: RequestInit & { params?: Record<
 
   let responseData: any = null;
   const contentType = response.headers.get('content-type');
-  if (contentType && contentType.includes('application/json')) {
+  if (
+    contentType &&
+    (contentType.includes('application/json') ||
+      contentType.includes('application/vnd.api+json'))
+  ) {
     try {
       responseData = await response.json();
     } catch {

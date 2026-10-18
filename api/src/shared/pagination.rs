@@ -21,36 +21,15 @@ pub fn default_sort() -> String {
 #[serde(rename_all = "camelCase")]
 pub struct PageParams {
     /// Page number (1-indexed)
-    #[serde(
-        default = "default_page_number",
-        deserialize_with = "deserialize_i64_from_string"
-    )]
+    #[serde(default = "default_page_number")]
     #[param(example = 1, minimum = 1, default = 1)]
     #[schema(example = 1, minimum = 1, default = 1)]
     pub number: i64,
     /// Number of items per page
-    #[serde(
-        default = "default_page_size",
-        deserialize_with = "deserialize_i64_from_string"
-    )]
+    #[serde(default = "default_page_size")]
     #[param(example = 20, minimum = 1, maximum = 100, default = 20)]
     #[schema(example = 20, minimum = 1, maximum = 100, default = 20)]
     pub size: i64,
-}
-
-pub fn deserialize_i64_from_string<'de, D>(deserializer: D) -> Result<i64, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    use serde::Deserialize;
-    let v = serde_json::Value::deserialize(deserializer)?;
-    match v {
-        serde_json::Value::String(s) => s.parse::<i64>().map_err(serde::de::Error::custom),
-        serde_json::Value::Number(n) => n
-            .as_i64()
-            .ok_or_else(|| serde::de::Error::custom("Invalid number")),
-        _ => Err(serde::de::Error::custom("Expected string or number")),
-    }
 }
 
 impl Default for PageParams {

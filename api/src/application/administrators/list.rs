@@ -1,6 +1,6 @@
 use crate::domain::administrators::{Administrator, AdministratorRepository};
 use crate::shared::error::AppError;
-use crate::shared::pagination::{default_page_number, default_page_size};
+use crate::shared::pagination::PageParams;
 use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::{IntoParams, ToSchema};
@@ -8,25 +8,11 @@ use uuid::Uuid;
 
 #[derive(Deserialize, IntoParams, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct PageParams {
-    /// Page number (1-indexed)
-    #[serde(default = "default_page_number")]
-    #[param(example = 1, minimum = 1)]
-    pub number: i64,
-    /// Number of items per page
-    #[serde(default = "default_page_size")]
-    #[param(example = 20, minimum = 1, maximum = 100)]
-    pub size: i64,
-    /// Cursor for cursor-based pagination (future use)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cursor: Option<String>,
-}
-
-#[derive(Deserialize, IntoParams, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[into_params(parameter_in = Query)]
 pub struct ListAdministratorsRequest {
     /// Pagination parameters
     #[serde(default)]
+    #[param(inline, style = DeepObject, explode = true)]
     pub page: PageParams,
     /// Search by name or email
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -42,16 +28,6 @@ pub struct ListAdministratorsRequest {
     /// Example: "roles"
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include: Option<String>,
-}
-
-impl Default for PageParams {
-    fn default() -> Self {
-        Self {
-            number: default_page_number(),
-            size: default_page_size(),
-            cursor: None,
-        }
-    }
 }
 
 pub struct ListAdministratorsUseCase {

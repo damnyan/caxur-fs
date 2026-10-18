@@ -1,3 +1,4 @@
+use crate::domain::access_scope::AccessScope;
 use crate::domain::roles::Role;
 use sqlx::FromRow;
 use time::OffsetDateTime;
@@ -13,8 +14,6 @@ pub struct RoleDbModel {
     pub created_at: OffsetDateTime,
     pub updated_at: OffsetDateTime,
 }
-
-use crate::domain::access_scope::AccessScope;
 
 impl From<RoleDbModel> for Role {
     fn from(model: RoleDbModel) -> Self {

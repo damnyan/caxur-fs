@@ -1,3 +1,4 @@
+use crate::domain::permissions::Permission;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -64,7 +65,7 @@ pub struct UpdateAdministrator {
 pub struct AdminPermissionsAndStatus {
     pub is_found: bool,
     pub revoked_at: Option<OffsetDateTime>,
-    pub permissions: Vec<crate::domain::permissions::Permission>,
+    pub permissions: Vec<Permission>,
 }
 
 #[async_trait]
@@ -93,10 +94,7 @@ pub trait AdministratorRepository: Send + Sync {
 
     async fn attach_roles(&self, admin_id: Uuid, role_ids: Vec<Uuid>) -> Result<(), anyhow::Error>;
     async fn detach_roles(&self, admin_id: Uuid, role_ids: Vec<Uuid>) -> Result<(), anyhow::Error>;
-    async fn get_permissions(
-        &self,
-        admin_id: Uuid,
-    ) -> Result<Vec<crate::domain::permissions::Permission>, anyhow::Error>;
+    async fn get_permissions(&self, admin_id: Uuid) -> Result<Vec<Permission>, anyhow::Error>;
 
     async fn find_permissions_and_status(
         &self,

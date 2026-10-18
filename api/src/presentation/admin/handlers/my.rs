@@ -1,3 +1,7 @@
+use crate::application::administrators::email_change::{
+    InitiateEmailChangeRequest, InitiateEmailChangeUseCase, VerifyEmailChangeRequest,
+    VerifyEmailChangeUseCase,
+};
 use crate::application::administrators::get::GetAdministratorUseCase;
 use crate::application::administrators::update_my_password::{
     UpdateMyPasswordRequest, UpdateMyPasswordUseCase,
@@ -9,6 +13,7 @@ use crate::domain::administrators::AdministratorRepository;
 use crate::infrastructure::db::DbPool;
 use crate::infrastructure::password::PasswordService;
 use crate::infrastructure::repositories::administrators::PostgresAdministratorRepository;
+use crate::infrastructure::state::AppState;
 use crate::presentation::admin::handlers::administrators::{
     AdministratorResource, build_admin_resource,
 };
@@ -16,9 +21,10 @@ use crate::presentation::extractors::AuthUser;
 use crate::shared::error::{AppError, ErrorResponse};
 use crate::shared::response::{JsonApiMeta, JsonApiResource, JsonApiResponse};
 use crate::shared::validation::ValidatedJson;
-use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
+use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use serde_json::json;
 use std::sync::Arc;
+use uuid::Uuid;
 
 /// Get current administrator profile
 #[utoipa::path(
@@ -40,7 +46,7 @@ pub async fn get_my_profile(
     let repo = Arc::new(PostgresAdministratorRepository::new(pool));
     let use_case = GetAdministratorUseCase::new(repo.clone());
 
-    let user_id = uuid::Uuid::parse_str(&auth.claims.sub)
+    let user_id = Uuid::parse_str(&auth.claims.sub)
         .map_err(|_| AppError::Unauthorized("Invalid user ID".to_string()))?;
     let admin = use_case.execute(user_id).await?;
 
@@ -57,7 +63,7 @@ pub async fn get_my_profile(
             if !included.is_empty() {
                 response = response.with_included(included);
             }
-            Ok((StatusCode::OK, Json(response)))
+            Ok((StatusCode::OK, response))
         }
         None => Err(AppError::Unauthorized(
             "Administrator not found".to_string(),
@@ -88,11 +94,11 @@ pub async fn update_my_profile(
     let repo = Arc::new(PostgresAdministratorRepository::new(pool));
     let use_case = UpdateMyProfileUseCase::new(repo);
 
-    let user_id = uuid::Uuid::parse_str(&auth.claims.sub)
+    let user_id = Uuid::parse_str(&auth.claims.sub)
         .map_err(|_| AppError::Unauthorized("Invalid user ID".to_string()))?;
     let admin = use_case.execute(user_id, req).await?;
     let (resource, _) = build_admin_resource(admin, true);
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
+    Ok((StatusCode::OK, JsonApiResponse::new(resource)))
 }
 
 /// Update current administrator password
@@ -119,20 +125,14 @@ pub async fn update_my_password(
     let hasher = Arc::new(PasswordService::new());
     let use_case = UpdateMyPasswordUseCase::new(repo, hasher);
 
-    let user_id = uuid::Uuid::parse_str(&auth.claims.sub)
+    let user_id = Uuid::parse_str(&auth.claims.sub)
         .map_err(|_| AppError::Unauthorized("Invalid user ID".to_string()))?;
     use_case.execute(user_id, req).await?;
     Ok((
         StatusCode::OK,
-        Json(JsonApiResponse::new(json!({ "success": true }))),
+        JsonApiResponse::new(json!({ "success": true })),
     ))
 }
-
-use crate::application::administrators::email_change::{
-    InitiateEmailChangeRequest, InitiateEmailChangeUseCase, VerifyEmailChangeRequest,
-    VerifyEmailChangeUseCase,
-};
-use crate::infrastructure::state::AppState;
 
 /// Initiate email change
 #[utoipa::path(
@@ -164,7 +164,7 @@ pub async fn initiate_email_change(
         state.email_service,
     );
 
-    let user_id = uuid::Uuid::parse_str(&auth.claims.sub)
+    let user_id = Uuid::parse_str(&auth.claims.sub)
         .map_err(|_| AppError::Unauthorized("Invalid user ID".to_string()))?;
     use_case.execute(user_id, req).await?;
     Ok(StatusCode::NO_CONTENT)
@@ -194,11 +194,11 @@ pub async fn verify_email_change(
     let repo = Arc::new(PostgresAdministratorRepository::new(state.pool));
     let use_case = VerifyEmailChangeUseCase::new(repo, state.cache_service, state.email_service);
 
-    let user_id = uuid::Uuid::parse_str(&auth.claims.sub)
+    let user_id = Uuid::parse_str(&auth.claims.sub)
         .map_err(|_| AppError::Unauthorized("Invalid user ID".to_string()))?;
     use_case.execute(user_id, req).await?;
     Ok((
         StatusCode::OK,
-        Json(JsonApiResponse::new(json!({ "success": true }))),
+        JsonApiResponse::new(json!({ "success": true })),
     ))
 }

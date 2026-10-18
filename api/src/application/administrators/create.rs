@@ -1,5 +1,7 @@
 use crate::domain::administrators::{Administrator, AdministratorRepository, NewAdministrator};
+use crate::domain::auth::AuthService;
 use crate::domain::password::PasswordHashingService;
+use crate::infrastructure::email::EmailService;
 use crate::shared::error::{AppError, FieldError};
 use serde::Deserialize;
 use std::sync::Arc;
@@ -40,8 +42,8 @@ impl CreateAdministratorRequest {
 pub struct CreateAdministratorUseCase {
     repo: Arc<dyn AdministratorRepository>,
     password_service: Arc<dyn PasswordHashingService>,
-    auth_service: Arc<dyn crate::domain::auth::AuthService>,
-    email_service: Arc<dyn crate::infrastructure::email::EmailService>,
+    auth_service: Arc<dyn AuthService>,
+    email_service: Arc<dyn EmailService>,
     admin_url: String,
 }
 
@@ -49,8 +51,8 @@ impl CreateAdministratorUseCase {
     pub fn new(
         repo: Arc<dyn AdministratorRepository>,
         password_service: Arc<dyn PasswordHashingService>,
-        auth_service: Arc<dyn crate::domain::auth::AuthService>,
-        email_service: Arc<dyn crate::infrastructure::email::EmailService>,
+        auth_service: Arc<dyn AuthService>,
+        email_service: Arc<dyn EmailService>,
         admin_url: String,
     ) -> Self {
         Self {

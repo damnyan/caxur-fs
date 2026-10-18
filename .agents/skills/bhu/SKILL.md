@@ -16,10 +16,11 @@ It combines the standard **Antigravity (AGY CLI) `/plan` workflow** with **`caxu
 ### 1. Ingest & Research
 Before drafting any implementation steps, perform thorough discovery:
 - Use standard research tools (`grep_search`, `list_dir`, `view_file`) to inspect impacted directories.
-- Review target-specific system rules in `.agents/rules/`:
-  - [`rust-axum-api.md`](file:///.agents/rules/rust-axum-api.md): Rules for the Rust Axum API backend.
-  - [`nextjs-client.md`](file:///.agents/rules/nextjs-client.md): Rules for the Next.js frontend client portal.
-  - [`react-admin.md`](file:///.agents/rules/react-admin.md): Rules for the Vite React admin dashboard.
+- Review target-specific system rules in `.agents/rules/` and service-level guides:
+  - [`rust-axum-api.md`](file:///.agents/rules/rust-axum-api.md): Rules for the Rust Axum API backend (`api/src/presentation/openapi.rs` -> `api/openapi.json` sync, direct `JsonApiResponse` returns, `Qs<T>` pagination).
+  - [`nextjs-client.md`](file:///.agents/rules/nextjs-client.md) & [`client/AGENTS.md`](file:///client/AGENTS.md): Rules for the Next.js 16 frontend client portal (consult bundled docs in `client/node_modules/next/dist/docs/` before writing Next.js 16 code).
+  - [`react-admin.md`](file:///.agents/rules/react-admin.md): Rules for the Vite React 19 admin dashboard.
+- For any HTML/CSS or client-side JS/UI task in `client/` or `admin/`, run the `modern-web-guidance` pre-flight check (`npx -y modern-web-guidance@latest search "<query>"` -> `retrieve "<id>"`).
 
 ### 2. Generate the Implementation Plan Artifact
 The agent **MUST** create or update an implementation plan artifact at `<Artifact Directory>/<plan_name>.md`.
@@ -53,9 +54,10 @@ The implementation plan document **MUST** adhere to the official AGY CLI `/plan`
 
    - **Mandatory `caxur-fs` Integrations inside Proposed Changes**:
      - **A. Workspace Skills Activation**: Explicitly specify which `.agents/skills/` will be activated:
-       - [`rust-axum-api/SKILL.md`](file:///.agents/skills/rust-axum-api/SKILL.md): Backend API handlers, models, repositories, migrations, JSON:API v1.1 compliance.
-       - [`nextjs-client/SKILL.md`](file:///.agents/skills/nextjs-client/SKILL.md): Next.js App Router, RSC boundaries, URL-synced search/filters, Zod forms.
-       - [`react-admin/SKILL.md`](file:///.agents/skills/react-admin/SKILL.md): Feature-based structure, Zustand global state, TanStack Query server state, URL search params sync.
+       - [`rust-axum-api/SKILL.md`](file:///.agents/skills/rust-axum-api/SKILL.md): Backend API handlers, models, repositories, migrations, JSON:API v1.1 compliance, and `src/presentation/openapi.rs` registration.
+       - [`nextjs-client/SKILL.md`](file:///.agents/skills/nextjs-client/SKILL.md): Next.js 16 App Router (`client/node_modules/next/dist/docs/`), `src/proxy.ts`, RSC boundaries, URL-synced search/filters, Zod forms, and `@base-ui/react` (`render` prop).
+       - [`react-admin/SKILL.md`](file:///.agents/skills/react-admin/SKILL.md): Feature-based structure, Zustand global state, TanStack Query server state, URL search params sync, and `@base-ui/react` (`render` prop).
+       - `modern-web-guidance`: Pre-flight search/retrieve for frontend tasks and `### Modern Web Guidance` disclosure.
      - **B. Workspace MCP Servers**: Map tools to avoid manual type duplication or outdated docs:
        - **`caxur-api-docs`**: Run `search_endpoints` -> `get_endpoint_details` -> `generate_typescript_types` to integrate endpoints programmatically.
        - **`context7`**: Run `resolve-library-id` -> `query-docs` for up-to-date documentation on Rust crates or React/Next/Tailwind libraries.
@@ -64,7 +66,7 @@ The implementation plan document **MUST** adhere to the official AGY CLI `/plan`
        - *Cross-Service / High Complexity (Full-Stack)*: Recommend `2` to `3` sub-agents isolated by service directory (`api/`, `client/`, `admin/`) to avoid context window pollution and parallel merge conflicts.
 
 5. **`## Verification Plan`**:
-   - **Automated Tests**: Specify exact commands (`bash scripts/verify-all.sh`, unit tests, type-checks).
+   - **Automated Tests**: Specify exact commands (`./scripts/verify-all.sh`, unit tests, type-checks).
    - **Manual Verification**: Detailed steps for manual testing.
 
 ---
@@ -82,13 +84,13 @@ The implementation plan document **MUST** adhere to the official AGY CLI `/plan`
 - Keep `task.md` updated during execution: mark in-progress tasks with `[/]` and completed tasks with `[x]`.
 
 ### 5. Build Verification & Iterative Auto-Fix Loop
-- Run `bash scripts/verify-all.sh` to execute full monorepo verification:
+- Run `./scripts/verify-all.sh` to execute full monorepo verification:
   - Client linting (`--max-warnings 0`) & production build (`bun run build`).
   - Admin linting (`--max-warnings 0`) & production build (`bun run build`).
-  - API formatting (`cargo fmt --check`), SQLx prepare (`cargo sqlx prepare`), Clippy lints (`cargo clippy -D warnings`), and unit tests (`cargo test --lib`).
+  - API formatting (`cargo fmt --check`), SQLx prepare (`cargo sqlx prepare`), Clippy lints (`cargo clippy -D warnings`), and unit tests (`cargo test --lib`, which also regenerates `api/openapi.json`).
 - **CRITICAL**: The build MUST pass with **zero warnings** and **zero errors**.
 - **Autonomous Fix Loop (Max 5 iterations)**:
-  - If any build warnings, compilation errors, lint errors, or type errors arise, the agent **MUST automatically inspect the logs, apply targeted fixes, and re-verify** (using `bash scripts/verify-all.sh --skip-bump`).
+  - If any build warnings, compilation errors, lint errors, or type errors arise, the agent **MUST automatically inspect the logs, apply targeted fixes, and re-verify** (using `./scripts/verify-all.sh --skip-bump`).
   - If errors persist beyond 5 attempts, halt the loop and present a detailed diagnostic report to the user.
 - **Dependency Upgrade Protocol**:
   - If a fix requires upgrading or adding a dependency, research compatibility and breaking changes first using `context7` MCP, release notes, and changelogs.

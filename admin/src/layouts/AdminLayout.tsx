@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Outlet, Navigate, NavLink, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { LayoutDashboard, Users, Shield, UserCircle, LogOut, Menu } from 'lucide-react';
+import { LayoutDashboard, Users, UserCheck, Shield, UserCircle, LogOut, Menu } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { apiClient } from '@/lib/api';
 import {
@@ -97,6 +98,7 @@ export default function AdminLayout() {
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Administrators', path: '/administrators', icon: Users, permission: 'administrator_management' },
+    { name: 'Users', path: '/users', icon: UserCheck, permission: 'administrator_management' },
     { name: 'Roles', path: '/roles', icon: Shield, permission: 'role_management' },
     { name: 'Profile', path: '/profile', icon: UserCircle },
   ];
@@ -111,10 +113,11 @@ export default function AdminLayout() {
     <div className="h-screen overflow-hidden bg-background text-foreground flex">
       {/* Desktop Sidebar */}
       <aside className="w-64 bg-[#FBFBFA] dark:bg-[#111111] border-r border-border flex flex-col hidden md:flex">
-        <div className="h-16 flex items-center px-6 border-b border-border">
+        <div className="h-16 flex items-center justify-between px-6 border-b border-border">
           <Link to="/" className="font-serif text-xl font-bold tracking-tight text-foreground">
             {APP_NAME}
           </Link>
+          <ThemeToggle />
         </div>
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="px-3 space-y-1">
@@ -257,13 +260,16 @@ export default function AdminLayout() {
             </Link>
           </div>
 
-          <button
-            onClick={handleLogout}
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-[#F4F3EC] dark:hover:bg-[#1E1E1E] rounded-md transition-colors"
-            title="Logout"
-          >
-            <LogOut className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button
+              onClick={handleLogout}
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-[#F4F3EC] dark:hover:bg-[#1E1E1E] rounded-md transition-colors"
+              title="Logout"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8">

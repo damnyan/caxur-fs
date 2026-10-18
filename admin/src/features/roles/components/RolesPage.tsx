@@ -36,8 +36,8 @@ export default function RolesPage() {
   useDocumentTitle('Roles');
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const page = parseInt(searchParams.get('page') || '1', 10);
-  const perPage = 20;
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const perPage = Math.max(1, parseInt(searchParams.get('per_page') || '20', 10) || 20);
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editRole, setEditRole] = useState<Role | null>(null);
@@ -63,9 +63,9 @@ export default function RolesPage() {
     }
   });
 
-  const roles = rolesResp?.data.map((r) => r.attributes) || [];
+  const roles = rolesResp?.data.map((r) => ({ ...r.attributes, id: r.id })) || [];
   const meta = rolesResp?.meta;
-  const lastPage = meta ? Math.ceil((meta.total || 0) / (meta.perPage || 20)) : 1;
+  const lastPage = meta ? Math.ceil((meta.total || 0) / (meta.perPage || perPage)) : 1;
 
   const handleCreateSubmit = async (
     data: { name: string; description?: string | null },

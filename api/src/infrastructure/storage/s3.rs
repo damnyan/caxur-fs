@@ -117,12 +117,14 @@ impl StorageService for S3StorageService {
         key: &str,
         expires_in_secs: u64,
     ) -> Result<String, anyhow::Error> {
+        let presigning_config = PresigningConfig::expires_in(Duration::from_secs(expires_in_secs))
+            .map_err(|e| anyhow::anyhow!("Invalid presigning duration: {}", e))?;
         let presigned_req = self
             .client
             .get_object()
             .bucket(&self.bucket)
             .key(key)
-            .presigned(PresigningConfig::expires_in(Duration::from_secs(expires_in_secs)).unwrap())
+            .presigned(presigning_config)
             .await
             .map_err(|e| anyhow::anyhow!("Presigning error: {}", e))?;
 

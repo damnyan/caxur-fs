@@ -1,7 +1,9 @@
+use crate::application::auth::login::LoginResponse;
+use crate::domain::permissions::Permission;
+use crate::domain::storage::StorageService;
+use crate::domain::users::User;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
-
-use crate::domain::permissions::Permission;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
@@ -31,8 +33,6 @@ impl From<PermissionDto> for Permission {
         }
     }
 }
-
-use crate::application::auth::login::LoginResponse;
 
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -68,12 +68,9 @@ impl AuthTokenResource {
     }
 }
 
-use crate::domain::users::User;
-
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UserResource {
-    pub id: String,
     pub email: String,
     pub first_name: Option<String>,
     pub middle_name: Option<String>,
@@ -92,7 +89,6 @@ pub struct UserResource {
 impl From<User> for UserResource {
     fn from(user: User) -> Self {
         Self {
-            id: user.id.to_string(),
             email: user.email,
             first_name: user.first_name,
             middle_name: user.middle_name,
@@ -108,10 +104,7 @@ impl From<User> for UserResource {
 
 impl UserResource {
     #[allow(clippy::collapsible_if)]
-    pub async fn from_user(
-        user: User,
-        storage_service: &dyn crate::domain::storage::StorageService,
-    ) -> Self {
+    pub async fn from_user(user: User, storage_service: &dyn StorageService) -> Self {
         let mut resource = Self::from(user);
         if let Some(ref photo) = resource.face_photo {
             if let Ok(url) = storage_service.get_presigned_url(photo, 3600).await {

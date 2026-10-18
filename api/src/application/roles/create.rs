@@ -25,7 +25,7 @@ pub struct CreateRoleRequest {
     #[schema(example = "Administrator role with full permissions")]
     pub description: Option<String>,
     #[serde(default = "default_scope")]
-    #[schema(example = "ADMINISTRATOR")]
+    #[schema(value_type = String, example = "ADMINISTRATOR")]
     pub scope: AccessScope,
     #[schema(example = "00000000-0000-0000-0000-000000000000")]
     pub group_id: Option<Uuid>,

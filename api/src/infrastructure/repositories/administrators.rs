@@ -1,6 +1,8 @@
 use crate::domain::administrators::{
-    Administrator, AdministratorRepository, NewAdministrator, UpdateAdministrator,
+    AdminPermissionsAndStatus, Administrator, AdministratorRepository, NewAdministrator,
+    UpdateAdministrator,
 };
+use crate::domain::permissions::Permission;
 use crate::infrastructure::db::DbPool;
 use crate::infrastructure::db::models::administrators::AdministratorDbModel;
 use crate::shared::validation::normalize_email;
@@ -314,10 +316,7 @@ impl AdministratorRepository for PostgresAdministratorRepository {
     }
 
     #[tracing::instrument(skip(self))]
-    async fn get_permissions(
-        &self,
-        admin_id: Uuid,
-    ) -> Result<Vec<crate::domain::permissions::Permission>, anyhow::Error> {
+    async fn get_permissions(&self, admin_id: Uuid) -> Result<Vec<Permission>, anyhow::Error> {
         // Query to get distinct permissions from all roles assigned to the administrator
         let rows = sqlx::query!(
             r#"
@@ -343,7 +342,7 @@ impl AdministratorRepository for PostgresAdministratorRepository {
     async fn find_permissions_and_status(
         &self,
         admin_id: Uuid,
-    ) -> Result<crate::domain::administrators::AdminPermissionsAndStatus, anyhow::Error> {
+    ) -> Result<AdminPermissionsAndStatus, anyhow::Error> {
         let row = sqlx::query!(
             r#"
             SELECT 
@@ -368,13 +367,13 @@ impl AdministratorRepository for PostgresAdministratorRepository {
                 .filter_map(|p| p.parse().ok())
                 .collect();
 
-            Ok(crate::domain::administrators::AdminPermissionsAndStatus {
+            Ok(AdminPermissionsAndStatus {
                 is_found: true,
                 revoked_at: r.revoked_at,
                 permissions,
             })
         } else {
-            Ok(crate::domain::administrators::AdminPermissionsAndStatus {
+            Ok(AdminPermissionsAndStatus {
                 is_found: false,
                 revoked_at: None,
                 permissions: Vec::new(),

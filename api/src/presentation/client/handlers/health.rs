@@ -5,6 +5,15 @@ use serde_json::json;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Health check endpoint with database connectivity test conforming to the IETF Draft standard
+#[utoipa::path(
+    get,
+    path = "/health",
+    responses(
+        (status = 200, description = "Service health check passed", body = serde_json::Value),
+        (status = 503, description = "Service health check failed", body = serde_json::Value)
+    ),
+    tag = "Health"
+)]
 pub async fn health_check(State(pool): State<DbPool>) -> impl IntoResponse {
     let now = time::OffsetDateTime::now_utc();
     let time_str = now
@@ -41,7 +50,7 @@ pub async fn health_check(State(pool): State<DbPool>) -> impl IntoResponse {
                             {
                                 "componentType": "datastore",
                                 "status": "fail",
-                                "output": e.to_string()
+                                "output": "Database connectivity check failed"
                             }
                         ]
                     }

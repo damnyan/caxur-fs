@@ -10,7 +10,7 @@
     "license": {
       "name": ""
     },
-    "version": "0.3.0"
+    "version": "0.3.1"
   },
   "paths": {
     "/api/v1/admin/administrators": {
@@ -23,60 +23,70 @@
         "parameters": [
           {
             "name": "page",
-            "in": "path",
+            "in": "query",
             "description": "Pagination parameters",
-            "required": true,
+            "required": false,
             "schema": {
-              "$ref": "#/components/schemas/PageParams"
-            }
+              "type": "object",
+              "description": "Shared page parameters for pagination",
+              "properties": {
+                "number": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Page number (1-indexed)",
+                  "default": 1,
+                  "example": 1,
+                  "minimum": 1
+                },
+                "size": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Number of items per page",
+                  "default": 20,
+                  "example": 20,
+                  "maximum": 100,
+                  "minimum": 1
+                }
+              }
+            },
+            "style": "deepObject",
+            "explode": true
           },
           {
             "name": "search",
-            "in": "path",
+            "in": "query",
             "description": "Search by name or email",
-            "required": true,
+            "required": false,
             "schema": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": "string"
             }
           },
           {
             "name": "roleId",
-            "in": "path",
+            "in": "query",
             "description": "Filter by role",
-            "required": true,
+            "required": false,
             "schema": {
-              "type": [
-                "string",
-                "null"
-              ],
+              "type": "string",
               "format": "uuid"
             }
           },
           {
             "name": "sort",
-            "in": "path",
+            "in": "query",
             "description": "Sort fields (comma-separated, prefix with - for descending) (future use)\nExample: \"created_at\" or \"-created_at,email\"",
-            "required": true,
+            "required": false,
             "schema": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": "string"
             }
           },
           {
             "name": "include",
-            "in": "path",
+            "in": "query",
             "description": "Included resources (comma-separated)\nExample: \"roles\"",
-            "required": true,
+            "required": false,
             "schema": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": "string"
             }
           }
         ],
@@ -712,6 +722,98 @@
         ]
       }
     },
+    "/api/v1/admin/auth/email/cancel": {
+      "post": {
+        "tags": [
+          "Admin / Auth"
+        ],
+        "summary": "Cancel admin email change request",
+        "operationId": "cancel_email_change",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelEmailChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Email change cancelled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiResponse_Value"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request / Invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Admin / Auth"
+        ],
+        "summary": "Request password reset",
+        "operationId": "forgot_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminRequestPasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "If email exists, a reset link will be sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiResponse_Value"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/auth/login": {
       "post": {
         "tags": [
@@ -848,6 +950,328 @@
         }
       }
     },
+    "/api/v1/admin/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Admin / Auth"
+        ],
+        "summary": "Confirm password reset",
+        "operationId": "reset_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminConfirmPasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiResponse_Value"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/my/profile": {
+      "get": {
+        "tags": [
+          "Admin / My Profile"
+        ],
+        "summary": "Get current administrator profile",
+        "operationId": "get_my_profile",
+        "responses": {
+          "200": {
+            "description": "Current administrator found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiResponse_JsonApiResource_AdministratorResource"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Admin / My Profile"
+        ],
+        "summary": "Update current administrator profile",
+        "operationId": "update_my_profile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Administrator profile updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiResponse_JsonApiResource_AdministratorResource"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/my/profile/email/initiate": {
+      "post": {
+        "tags": [
+          "Admin / My Profile"
+        ],
+        "summary": "Initiate email change",
+        "operationId": "initiate_email_change",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitiateEmailChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Email change initiated successfully"
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/my/profile/email/verify": {
+      "post": {
+        "tags": [
+          "Admin / My Profile"
+        ],
+        "summary": "Verify email change",
+        "operationId": "verify_email_change",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Email updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiResponse_Value"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/my/profile/password": {
+      "patch": {
+        "tags": [
+          "Admin / My Profile"
+        ],
+        "summary": "Update current administrator password",
+        "operationId": "update_my_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Administrator password updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiResponse_Value"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/permissions": {
       "get": {
         "tags": [
@@ -858,12 +1282,34 @@
         "parameters": [
           {
             "name": "page",
-            "in": "path",
+            "in": "query",
             "description": "Pagination parameters",
-            "required": true,
+            "required": false,
             "schema": {
-              "$ref": "#/components/schemas/PageParams"
-            }
+              "type": "object",
+              "description": "Shared page parameters for pagination",
+              "properties": {
+                "number": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Page number (1-indexed)",
+                  "default": 1,
+                  "example": 1,
+                  "minimum": 1
+                },
+                "size": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Number of items per page",
+                  "default": 20,
+                  "example": 20,
+                  "maximum": 100,
+                  "minimum": 1
+                }
+              }
+            },
+            "style": "deepObject",
+            "explode": true
           }
         ],
         "responses": {
@@ -876,8 +1322,33 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/roles": {
@@ -891,25 +1362,33 @@
           {
             "name": "page",
             "in": "query",
+            "description": "Pagination parameters",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1
+              "type": "object",
+              "description": "Shared page parameters for pagination",
+              "properties": {
+                "number": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Page number (1-indexed)",
+                  "default": 1,
+                  "example": 1,
+                  "minimum": 1
+                },
+                "size": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Number of items per page",
+                  "default": 20,
+                  "example": 20,
+                  "maximum": 100,
+                  "minimum": 1
+                }
+              }
             },
-            "example": 1
-          },
-          {
-            "name": "perPage",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "maximum": 100,
-              "minimum": 1
-            },
-            "example": 20
+            "style": "deepObject",
+            "explode": true
           }
         ],
         "responses": {
@@ -1230,6 +1709,16 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1286,6 +1775,16 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1293,6 +1792,195 @@
             "bearer_auth": []
           }
         ]
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "tags": [
+          "Admin / User Management"
+        ],
+        "summary": "List all users with pagination",
+        "operationId": "list_users",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Pagination parameters",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "description": "Shared page parameters for pagination",
+              "properties": {
+                "number": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Page number (1-indexed)",
+                  "default": 1,
+                  "example": 1,
+                  "minimum": 1
+                },
+                "size": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Number of items per page",
+                  "default": 20,
+                  "example": 20,
+                  "maximum": 100,
+                  "minimum": 1
+                }
+              }
+            },
+            "style": "deepObject",
+            "explode": true
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search by first name, last name, or email",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort fields (comma-separated, prefix with - for descending) (future use)\nExample: \"created_at\" or \"-created_at,email\"",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiResponse_Vec_JsonApiResource_UserResource"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/email/cancel": {
+      "post": {
+        "tags": [
+          "Client / Auth"
+        ],
+        "summary": "Cancel client email change request",
+        "operationId": "cancel_email_change",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelUserEmailChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Email change cancelled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiResponse_Value"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request / Invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Client / Auth"
+        ],
+        "summary": "Request password reset",
+        "operationId": "forgot_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRequestPasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "If email exists, a reset link will be sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiResponse_Value"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/auth/login": {
@@ -1526,6 +2214,57 @@
         }
       }
     },
+    "/api/v1/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Client / Auth"
+        ],
+        "summary": "Confirm password reset",
+        "operationId": "reset_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserConfirmPasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiResponse_Value"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/my/profile": {
       "get": {
         "tags": [
@@ -1556,6 +2295,187 @@
           },
           "404": {
             "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/profile": {
+      "patch": {
+        "tags": [
+          "Client / Profile"
+        ],
+        "summary": "Update profile handler",
+        "operationId": "update_profile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiResponse_JsonApiResource_UserResource"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/profile/email/initiate": {
+      "post": {
+        "tags": [
+          "Client / Profile"
+        ],
+        "summary": "Initiate email change",
+        "operationId": "initiate_email_change",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitiateUserEmailChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Email change initiated successfully"
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/profile/email/verify": {
+      "post": {
+        "tags": [
+          "Client / Profile"
+        ],
+        "summary": "Verify email change",
+        "operationId": "verify_email_change",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyUserEmailChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Email updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiResponse_Value"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1694,73 +2614,50 @@
         ]
       }
     },
-    "/api/v1/users": {
+    "/health": {
       "get": {
         "tags": [
-          "Admin / User Management"
+          "Health"
         ],
-        "summary": "List all users with pagination",
-        "operationId": "list_users",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "description": "Pagination parameters",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/PageParams"
-            }
-          },
-          {
-            "name": "sort",
-            "in": "query",
-            "description": "Sort fields (comma-separated, prefix with - for descending) (future use)\nExample: \"created_at\" or \"-created_at,email\"",
-            "required": false,
-            "schema": {
-              "type": [
-                "string",
-                "null"
-              ]
-            }
-          }
-        ],
+        "summary": "Health check endpoint with database connectivity test conforming to the IETF Draft standard",
+        "operationId": "health_check",
         "responses": {
           "200": {
-            "description": "List of users",
+            "description": "Service health check passed",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/JsonApiResponse_Vec_JsonApiResource_UserResource"
-                }
+                "schema": {}
               }
             }
           },
-          "401": {
-            "description": "Unauthorized",
+          "503": {
+            "description": "Service health check failed",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
+                "schema": {}
               }
             }
           }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ]
+        }
       }
     }
   },
   "components": {
     "schemas": {
-      "AccessScope": {
-        "type": "string",
-        "enum": [
-          "administrator"
-        ]
+      "AdminConfirmPasswordResetRequest": {
+        "type": "object",
+        "required": [
+          "token",
+          "newPassword"
+        ],
+        "properties": {
+          "newPassword": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        }
       },
       "AdminLoginRequest": {
         "type": "object",
@@ -1777,10 +2674,20 @@
           }
         }
       },
+      "AdminRequestPasswordResetRequest": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        }
+      },
       "AdministratorResource": {
         "type": "object",
         "required": [
-          "id",
           "firstName",
           "lastName",
           "email",
@@ -1807,9 +2714,6 @@
             ]
           },
           "firstName": {
-            "type": "string"
-          },
-          "id": {
             "type": "string"
           },
           "lastName": {
@@ -1904,6 +2808,28 @@
           }
         }
       },
+      "CancelEmailChangeRequest": {
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        }
+      },
+      "CancelUserEmailChangeRequest": {
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        }
+      },
       "CreateAdministratorRequest": {
         "type": "object",
         "required": [
@@ -1969,7 +2895,8 @@
             "minLength": 3
           },
           "scope": {
-            "$ref": "#/components/schemas/AccessScope"
+            "type": "string",
+            "example": "ADMINISTRATOR"
           }
         }
       },
@@ -2020,6 +2947,21 @@
           }
         }
       },
+      "InitiateEmailChangeRequest": {
+        "type": "object",
+        "required": [
+          "currentPassword",
+          "newEmail"
+        ],
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newEmail": {
+            "type": "string"
+          }
+        }
+      },
       "InitiateRegistrationRequest": {
         "type": "object",
         "required": [
@@ -2031,6 +2973,21 @@
             "type": "string"
           },
           "password": {
+            "type": "string"
+          }
+        }
+      },
+      "InitiateUserEmailChangeRequest": {
+        "type": "object",
+        "required": [
+          "currentPassword",
+          "newEmail"
+        ],
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newEmail": {
             "type": "string"
           }
         }
@@ -2216,6 +3173,92 @@
           }
         ]
       },
+      "JsonApiResource_AdministratorResource": {
+        "type": "object",
+        "description": "JSON:API compliant resource wrapper",
+        "required": [
+          "type",
+          "id",
+          "attributes"
+        ],
+        "properties": {
+          "attributes": {
+            "type": "object",
+            "required": [
+              "firstName",
+              "lastName",
+              "email",
+              "createdAt",
+              "updatedAt"
+            ],
+            "properties": {
+              "contactNumber": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "emailVerifiedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "firstName": {
+                "type": "string"
+              },
+              "lastName": {
+                "type": "string"
+              },
+              "middleName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "revokedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "suffix": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "relationships": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonApiRelationship"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
       "JsonApiResource_AuthTokenResource": {
         "type": "object",
         "description": "JSON:API compliant resource wrapper",
@@ -2335,7 +3378,6 @@
           "attributes": {
             "type": "object",
             "required": [
-              "id",
               "name",
               "createdAt",
               "updatedAt"
@@ -2349,9 +3391,6 @@
                   "string",
                   "null"
                 ]
-              },
-              "id": {
-                "type": "string"
               },
               "name": {
                 "type": "string"
@@ -2454,7 +3493,6 @@
           "attributes": {
             "type": "object",
             "required": [
-              "id",
               "email",
               "createdAt",
               "updatedAt"
@@ -2483,9 +3521,6 @@
                   "string",
                   "null"
                 ]
-              },
-              "id": {
-                "type": "string"
               },
               "lastName": {
                 "type": [
@@ -2549,7 +3584,6 @@
               "attributes": {
                 "type": "object",
                 "required": [
-                  "id",
                   "firstName",
                   "lastName",
                   "email",
@@ -2576,9 +3610,6 @@
                     ]
                   },
                   "firstName": {
-                    "type": "string"
-                  },
-                  "id": {
                     "type": "string"
                   },
                   "lastName": {
@@ -2774,7 +3805,6 @@
               "attributes": {
                 "type": "object",
                 "required": [
-                  "id",
                   "name",
                   "createdAt",
                   "updatedAt"
@@ -2788,9 +3818,6 @@
                       "string",
                       "null"
                     ]
-                  },
-                  "id": {
-                    "type": "string"
                   },
                   "name": {
                     "type": "string"
@@ -2965,7 +3992,6 @@
               "attributes": {
                 "type": "object",
                 "required": [
-                  "id",
                   "email",
                   "createdAt",
                   "updatedAt"
@@ -2994,9 +4020,6 @@
                       "string",
                       "null"
                     ]
-                  },
-                  "id": {
-                    "type": "string"
                   },
                   "lastName": {
                     "type": [
@@ -3128,7 +4151,6 @@
                 "attributes": {
                   "type": "object",
                   "required": [
-                    "id",
                     "firstName",
                     "lastName",
                     "email",
@@ -3155,9 +4177,6 @@
                       ]
                     },
                     "firstName": {
-                      "type": "string"
-                    },
-                    "id": {
                       "type": "string"
                     },
                     "lastName": {
@@ -3340,7 +4359,6 @@
                 "attributes": {
                   "type": "object",
                   "required": [
-                    "id",
                     "name",
                     "createdAt",
                     "updatedAt"
@@ -3354,9 +4372,6 @@
                         "string",
                         "null"
                       ]
-                    },
-                    "id": {
-                      "type": "string"
                     },
                     "name": {
                       "type": "string"
@@ -3437,7 +4452,6 @@
                 "attributes": {
                   "type": "object",
                   "required": [
-                    "id",
                     "email",
                     "createdAt",
                     "updatedAt"
@@ -3466,9 +4480,6 @@
                         "string",
                         "null"
                       ]
-                    },
-                    "id": {
-                      "type": "string"
                     },
                     "lastName": {
                       "type": [
@@ -3594,12 +4605,8 @@
         "type": "object",
         "properties": {
           "page": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "perPage": {
-            "type": "integer",
-            "format": "int64"
+            "$ref": "#/components/schemas/PageParams",
+            "description": "Pagination parameters"
           }
         }
       },
@@ -3609,6 +4616,13 @@
           "page": {
             "$ref": "#/components/schemas/PageParams",
             "description": "Pagination parameters"
+          },
+          "search": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Search by first name, last name, or email"
           },
           "sort": {
             "type": [
@@ -3674,23 +4688,24 @@
       },
       "PageParams": {
         "type": "object",
+        "description": "Shared page parameters for pagination",
         "properties": {
-          "cursor": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Cursor for cursor-based pagination (future use)"
-          },
           "number": {
             "type": "integer",
             "format": "int64",
-            "description": "Page number (1-indexed)"
+            "description": "Page number (1-indexed)",
+            "default": 1,
+            "example": 1,
+            "minimum": 1
           },
           "size": {
             "type": "integer",
             "format": "int64",
-            "description": "Number of items per page"
+            "description": "Number of items per page",
+            "default": 20,
+            "example": 20,
+            "maximum": 100,
+            "minimum": 1
           }
         }
       },
@@ -3731,7 +4746,6 @@
       "RoleResource": {
         "type": "object",
         "required": [
-          "id",
           "name",
           "createdAt",
           "updatedAt"
@@ -3745,9 +4759,6 @@
               "string",
               "null"
             ]
-          },
-          "id": {
-            "type": "string"
           },
           "name": {
             "type": "string"
@@ -3831,6 +4842,58 @@
           }
         }
       },
+      "UpdateMyPasswordRequest": {
+        "type": "object",
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string",
+            "example": "P@ssword12345",
+            "minLength": 12
+          }
+        }
+      },
+      "UpdateMyProfileRequest": {
+        "type": "object",
+        "properties": {
+          "contactNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "firstName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "middleName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "suffix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "UpdateRoleRequest": {
         "type": "object",
         "properties": {
@@ -3849,6 +4912,62 @@
             "example": "Admin",
             "maxLength": 255,
             "minLength": 3
+          }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "newemail@example.com"
+          },
+          "facePhoto": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "firstName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "middleName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "password": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "P@ssword12345",
+            "minLength": 12
+          },
+          "suffix": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -3884,10 +5003,35 @@
           }
         }
       },
+      "UserConfirmPasswordResetRequest": {
+        "type": "object",
+        "required": [
+          "token",
+          "newPassword"
+        ],
+        "properties": {
+          "newPassword": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        }
+      },
+      "UserRequestPasswordResetRequest": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        }
+      },
       "UserResource": {
         "type": "object",
         "required": [
-          "id",
           "email",
           "createdAt",
           "updatedAt"
@@ -3916,9 +5060,6 @@
               "string",
               "null"
             ]
-          },
-          "id": {
-            "type": "string"
           },
           "lastName": {
             "type": [
@@ -3958,6 +5099,17 @@
           }
         }
       },
+      "VerifyEmailChangeRequest": {
+        "type": "object",
+        "required": [
+          "otp"
+        ],
+        "properties": {
+          "otp": {
+            "type": "string"
+          }
+        }
+      },
       "VerifyRegistrationRequest": {
         "type": "object",
         "required": [
@@ -3968,6 +5120,17 @@
           "email": {
             "type": "string"
           },
+          "otp": {
+            "type": "string"
+          }
+        }
+      },
+      "VerifyUserEmailChangeRequest": {
+        "type": "object",
+        "required": [
+          "otp"
+        ],
+        "properties": {
           "otp": {
             "type": "string"
           }
@@ -3983,6 +5146,10 @@
     }
   },
   "tags": [
+    {
+      "name": "Health",
+      "description": "System health check endpoints"
+    },
     {
       "name": "Client / Auth",
       "description": "Client Authentication endpoints"
@@ -4006,6 +5173,10 @@
     {
       "name": "Admin / Permission Management",
       "description": "Permission management endpoints"
+    },
+    {
+      "name": "Admin / My Profile",
+      "description": "Current administrator profile management"
     },
     {
       "name": "Client / Profile",

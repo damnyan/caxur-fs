@@ -1,4 +1,5 @@
 use crate::application::auth::login::{LoginRequest, LoginUseCase};
+use crate::application::auth::logout::{LogoutRequest, LogoutUseCase};
 use crate::application::auth::refresh::{RefreshTokenRequest, RefreshTokenUseCase};
 use crate::application::auth::registration::initiate::{
     InitiateRegistrationRequest, InitiateRegistrationUseCase,
@@ -6,6 +7,12 @@ use crate::application::auth::registration::initiate::{
 use crate::application::auth::registration::verify::{
     VerifyRegistrationRequest, VerifyRegistrationUseCase,
 };
+use crate::application::users::email_change::CancelUserEmailChangeUseCase;
+use crate::application::users::password_reset::{
+    ConfirmPasswordResetRequest, ConfirmPasswordResetUseCase, RequestPasswordResetRequest,
+    RequestPasswordResetUseCase,
+};
+use crate::infrastructure::password::PasswordService;
 use crate::infrastructure::repositories::refresh_tokens::PostgresRefreshTokenRepository;
 use crate::infrastructure::repositories::users::PostgresUserRepository;
 use crate::infrastructure::state::AppState;
@@ -13,8 +20,12 @@ use crate::presentation::dtos::AuthTokenResource;
 use crate::shared::error::{AppError, ErrorResponse};
 use crate::shared::response::{JsonApiResource, JsonApiResponse};
 use crate::shared::validation::ValidatedJson;
-use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
+use axum::{extract::State, http::StatusCode, response::IntoResponse};
+use serde::Deserialize;
+use serde_json::json;
 use std::sync::Arc;
+use utoipa::ToSchema;
+use validator::Validate;
 
 /// Login handler
 #[utoipa::path(
@@ -37,7 +48,7 @@ pub async fn login(
 
     let user_repo = Arc::new(PostgresUserRepository::new(pool.clone()));
     let refresh_token_repo = Arc::new(PostgresRefreshTokenRepository::new(pool));
-    let password_service = Arc::new(crate::infrastructure::password::PasswordService::new());
+    let password_service = Arc::new(PasswordService::new());
 
     let access_token_expiry = std::env::var("JWT_ACCESS_TOKEN_EXPIRY")
         .unwrap_or_else(|_| "900".to_string())
@@ -64,7 +75,7 @@ pub async fn login(
         AuthTokenResource::new(response, Some(user)),
     );
 
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
+    Ok((StatusCode::OK, JsonApiResponse::new(resource)))
 }
 
 /// Refresh token handler
@@ -107,14 +118,14 @@ pub async fn refresh_token(
     let resource =
         JsonApiResource::new("auth-tokens", "session", AuthTokenResource::from(response));
 
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
+    Ok((StatusCode::OK, JsonApiResponse::new(resource)))
 }
 
 /// Logout handler
 #[utoipa::path(
     post,
     path = "/api/v1/auth/logout",
-    request_body = crate::application::auth::logout::LogoutRequest,
+    request_body = LogoutRequest,
     responses(
         (status = 204, description = "Logout successful"),
         (status = 422, description = "Validation error", body = ErrorResponse)
@@ -123,12 +134,12 @@ pub async fn refresh_token(
 )]
 pub async fn logout(
     State(state): State<AppState>,
-    ValidatedJson(req): ValidatedJson<crate::application::auth::logout::LogoutRequest>,
+    ValidatedJson(req): ValidatedJson<LogoutRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let refresh_token_repo = Arc::new(PostgresRefreshTokenRepository::new(state.pool));
 
     // Execute use case
-    let use_case = crate::application::auth::logout::LogoutUseCase::new(refresh_token_repo);
+    let use_case = LogoutUseCase::new(refresh_token_repo);
     use_case.execute(req).await?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -153,7 +164,7 @@ pub async fn register_initiate(
     let user_repo = Arc::new(PostgresUserRepository::new(state.pool.clone()));
     let cache_service = state.cache_service.clone();
     let email_service = state.email_service.clone();
-    let password_service = Arc::new(crate::infrastructure::password::PasswordService::new());
+    let password_service = Arc::new(PasswordService::new());
 
     let use_case =
         InitiateRegistrationUseCase::new(user_repo, cache_service, email_service, password_service);
@@ -212,12 +223,10 @@ pub async fn register_verify(
         AuthTokenResource::new(response, Some(user)),
     );
 
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
+    Ok((StatusCode::OK, JsonApiResponse::new(resource)))
 }
 
-use crate::application::users::email_change::CancelUserEmailChangeUseCase;
-
-#[derive(Debug, serde::Deserialize, validator::Validate, utoipa::ToSchema)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CancelUserEmailChangeRequest {
     #[validate(length(min = 1, message = "Token is required"))]
@@ -246,14 +255,9 @@ pub async fn cancel_email_change(
 
     Ok((
         StatusCode::OK,
-        Json(JsonApiResponse::new(serde_json::json!({ "success": true }))),
+        JsonApiResponse::new(json!({ "success": true })),
     ))
 }
-
-use crate::application::users::password_reset::{
-    ConfirmPasswordResetRequest, ConfirmPasswordResetUseCase, RequestPasswordResetRequest,
-    RequestPasswordResetUseCase,
-};
 
 /// Request password reset
 #[utoipa::path(
@@ -278,9 +282,9 @@ pub async fn forgot_password(
 
     Ok((
         StatusCode::OK,
-        Json(JsonApiResponse::new(
-            serde_json::json!({ "message": "If an account with that email exists, we have sent a reset link." }),
-        )),
+        JsonApiResponse::new(
+            json!({ "message": "If an account with that email exists, we have sent a reset link." }),
+        ),
     ))
 }
 
@@ -301,7 +305,7 @@ pub async fn reset_password(
     ValidatedJson(req): ValidatedJson<ConfirmPasswordResetRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_repo = Arc::new(PostgresUserRepository::new(state.pool.clone()));
-    let password_service = Arc::new(crate::infrastructure::password::PasswordService::new());
+    let password_service = Arc::new(PasswordService::new());
 
     let use_case =
         ConfirmPasswordResetUseCase::new(user_repo, state.cache_service, password_service);
@@ -310,6 +314,6 @@ pub async fn reset_password(
 
     Ok((
         StatusCode::OK,
-        Json(JsonApiResponse::new(serde_json::json!({ "success": true }))),
+        JsonApiResponse::new(json!({ "success": true })),
     ))
 }

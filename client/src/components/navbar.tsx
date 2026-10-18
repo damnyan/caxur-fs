@@ -132,7 +132,9 @@ export function Navbar() {
               <DropdownMenuTrigger render={
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src="/avatars/01.png" alt={user?.firstName || "User"} />
+                    {user?.facePhotoUrl && (
+                      <AvatarImage src={user.facePhotoUrl} alt={user?.firstName || "User"} />
+                    )}
                     <AvatarFallback>{user?.firstName?.[0] || "U"}</AvatarFallback>
                   </Avatar>
                 </Button>
@@ -279,7 +281,9 @@ export function Navbar() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
-                        <AvatarImage src="/avatars/01.png" alt={user?.firstName || "User"} />
+                        {user?.facePhotoUrl && (
+                          <AvatarImage src={user.facePhotoUrl} alt={user?.firstName || "User"} />
+                        )}
                         <AvatarFallback>{user?.firstName?.[0] || "U"}</AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col min-w-0">

@@ -11,13 +11,16 @@ use crate::domain::permissions::Permission;
 use crate::domain::roles::{Role, RoleRepository};
 use crate::infrastructure::db::DbPool;
 use crate::infrastructure::repositories::roles::PostgresRoleRepository;
+use crate::infrastructure::state::AppState;
 use crate::presentation::dtos::PermissionDto;
 use crate::shared::error::{AppError, ErrorResponse};
+use crate::shared::pagination::{PageParams, PaginationLinkBuilder};
+use crate::shared::query::Qs;
 use crate::shared::response::{JsonApiMeta, JsonApiResource, JsonApiResponse};
 use crate::shared::validation::ValidatedJson;
 use axum::{
-    Extension, Json,
-    extract::{Path, Query, State},
+    Extension,
+    extract::{Path, State},
     http::{StatusCode, Uri},
     response::IntoResponse,
 };
@@ -26,11 +29,11 @@ use serde_json::json;
 use std::sync::Arc;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
+use validator::Validate;
 
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct RoleResource {
-    pub id: String,
     pub name: String,
     pub description: Option<String>,
     #[serde(with = "time::serde::iso8601")]
@@ -44,7 +47,6 @@ pub struct RoleResource {
 impl From<Role> for RoleResource {
     fn from(role: Role) -> Self {
         Self {
-            id: role.id.to_string(),
             name: role.name,
             description: role.description,
             created_at: role.created_at,
@@ -53,17 +55,14 @@ impl From<Role> for RoleResource {
     }
 }
 
-use crate::shared::pagination::{default_page_number, default_page_size};
-
 #[derive(Deserialize, IntoParams, ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[into_params(parameter_in = Query)]
 pub struct ListRolesQuery {
-    #[serde(default = "default_page_number")]
-    #[param(example = 1, minimum = 1)]
-    pub page: i64,
-    #[serde(default = "default_page_size")]
-    #[param(example = 20, minimum = 1, maximum = 100)]
-    pub per_page: i64,
+    /// Pagination parameters
+    #[serde(default)]
+    #[param(inline, style = DeepObject, explode = true)]
+    pub page: PageParams,
 }
 
 /// Create a new role
@@ -93,7 +92,7 @@ pub async fn create_role(
     let role = use_case.execute(req).await?;
     let resource = JsonApiResource::new("roles", role.id.to_string(), RoleResource::from(role));
 
-    Ok((StatusCode::CREATED, Json(JsonApiResponse::new(resource))))
+    Ok((StatusCode::CREATED, JsonApiResponse::new(resource)))
 }
 
 /// Get a role by ID
@@ -122,7 +121,7 @@ pub async fn get_role(
     let role = use_case.execute(id).await?;
     let resource = JsonApiResource::new("roles", role.id.to_string(), RoleResource::from(role));
 
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
+    Ok((StatusCode::OK, JsonApiResponse::new(resource)))
 }
 
 /// List all roles with pagination
@@ -141,13 +140,16 @@ pub async fn get_role(
 pub async fn list_roles(
     State(pool): State<DbPool>,
     uri: Uri,
-    Query(query): Query<ListRolesQuery>,
+    Qs(query): Qs<ListRolesQuery>,
 ) -> Result<impl IntoResponse, AppError> {
     let repo = Arc::new(PostgresRoleRepository::new(pool));
     let use_case = ListRolesUseCase::new(repo.clone());
 
+    let page_number = query.page.number;
+    let page_size = query.page.size;
+
     let roles = use_case
-        .execute(AccessScope::Administrator, None, query.per_page, query.page)
+        .execute(AccessScope::Administrator, None, page_size, page_number)
         .await?;
 
     let total = repo.count().await.map_err(AppError::InternalServerError)?;
@@ -158,25 +160,17 @@ pub async fn list_roles(
         .collect();
 
     let meta = JsonApiMeta::new()
-        .with_page(query.page)
-        .with_per_page(query.per_page)
+        .with_page(page_number)
+        .with_per_page(page_size)
         .with_total(total);
 
-    let links = crate::shared::pagination::PaginationLinkBuilder::from_uri(
-        &uri,
-        query.page,
-        query.per_page,
-        total,
-    )
-    .build();
+    let links = PaginationLinkBuilder::from_uri(&uri, page_number, page_size, total).build();
 
     Ok((
         StatusCode::OK,
-        Json(
-            JsonApiResponse::new(resources)
-                .with_meta(meta)
-                .with_links(links),
-        ),
+        JsonApiResponse::new(resources)
+            .with_meta(meta)
+            .with_links(links),
     ))
 }
 
@@ -199,20 +193,21 @@ pub async fn list_roles(
     )
 )]
 pub async fn update_role(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Extension(permissions): Extension<Vec<Permission>>,
     Path(id): Path<Uuid>,
     ValidatedJson(req): ValidatedJson<UpdateRoleRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     require_role_management(&permissions)?;
 
-    let repo = Arc::new(PostgresRoleRepository::new(pool));
+    let repo = Arc::new(PostgresRoleRepository::new(state.pool));
     let use_case = UpdateRoleUseCase::new(repo);
 
     let role = use_case.execute(id, req).await?;
+    state.admin_permissions_cache.invalidate_all();
     let resource = JsonApiResource::new("roles", role.id.to_string(), RoleResource::from(role));
 
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
+    Ok((StatusCode::OK, JsonApiResponse::new(resource)))
 }
 
 /// Delete a role
@@ -232,21 +227,22 @@ pub async fn update_role(
     )
 )]
 pub async fn delete_role(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Extension(permissions): Extension<Vec<Permission>>,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
     require_role_management(&permissions)?;
 
-    let repo = Arc::new(PostgresRoleRepository::new(pool));
+    let repo = Arc::new(PostgresRoleRepository::new(state.pool));
     let use_case = DeleteRoleUseCase::new(repo);
 
     use_case.execute(id).await?;
+    state.admin_permissions_cache.invalidate_all();
 
     let meta = JsonApiMeta::new().with_extra(json!({ "deleted": true }));
     Ok((
         StatusCode::OK,
-        Json(JsonApiResponse::new(json!(null)).with_meta(meta)),
+        JsonApiResponse::new(json!(null)).with_meta(meta),
     ))
 }
 
@@ -260,7 +256,8 @@ pub async fn delete_role(
     request_body = AttachPermissionRequest,
     responses(
         (status = 200, description = "Permission attached successfully", body = JsonApiResponse<serde_json::Value>),
-        (status = 404, description = "Role not found", body = ErrorResponse)
+        (status = 404, description = "Role not found", body = ErrorResponse),
+        (status = 422, description = "Validation error", body = ErrorResponse)
     ),
     tag = "Admin / Role Management",
     security(
@@ -268,23 +265,24 @@ pub async fn delete_role(
     )
 )]
 pub async fn attach_permission(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Extension(permissions): Extension<Vec<Permission>>,
     Path(id): Path<Uuid>,
-    Json(req): Json<AttachPermissionRequest>,
+    ValidatedJson(req): ValidatedJson<AttachPermissionRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     require_role_management(&permissions)?;
 
-    let repo = Arc::new(PostgresRoleRepository::new(pool));
+    let repo = Arc::new(PostgresRoleRepository::new(state.pool));
     let use_case = AttachPermissionUseCase::new(repo);
 
     let permissions: Vec<Permission> = req.permissions.into_iter().map(|p| p.into()).collect();
     use_case.execute(id, permissions).await?;
+    state.admin_permissions_cache.invalidate_all();
 
     let meta = JsonApiMeta::new().with_extra(json!({ "attached": true }));
     Ok((
         StatusCode::OK,
-        Json(JsonApiResponse::new(json!(null)).with_meta(meta)),
+        JsonApiResponse::new(json!(null)).with_meta(meta),
     ))
 }
 
@@ -298,7 +296,8 @@ pub async fn attach_permission(
     request_body = DetachPermissionRequest,
     responses(
         (status = 200, description = "Permissions detached successfully", body = JsonApiResponse<serde_json::Value>),
-        (status = 404, description = "Role not found", body = ErrorResponse)
+        (status = 404, description = "Role not found", body = ErrorResponse),
+        (status = 422, description = "Validation error", body = ErrorResponse)
     ),
     tag = "Admin / Role Management",
     security(
@@ -306,34 +305,35 @@ pub async fn attach_permission(
     )
 )]
 pub async fn detach_permission(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Extension(permissions): Extension<Vec<Permission>>,
     Path(id): Path<Uuid>,
-    Json(req): Json<DetachPermissionRequest>,
+    ValidatedJson(req): ValidatedJson<DetachPermissionRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     require_role_management(&permissions)?;
 
-    let repo = Arc::new(PostgresRoleRepository::new(pool));
+    let repo = Arc::new(PostgresRoleRepository::new(state.pool));
     let use_case = DetachPermissionUseCase::new(repo);
 
     let permissions: Vec<Permission> = req.permissions.into_iter().map(|p| p.into()).collect();
     use_case.execute(id, permissions).await?;
+    state.admin_permissions_cache.invalidate_all();
 
     let meta = JsonApiMeta::new().with_extra(json!({ "detached": true }));
     Ok((
         StatusCode::OK,
-        Json(JsonApiResponse::new(json!(null)).with_meta(meta)),
+        JsonApiResponse::new(json!(null)).with_meta(meta),
     ))
 }
 
-#[derive(Deserialize, ToSchema)]
+#[derive(Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AttachPermissionRequest {
     #[schema(example = json!(["administrator_management"]))]
     pub permissions: Vec<PermissionDto>,
 }
 
-#[derive(Deserialize, ToSchema)]
+#[derive(Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DetachPermissionRequest {
     #[schema(example = json!(["administrator_management"]))]
@@ -367,7 +367,7 @@ pub async fn get_role_permissions(
 
     let permissions: Vec<PermissionDto> = permissions.into_iter().map(|p| p.into()).collect();
 
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(permissions))))
+    Ok((StatusCode::OK, JsonApiResponse::new(permissions)))
 }
 
 fn require_role_management(permissions: &[Permission]) -> Result<(), AppError> {

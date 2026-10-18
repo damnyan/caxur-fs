@@ -10,6 +10,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
+#[schema(as = UserRequestPasswordResetRequest)]
 #[serde(rename_all = "camelCase")]
 pub struct RequestPasswordResetRequest {
     #[serde(deserialize_with = "crate::shared::validation::deserialize_email")]
@@ -87,6 +88,7 @@ impl RequestPasswordResetUseCase {
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
+#[schema(as = UserConfirmPasswordResetRequest)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfirmPasswordResetRequest {
     #[validate(length(min = 1, message = "Token is required"))]

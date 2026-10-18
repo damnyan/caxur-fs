@@ -23,17 +23,22 @@ async fn main() -> anyhow::Result<()> {
 async fn run_with_signal(port: u16) -> anyhow::Result<()> {
     run(port, async {
         let ctrl_c = async {
-            tokio::signal::ctrl_c()
-                .await
-                .expect("failed to install Ctrl+C handler");
+            if let Err(err) = tokio::signal::ctrl_c().await {
+                tracing::error!("Failed to install Ctrl+C handler: {}", err);
+            }
         };
 
         #[cfg(unix)]
         let terminate = async {
-            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-                .expect("failed to install signal handler")
-                .recv()
-                .await;
+            match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+                Ok(mut signal) => {
+                    signal.recv().await;
+                }
+                Err(err) => {
+                    tracing::error!("Failed to install SIGTERM handler: {}", err);
+                    std::future::pending::<()>().await;
+                }
+            }
         };
 
         #[cfg(not(unix))]
@@ -66,9 +71,12 @@ where
 
     let (listener, app) = bootstrap(&database_url, port).await?;
 
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal)
-        .await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal)
+    .await?;
 
     Ok(())
 }

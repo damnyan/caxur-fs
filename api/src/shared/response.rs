@@ -1,5 +1,12 @@
+use axum::{
+    http::{StatusCode, header},
+    response::{IntoResponse, Response},
+};
 use serde::Serialize;
 use utoipa::ToSchema;
+
+/// Type alias for standard API responses conforming to JSON:API
+pub type ApiResponse<T> = JsonApiResponse<T>;
 
 /// JSON:API compliant resource wrapper
 #[derive(Serialize, ToSchema)]
@@ -49,6 +56,32 @@ pub struct JsonApiResponse<T> {
     pub meta: Option<JsonApiMeta>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub links: Option<JsonApiLinks>,
+}
+
+impl<T: Serialize> IntoResponse for JsonApiResponse<T> {
+    fn into_response(self) -> Response {
+        match serde_json::to_string(&self) {
+            Ok(body) => {
+                ([(header::CONTENT_TYPE, "application/vnd.api+json")], body).into_response()
+            }
+            Err(err) => {
+                tracing::error!("Failed to serialize JsonApiResponse: {:?}", err);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    [(header::CONTENT_TYPE, "application/vnd.api+json")],
+                    serde_json::json!({
+                        "errors": [{
+                            "status": "500",
+                            "title": "Internal Server Error",
+                            "detail": "An unexpected error occurred"
+                        }]
+                    })
+                    .to_string(),
+                )
+                    .into_response()
+            }
+        }
+    }
 }
 
 /// JSON:API metadata

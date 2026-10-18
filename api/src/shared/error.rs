@@ -1,6 +1,5 @@
 use axum::{
-    Json,
-    http::StatusCode,
+    http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
 use serde::Serialize;
@@ -12,6 +11,25 @@ use utoipa::ToSchema;
 #[serde(rename_all = "camelCase")]
 pub struct ErrorResponse {
     pub errors: Vec<JsonApiError>,
+}
+
+impl IntoResponse for ErrorResponse {
+    fn into_response(self) -> Response {
+        match serde_json::to_string(&self) {
+            Ok(body) => {
+                ([(header::CONTENT_TYPE, "application/vnd.api+json")], body).into_response()
+            }
+            Err(e) => {
+                tracing::error!("Failed to serialize ErrorResponse: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    [(header::CONTENT_TYPE, "application/vnd.api+json")],
+                    r#"{"errors":[{"status":"500","title":"Internal Server Error","detail":"An unexpected error occurred"}]}"#,
+                )
+                    .into_response()
+            }
+        }
+    }
 }
 
 /// JSON:API error object
@@ -152,9 +170,9 @@ impl IntoResponse for AppError {
 
                 (
                     StatusCode::UNPROCESSABLE_ENTITY,
-                    Json(ErrorResponse {
+                    ErrorResponse {
                         errors: json_errors,
-                    }),
+                    },
                 )
                     .into_response()
             }
@@ -164,9 +182,9 @@ impl IntoResponse for AppError {
 
                 (
                     StatusCode::BAD_REQUEST,
-                    Json(ErrorResponse {
+                    ErrorResponse {
                         errors: vec![error],
-                    }),
+                    },
                 )
                     .into_response()
             }
@@ -180,9 +198,9 @@ impl IntoResponse for AppError {
 
                 (
                     StatusCode::UNPROCESSABLE_ENTITY,
-                    Json(ErrorResponse {
+                    ErrorResponse {
                         errors: vec![error],
-                    }),
+                    },
                 )
                     .into_response()
             }
@@ -210,9 +228,9 @@ impl IntoResponse for AppError {
 
                     return (
                         StatusCode::UNPROCESSABLE_ENTITY,
-                        Json(ErrorResponse {
+                        ErrorResponse {
                             errors: vec![error],
-                        }),
+                        },
                     )
                         .into_response();
                 }
@@ -226,9 +244,9 @@ impl IntoResponse for AppError {
 
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ErrorResponse {
+                    ErrorResponse {
                         errors: vec![error],
-                    }),
+                    },
                 )
                     .into_response()
             }
@@ -237,9 +255,9 @@ impl IntoResponse for AppError {
                     .with_code("not_found");
                 (
                     StatusCode::NOT_FOUND,
-                    Json(ErrorResponse {
+                    ErrorResponse {
                         errors: vec![error],
-                    }),
+                    },
                 )
                     .into_response()
             }
@@ -248,9 +266,9 @@ impl IntoResponse for AppError {
                     JsonApiError::new(StatusCode::CONFLICT, "Conflict", msg).with_code("conflict");
                 (
                     StatusCode::CONFLICT,
-                    Json(ErrorResponse {
+                    ErrorResponse {
                         errors: vec![error],
-                    }),
+                    },
                 )
                     .into_response()
             }
@@ -259,9 +277,9 @@ impl IntoResponse for AppError {
                     .with_code("unauthorized");
                 (
                     StatusCode::UNAUTHORIZED,
-                    Json(ErrorResponse {
+                    ErrorResponse {
                         errors: vec![error],
-                    }),
+                    },
                 )
                     .into_response()
             }
@@ -270,9 +288,9 @@ impl IntoResponse for AppError {
                     .with_code("forbidden");
                 (
                     StatusCode::FORBIDDEN,
-                    Json(ErrorResponse {
+                    ErrorResponse {
                         errors: vec![error],
-                    }),
+                    },
                 )
                     .into_response()
             }
@@ -281,9 +299,9 @@ impl IntoResponse for AppError {
                     .with_code("account_revoked");
                 (
                     StatusCode::FORBIDDEN,
-                    Json(ErrorResponse {
+                    ErrorResponse {
                         errors: vec![error],
-                    }),
+                    },
                 )
                     .into_response()
             }
@@ -298,9 +316,9 @@ impl IntoResponse for AppError {
 
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ErrorResponse {
+                    ErrorResponse {
                         errors: vec![error],
-                    }),
+                    },
                 )
                     .into_response()
             }

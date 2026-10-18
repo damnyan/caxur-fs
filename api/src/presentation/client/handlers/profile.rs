@@ -1,7 +1,13 @@
 use crate::application::auth::registration::onboarding::{
     CompleteOnboardingUseCase, OnboardingRequest,
 };
+use crate::application::users::email_change::{
+    InitiateUserEmailChangeRequest, InitiateUserEmailChangeUseCase, VerifyUserEmailChangeRequest,
+    VerifyUserEmailChangeUseCase,
+};
 use crate::application::users::get::GetUserUseCase;
+use crate::application::users::update::{UpdateUserRequest, UpdateUserUseCase};
+use crate::infrastructure::password::PasswordService;
 use crate::infrastructure::repositories::users::PostgresUserRepository;
 use crate::infrastructure::state::AppState;
 use crate::presentation::dtos::UserResource;
@@ -9,7 +15,8 @@ use crate::presentation::extractors::AuthUser;
 use crate::shared::error::{AppError, ErrorResponse};
 use crate::shared::response::{JsonApiResource, JsonApiResponse};
 use crate::shared::validation::ValidatedJson;
-use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
+use axum::{extract::State, http::StatusCode, response::IntoResponse};
+use serde_json::json;
 use std::sync::Arc;
 
 /// Complete onboarding handler
@@ -45,10 +52,8 @@ pub async fn complete_onboarding(
         UserResource::from_user(user, &*state.storage_service).await,
     );
 
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
+    Ok((StatusCode::OK, JsonApiResponse::new(resource)))
 }
-
-use crate::application::users::update::{UpdateUserRequest, UpdateUserUseCase};
 
 /// Update profile handler
 #[utoipa::path(
@@ -74,7 +79,7 @@ pub async fn update_profile(
         .user_id()
         .map_err(|e| AppError::Unauthorized(e.to_string()))?;
     let user_repo = Arc::new(PostgresUserRepository::new(state.pool.clone()));
-    let password_service = Arc::new(crate::infrastructure::password::PasswordService::new());
+    let password_service = Arc::new(PasswordService::new());
     let use_case =
         UpdateUserUseCase::new(user_repo, password_service, state.storage_service.clone());
 
@@ -85,7 +90,7 @@ pub async fn update_profile(
         UserResource::from_user(user, &*state.storage_service).await,
     );
 
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
+    Ok((StatusCode::OK, JsonApiResponse::new(resource)))
 }
 
 /// Get my profile handler
@@ -121,7 +126,7 @@ pub async fn get_profile(
                 user.id.to_string(),
                 UserResource::from_user(user, &*state.storage_service).await,
             );
-            Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
+            Ok((StatusCode::OK, JsonApiResponse::new(resource)))
         }
         None => Err(AppError::NotFound(format!(
             "User with id {} not found",
@@ -129,11 +134,6 @@ pub async fn get_profile(
         ))),
     }
 }
-
-use crate::application::users::email_change::{
-    InitiateUserEmailChangeRequest, InitiateUserEmailChangeUseCase, VerifyUserEmailChangeRequest,
-    VerifyUserEmailChangeUseCase,
-};
 
 /// Initiate email change
 #[utoipa::path(
@@ -157,7 +157,7 @@ pub async fn initiate_email_change(
     ValidatedJson(req): ValidatedJson<InitiateUserEmailChangeRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let repo = Arc::new(PostgresUserRepository::new(state.pool));
-    let password_service = Arc::new(crate::infrastructure::password::PasswordService::new());
+    let password_service = Arc::new(PasswordService::new());
     let use_case = InitiateUserEmailChangeUseCase::new(
         repo,
         password_service,
@@ -203,6 +203,6 @@ pub async fn verify_email_change(
     use_case.execute(user_id, req).await?;
     Ok((
         StatusCode::OK,
-        Json(JsonApiResponse::new(serde_json::json!({ "success": true }))),
+        JsonApiResponse::new(json!({ "success": true })),
     ))
 }

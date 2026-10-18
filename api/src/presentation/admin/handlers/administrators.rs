@@ -18,13 +18,14 @@ use crate::application::administrators::update::{
 use crate::application::administrators::verify::{
     VerifyAndSetPasswordRequest, VerifyAndSetPasswordUseCase,
 };
-use crate::domain::administrators::Administrator;
+use crate::domain::administrators::{Administrator, AdministratorRepository};
 use crate::infrastructure::db::DbPool;
 use crate::infrastructure::password::PasswordService;
 use crate::infrastructure::repositories::administrators::PostgresAdministratorRepository;
 use crate::infrastructure::state::AppState;
 use crate::presentation::extractors::AuthUser;
 use crate::shared::error::{AppError, ErrorResponse};
+use crate::shared::pagination::PaginationLinkBuilder;
 use crate::shared::query::Qs;
 use crate::shared::response::{
     JsonApiIdentifier, JsonApiMeta, JsonApiRelationship, JsonApiRelationshipData, JsonApiResource,
@@ -32,13 +33,13 @@ use crate::shared::response::{
 };
 use crate::shared::validation::ValidatedJson;
 use axum::{
-    Json,
     extract::{Path, State},
     http::{StatusCode, Uri},
     response::IntoResponse,
 };
 use serde::Serialize;
 use serde_json::json;
+use std::collections::HashMap;
 use std::sync::Arc;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -46,7 +47,6 @@ use uuid::Uuid;
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AdministratorResource {
-    pub id: String,
     pub first_name: String,
     pub middle_name: Option<String>,
     pub last_name: String,
@@ -70,7 +70,6 @@ pub struct AdministratorResource {
 impl From<Administrator> for AdministratorResource {
     fn from(admin: Administrator) -> Self {
         Self {
-            id: admin.id.to_string(),
             first_name: admin.first_name,
             middle_name: admin.middle_name,
             last_name: admin.last_name,
@@ -85,22 +84,6 @@ impl From<Administrator> for AdministratorResource {
     }
 }
 
-/// Create a new administrator
-#[utoipa::path(
-    post,
-    path = "/api/v1/admin/administrators",
-    request_body = CreateAdministratorRequest,
-    responses(
-        (status = 201, description = "Administrator created successfully", body = JsonApiResponse<JsonApiResource<AdministratorResource>>),
-        (status = 401, description = "Unauthorized", body = ErrorResponse),
-        (status = 422, description = "Validation error", body = ErrorResponse)
-    ),
-    security(
-        ("bearer_auth" = [])
-    ),
-    tag = "Admin / Administrator Management"
-)]
-
 pub fn build_admin_resource(
     admin: Administrator,
     include_roles: bool,
@@ -109,7 +92,7 @@ pub fn build_admin_resource(
     Vec<serde_json::Value>,
 ) {
     let mut included = Vec::new();
-    let mut rels = std::collections::HashMap::new();
+    let mut rels = HashMap::new();
 
     let resource_attrs = AdministratorResource::from(admin.clone());
 
@@ -124,7 +107,9 @@ pub fn build_admin_resource(
                     role.id.to_string(),
                     json!({ "name": role.name }),
                 );
-                included.push(serde_json::to_value(&role_res).unwrap());
+                if let Ok(val) = serde_json::to_value(&role_res) {
+                    included.push(val);
+                }
             }
         }
 
@@ -180,7 +165,7 @@ pub async fn create_admin(
         AdministratorResource::from(admin),
     );
 
-    Ok((StatusCode::CREATED, Json(JsonApiResponse::new(resource))))
+    Ok((StatusCode::CREATED, JsonApiResponse::new(resource)))
 }
 
 /// Get an administrator by ID
@@ -219,7 +204,7 @@ pub async fn get_admin(
             if !included.is_empty() {
                 response = response.with_included(included);
             }
-            Ok((StatusCode::OK, Json(response)))
+            Ok((StatusCode::OK, response))
         }
         None => Err(AppError::NotFound("Administrator not found".to_string())),
     }
@@ -257,13 +242,9 @@ pub async fn list_admins(
     let admins = use_case.execute(&req).await?;
 
     // Get total count for pagination
-    let total = crate::domain::administrators::AdministratorRepository::count(
-        &*repo,
-        req.search.clone(),
-        req.role_id,
-    )
-    .await
-    .map_err(AppError::InternalServerError)?;
+    let total = AdministratorRepository::count(&*repo, req.search.clone(), req.role_id)
+        .await
+        .map_err(AppError::InternalServerError)?;
     let mut resources = Vec::new();
     let mut all_included = Vec::new();
 
@@ -280,20 +261,14 @@ pub async fn list_admins(
         .with_total(total);
 
     // Generate pagination links using the helper
-    let links = crate::shared::pagination::PaginationLinkBuilder::from_uri(
-        &uri,
-        page_number,
-        page_size,
-        total,
-    )
-    .build();
+    let links = PaginationLinkBuilder::from_uri(&uri, page_number, page_size, total).build();
 
     let mut response = JsonApiResponse::new(resources)
         .with_meta(meta)
         .with_links(links);
 
     if !all_included.is_empty() {
-        let mut unique_included = std::collections::HashMap::new();
+        let mut unique_included = HashMap::new();
         for item in all_included {
             if let Some(id) = item.get("id").and_then(|i| i.as_str()) {
                 unique_included.insert(id.to_string(), item);
@@ -302,7 +277,7 @@ pub async fn list_admins(
         response = response.with_included(unique_included.into_values().collect());
     }
 
-    Ok((StatusCode::OK, Json(response)))
+    Ok((StatusCode::OK, response))
 }
 
 /// Update an administrator
@@ -337,7 +312,7 @@ pub async fn update_admin(
     let admin = use_case.execute(id, req).await?;
     state.admin_permissions_cache.invalidate(&id);
     let (resource, _) = build_admin_resource(admin, false);
-    Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
+    Ok((StatusCode::OK, JsonApiResponse::new(resource)))
 }
 
 /// Delete an administrator
@@ -372,7 +347,7 @@ pub async fn delete_admin(
         let meta = JsonApiMeta::new().with_extra(json!({ "deleted": true }));
         Ok((
             StatusCode::OK,
-            Json(JsonApiResponse::new(json!(null)).with_meta(meta)),
+            JsonApiResponse::new(json!(null)).with_meta(meta),
         ))
     } else {
         Err(AppError::NotFound("Administrator not found".to_string()))
@@ -411,7 +386,7 @@ pub async fn attach_admin_roles(
 
     Ok((
         StatusCode::OK,
-        Json(JsonApiResponse::new(json!({ "success": true }))),
+        JsonApiResponse::new(json!({ "success": true })),
     ))
 }
 
@@ -447,7 +422,7 @@ pub async fn detach_admin_roles(
 
     Ok((
         StatusCode::OK,
-        Json(JsonApiResponse::new(json!({ "success": true }))),
+        JsonApiResponse::new(json!({ "success": true })),
     ))
 }
 
@@ -479,7 +454,7 @@ pub async fn revoke_admin(
     state.admin_permissions_cache.invalidate(&id);
     Ok((
         StatusCode::OK,
-        Json(JsonApiResponse::new(json!({ "success": true }))),
+        JsonApiResponse::new(json!({ "success": true })),
     ))
 }
 
@@ -511,7 +486,7 @@ pub async fn restore_admin(
     state.admin_permissions_cache.invalidate(&id);
     Ok((
         StatusCode::OK,
-        Json(JsonApiResponse::new(json!({ "success": true }))),
+        JsonApiResponse::new(json!({ "success": true })),
     ))
 }
 
@@ -547,7 +522,7 @@ pub async fn resend_verification_admin(
     use_case.execute(id).await?;
     Ok((
         StatusCode::OK,
-        Json(JsonApiResponse::new(json!({ "success": true }))),
+        JsonApiResponse::new(json!({ "success": true })),
     ))
 }
 
@@ -573,6 +548,6 @@ pub async fn verify_admin(
     use_case.execute(req).await?;
     Ok((
         StatusCode::OK,
-        Json(JsonApiResponse::new(json!({ "success": true }))),
+        JsonApiResponse::new(json!({ "success": true })),
     ))
 }

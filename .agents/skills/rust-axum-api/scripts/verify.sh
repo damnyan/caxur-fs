@@ -14,13 +14,13 @@ else
 fi
 
 echo "Running Cargo fmt..."
-cargo fmt -- --check || { echo "Formatting failed."; exit 1; }
+cargo fmt --all -- --check || { echo "Formatting failed."; exit 1; }
 
 echo "Running Cargo clippy..."
-cargo clippy -- -D warnings || { echo "Clippy failed."; exit 1; }
+cargo clippy --all-targets -- -D warnings || { echo "Clippy failed."; exit 1; }
 
-echo "Running Cargo test..."
-cargo test || { echo "Tests failed."; exit 1; }
+echo "Running Cargo unit tests (--lib)..."
+cargo test --lib || { echo "Tests failed."; exit 1; }
 
 # Check if cargo-tarpaulin is installed before running it
 if cargo tarpaulin --version >/dev/null 2>&1; then

@@ -16,7 +16,9 @@ import ResetPasswordPage from './features/auth/components/ResetPasswordPage';
 import DashboardPage from './features/dashboard/components/DashboardPage';
 import AdministratorsPage from './features/administrators/components/AdministratorsPage';
 import RolesPage from './features/roles/components/RolesPage';
+import UsersPage from './features/users/components/UsersPage';
 import ProfilePage from './features/profile/components/ProfilePage';
+import { ThemeProvider } from 'next-themes';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -37,6 +39,10 @@ const router = createBrowserRouter([
           {
             path: 'administrators',
             element: <AdministratorsPage />,
+          },
+          {
+            path: 'users',
+            element: <UsersPage />,
           },
         ],
       },
@@ -89,10 +95,12 @@ const router = createBrowserRouter([
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-      <Toaster position="top-right" richColors />
-    </QueryClientProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+        <Toaster position="top-right" richColors />
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 
