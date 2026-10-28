@@ -64,6 +64,7 @@ impl UpdateAdministratorUseCase {
         }
     }
 
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(
         &self,
         id: Uuid,
@@ -76,10 +77,7 @@ impl UpdateAdministratorUseCase {
             .map_err(AppError::InternalServerError)?;
 
         if administrator.is_none() {
-            return Err(AppError::ValidationError(vec![FieldError::new(
-                "email",
-                "Administrator not found",
-            )]));
+            return Err(AppError::NotFound("Administrator not found".to_string()));
         }
 
         // Validate unique email using custom validator (ignoring current user)
@@ -89,6 +87,7 @@ impl UpdateAdministratorUseCase {
             Some(
                 self.password_service
                     .hash_password(&password)
+                    .await
                     .map_err(AppError::InternalServerError)?,
             )
         } else {

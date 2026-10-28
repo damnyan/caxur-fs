@@ -12,6 +12,7 @@ impl DeleteAdministratorUseCase {
         Self { repo }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn execute(&self, id: Uuid) -> Result<bool, AppError> {
         let deleted = self
             .repo

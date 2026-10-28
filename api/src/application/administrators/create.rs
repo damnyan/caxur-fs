@@ -1,9 +1,10 @@
 use crate::domain::administrators::{Administrator, AdministratorRepository, NewAdministrator};
 use crate::domain::auth::AuthService;
+use crate::domain::email::EmailService;
 use crate::domain::password::PasswordHashingService;
-use crate::infrastructure::email::EmailService;
 use crate::shared::error::{AppError, FieldError};
 use serde::Deserialize;
+use std::env;
 use std::sync::Arc;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -65,6 +66,7 @@ impl CreateAdministratorUseCase {
         }
     }
 
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(
         &self,
         req: CreateAdministratorRequest,
@@ -76,6 +78,7 @@ impl CreateAdministratorUseCase {
         let password_hash = self
             .password_service
             .hash_password(&random_password)
+            .await
             .map_err(AppError::InternalServerError)?;
 
         let new_admin = NewAdministrator {
@@ -101,6 +104,8 @@ impl CreateAdministratorUseCase {
 
         let set_password_link = format!("{}/set-password?token={}", self.admin_url, token);
 
+        let app_name = env::var("APP_NAME").unwrap_or_else(|_| "Application".to_string());
+        let email_subject = format!("Welcome to {} Admin - Set Your Password", app_name);
         let email_title = "Welcome to the Team!";
         let email_content = format!(
             "<p>Hello {} {},</p><p>Your administrator account has been created. To get started, please verify your email and set your password by clicking the button below.</p>",
@@ -111,7 +116,7 @@ impl CreateAdministratorUseCase {
             .email_service
             .send_templated_email(
                 &admin.email,
-                "Welcome to Caxur Admin - Set Your Password",
+                &email_subject,
                 email_title,
                 &email_content,
                 Some("Set My Password"),
@@ -119,11 +124,7 @@ impl CreateAdministratorUseCase {
             )
             .await
         {
-            tracing::error!(
-                "Failed to send verification email to {}: {:?}",
-                admin.email,
-                e
-            );
+            tracing::error!("Failed to send verification email: {:?}", e);
         }
 
         Ok(admin)

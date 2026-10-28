@@ -12,6 +12,7 @@ impl RestoreAdministratorUseCase {
         Self { repo }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn execute(&self, id: Uuid) -> Result<Administrator, AppError> {
         let admin = self
             .repo

@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Outlet, Navigate, NavLink, Link, useLocation } from 'react-router-dom';
+import { Outlet, Navigate, NavLink, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import { LayoutDashboard, Users, UserCheck, Shield, UserCircle, LogOut, Menu } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
+import { useHealth } from '@/hooks/useHealth';
+import { fetchMyProfile } from '@/features/profile/api/profile';
 import { apiClient } from '@/lib/api';
 import {
   Sheet,
@@ -17,66 +20,23 @@ const APP_NAME = import.meta.env.VITE_APP_NAME || 'Caxur-FS Admin';
 
 export default function AdminLayout() {
   const { isAuthenticated, user, updateUser, logout, refreshToken } = useAuthStore();
-  const [apiVersion, setApiVersion] = useState<string>('');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const location = useLocation();
 
-  // Auto-close mobile navigation drawer on route changes
-  useEffect(() => {
-    setMobileNavOpen(false);
-  }, [location.pathname]);
+  const { data: healthData } = useHealth();
+  const apiVersion = healthData?.version ?? '';
 
-  useEffect(() => {
-    const healthUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1').replace('/api/v1', '/health');
-    fetch(healthUrl)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.version) {
-          setApiVersion(data.version);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to fetch API version:', err);
-      });
-  }, []);
+  const { data: profileData } = useQuery({
+    queryKey: ['admin', 'my-profile'],
+    queryFn: fetchMyProfile,
+    enabled: isAuthenticated,
+    staleTime: 60 * 1000,
+  });
 
   useEffect(() => {
-    if (isAuthenticated) {
-      apiClient.get('/admin/my/profile')
-        .then((response) => {
-          const profileAttrs = response.data.data.attributes;
-          const profileId = response.data.data.id;
-          const permissions = response.data.meta?.permissions || [];
-          
-          let roles: any[] = [];
-          if (response.data.included) {
-            roles = response.data.included
-              .filter((inc: any) => inc.type === 'roles')
-              .map((role: any) => ({
-                id: role.id,
-                name: role.attributes.name,
-              }));
-          }
-
-          updateUser({
-            id: profileId,
-            email: profileAttrs.email,
-            firstName: profileAttrs.firstName,
-            middleName: profileAttrs.middleName,
-            lastName: profileAttrs.lastName,
-            suffix: profileAttrs.suffix,
-            contactNumber: profileAttrs.contactNumber,
-            roles,
-            permissions,
-          });
-        })
-        .catch((error) => {
-          console.error('Failed to fetch profile', error);
-          // Don't logout here to avoid infinite loops if it's a temporary error,
-          // but if it's 401/403, the interceptor will handle the logout anyway.
-        });
+    if (profileData) {
+      updateUser(profileData);
     }
-  }, [isAuthenticated, updateUser]);
+  }, [profileData, updateUser]);
 
   const handleLogout = async () => {
     if (refreshToken) {
@@ -109,8 +69,19 @@ export default function AdminLayout() {
     return user.permissions?.includes('*') || user.permissions?.includes(permission);
   };
 
+  const displayName = user
+    ? [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Administrator'
+    : '';
+
   return (
     <div className="h-screen overflow-hidden bg-background text-foreground flex">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-background focus:text-foreground focus:border focus:border-border focus:rounded-md focus:shadow-md"
+      >
+        Skip to main content
+      </a>
+
       {/* Desktop Sidebar */}
       <aside className="w-64 bg-[#FBFBFA] dark:bg-[#111111] border-r border-border flex flex-col hidden md:flex">
         <div className="h-16 flex items-center justify-between px-6 border-b border-border">
@@ -120,8 +91,8 @@ export default function AdminLayout() {
           <ThemeToggle />
         </div>
         <div className="flex-1 overflow-y-auto py-4">
-          <nav className="px-3 space-y-1">
-            {navItems.filter(item => hasPermission(item.permission)).map((item) => {
+          <nav aria-label="Sidebar" className="px-3 space-y-1">
+            {navItems.filter((item) => hasPermission(item.permission)).map((item) => {
               const Icon = item.icon;
               return (
                 <NavLink
@@ -146,13 +117,13 @@ export default function AdminLayout() {
           <div className="flex items-center w-full">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">
-                {user ? ([user.firstName, user.lastName].filter(Boolean).join(' ') || (user as any).name || 'Administrator') : ''}
+                {displayName}
               </p>
               <div className="flex flex-col gap-0.5 mt-0.5">
                 <p className="text-xs text-muted-foreground truncate font-mono">
                   {user?.email}
                 </p>
-                <span className="text-[10px] text-muted-foreground font-mono tracking-tight">
+                <span className="text-[10px] text-muted-foreground font-mono tracking-tight tabular-nums">
                   UI: v{import.meta.env.VITE_APP_VERSION} {apiVersion && `| API: v${apiVersion}`}
                 </span>
               </div>
@@ -163,31 +134,35 @@ export default function AdminLayout() {
               )}
             </div>
             <button
+              type="button"
               onClick={handleLogout}
               className="ml-2 p-2 text-muted-foreground hover:text-foreground hover:bg-[#F4F3EC] dark:hover:bg-[#1E1E1E] rounded-md transition-colors"
               title="Logout"
+              aria-label="Logout"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
+      <main id="main-content" tabIndex={-1} className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background focus:outline-none">
         {/* Mobile Header */}
         <header className="md:hidden bg-[#FBFBFA] dark:bg-[#111111] border-b border-border h-16 flex items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-              <SheetTrigger render={
-                <button
-                  type="button"
-                  className="p-2 -ml-2 text-muted-foreground hover:text-foreground hover:bg-[#F4F3EC] dark:hover:bg-[#1E1E1E] rounded-md transition-colors"
-                  aria-label="Open navigation menu"
-                >
-                  <Menu className="h-5 w-5" />
-                </button>
-              } />
+              <SheetTrigger
+                render={
+                  <button
+                    type="button"
+                    className="p-2 -ml-2 text-muted-foreground hover:text-foreground hover:bg-[#F4F3EC] dark:hover:bg-[#1E1E1E] rounded-md transition-colors"
+                    aria-label="Open navigation menu"
+                  >
+                    <Menu className="h-5 w-5" aria-hidden="true" />
+                  </button>
+                }
+              />
               <SheetContent side="left" className="w-72 p-0 flex flex-col justify-between bg-[#FBFBFA] dark:bg-[#111111] border-r border-border">
                 <SheetHeader className="h-16 flex flex-row items-center px-6 border-b border-border space-y-0">
                   <SheetTitle className="font-serif text-xl font-bold tracking-tight text-foreground">
@@ -196,8 +171,8 @@ export default function AdminLayout() {
                 </SheetHeader>
 
                 <div className="flex-1 overflow-y-auto py-4">
-                  <nav className="px-3 space-y-1">
-                    {navItems.filter(item => hasPermission(item.permission)).map((item) => {
+                  <nav aria-label="Mobile" className="px-3 space-y-1">
+                    {navItems.filter((item) => hasPermission(item.permission)).map((item) => {
                       const Icon = item.icon;
                       return (
                         <NavLink
@@ -224,13 +199,13 @@ export default function AdminLayout() {
                   <div className="flex items-center w-full">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">
-                        {user ? ([user.firstName, user.lastName].filter(Boolean).join(' ') || (user as any).name || 'Administrator') : ''}
+                        {displayName}
                       </p>
                       <div className="flex flex-col gap-0.5 mt-0.5">
                         <p className="text-xs text-muted-foreground truncate font-mono">
                           {user?.email}
                         </p>
-                        <span className="text-[10px] text-muted-foreground font-mono tracking-tight">
+                        <span className="text-[10px] text-muted-foreground font-mono tracking-tight tabular-nums">
                           UI: v{import.meta.env.VITE_APP_VERSION} {apiVersion && `| API: v${apiVersion}`}
                         </span>
                       </div>
@@ -241,14 +216,16 @@ export default function AdminLayout() {
                       )}
                     </div>
                     <button
+                      type="button"
                       onClick={() => {
                         setMobileNavOpen(false);
                         handleLogout();
                       }}
                       className="ml-2 p-2 text-muted-foreground hover:text-foreground hover:bg-[#F4F3EC] dark:hover:bg-[#1E1E1E] rounded-md transition-colors"
                       title="Logout"
+                      aria-label="Logout"
                     >
-                      <LogOut className="h-4 w-4" />
+                      <LogOut className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </div>
                 </div>
@@ -263,11 +240,13 @@ export default function AdminLayout() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <button
+              type="button"
               onClick={handleLogout}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-[#F4F3EC] dark:hover:bg-[#1E1E1E] rounded-md transition-colors"
               title="Logout"
+              aria-label="Logout"
             >
-              <LogOut className="h-5 w-5" />
+              <LogOut className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
         </header>

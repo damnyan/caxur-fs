@@ -39,6 +39,7 @@ impl ListAdministratorsUseCase {
         Self { repo }
     }
 
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(
         &self,
         req: &ListAdministratorsRequest,

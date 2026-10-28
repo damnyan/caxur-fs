@@ -7,6 +7,7 @@ use uuid::Uuid;
 use utoipa::{IntoParams, ToSchema};
 
 #[derive(Deserialize, IntoParams, ToSchema)]
+#[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")]
 pub struct GetAdministratorRequest {
     /// Included resources (comma-separated)
@@ -24,6 +25,7 @@ impl GetAdministratorUseCase {
         Self { repo }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn execute(&self, id: Uuid) -> Result<Option<Administrator>, AppError> {
         let admin = self
             .repo

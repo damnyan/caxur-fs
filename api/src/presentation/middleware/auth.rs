@@ -70,8 +70,9 @@ pub async fn check_permissions(
 
         let permissions = status_and_permissions.permissions;
 
-        // Check if user has Wildcard OR any of the required permissions
-        let has_permission = permissions.contains(&Permission::Wildcard)
+        // Check if route requires no specific permission (any active admin), or user has Wildcard / required permission
+        let has_permission = config.permissions.is_empty()
+            || permissions.contains(&Permission::Wildcard)
             || config
                 .permissions
                 .iter()

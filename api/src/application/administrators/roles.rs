@@ -15,6 +15,7 @@ impl AttachRoles {
         Self { admin_repo }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn execute(&self, admin_id: Uuid, role_ids: Vec<Uuid>) -> Result<(), anyhow::Error> {
         self.admin_repo.attach_roles(admin_id, role_ids).await?;
         Ok(())
@@ -31,6 +32,7 @@ impl DetachRoles {
         Self { admin_repo }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn execute(&self, admin_id: Uuid, role_ids: Vec<Uuid>) -> Result<(), anyhow::Error> {
         self.admin_repo.detach_roles(admin_id, role_ids).await?;
         Ok(())

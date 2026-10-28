@@ -1,9 +1,9 @@
 use crate::domain::administrators::AdminPermissionsAndStatus;
 use crate::domain::cache::CacheService;
+use crate::domain::email::EmailService;
 use crate::domain::storage::StorageService;
 use crate::infrastructure::auth::JwtAuthService;
 use crate::infrastructure::db::DbPool;
-use crate::infrastructure::email::EmailService;
 use axum::extract::FromRef;
 use moka::sync::Cache;
 use std::sync::Arc;

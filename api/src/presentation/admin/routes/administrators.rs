@@ -1,4 +1,5 @@
 use crate::domain::permissions::Permission;
+use crate::infrastructure::state::AppState;
 use crate::presentation::admin::handlers::administrators;
 use crate::presentation::middleware::auth::{RequiredPermissions, check_permissions};
 use axum::{
@@ -6,10 +7,8 @@ use axum::{
     routing::{get, post},
 };
 
-use crate::infrastructure::state::AppState;
-
 pub fn routes(state: AppState) -> Router<AppState> {
-    let protected = Router::new()
+    Router::new()
         .route("/", post(administrators::create_admin))
         .route("/", get(administrators::list_admins))
         .route(
@@ -32,9 +31,5 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .route_layer(Extension(RequiredPermissions {
             user_type: "admin",
             permissions: vec![Permission::AdministratorManagement],
-        }));
-
-    Router::new()
-        .route("/verify", post(administrators::verify_admin))
-        .merge(protected)
+        }))
 }

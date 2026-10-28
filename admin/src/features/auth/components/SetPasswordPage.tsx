@@ -8,7 +8,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { PasswordStrength } from '@/components/ui/PasswordStrength';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { apiClient } from '@/lib/api';
+import { apiClient, isApiError } from '@/lib/api';
 import { toast } from 'sonner';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
@@ -61,13 +61,13 @@ export default function SetPasswordPage() {
         token,
         password: data.password,
       });
-      
+
       toast.success('Password set successfully. You can now login.');
       navigate('/login');
-    } catch (err: any) {
-      if (err.response?.status === 401) {
+    } catch (err) {
+      if (isApiError(err) && err.response?.status === 401) {
         setError('Invalid or expired token.');
-      } else if (err.response?.status === 404) {
+      } else if (isApiError(err) && err.response?.status === 404) {
         setError('Administrator not found.');
       } else {
         setError('An error occurred while setting the password.');
@@ -106,7 +106,7 @@ export default function SetPasswordPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <CardContent className="space-y-4">
           {error && (
-            <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
+            <div role="alert" className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-950/30 rounded-md">
               {error}
             </div>
           )}
@@ -114,11 +114,12 @@ export default function SetPasswordPage() {
             <Label htmlFor="password">New Password</Label>
             <PasswordInput
               id="password"
+              autoComplete="new-password"
               {...passwordRegister}
               onFocus={() => setIsPasswordFocused(true)}
               onBlur={(e) => {
-                passwordRegister.onBlur(e)
-                setIsPasswordFocused(false)
+                passwordRegister.onBlur(e);
+                setIsPasswordFocused(false);
               }}
             />
             <PasswordStrength value={passwordValue} isFocused={isPasswordFocused} />
@@ -130,6 +131,7 @@ export default function SetPasswordPage() {
             <Label htmlFor="confirmPassword">Confirm Password</Label>
             <PasswordInput
               id="confirmPassword"
+              autoComplete="new-password"
               {...register('confirmPassword')}
             />
             {errors.confirmPassword && (

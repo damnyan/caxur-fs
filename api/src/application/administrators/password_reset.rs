@@ -1,7 +1,7 @@
 use crate::domain::administrators::{AdministratorRepository, UpdateAdministrator};
 use crate::domain::cache::CacheService;
+use crate::domain::email::EmailService;
 use crate::domain::password::PasswordHashingService;
-use crate::infrastructure::email::EmailService;
 use crate::shared::error::AppError;
 use serde::Deserialize;
 use std::env;
@@ -38,6 +38,7 @@ impl RequestPasswordResetUseCase {
         }
     }
 
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(&self, req: RequestPasswordResetRequest) -> Result<(), AppError> {
         // 1. Find user by email
         let admin = match self
@@ -68,21 +69,19 @@ impl RequestPasswordResetUseCase {
             env::var("ADMIN_URL").unwrap_or_else(|_| "http://localhost:3001".to_string());
         let reset_link = format!("{}/reset-password?token={}", base_url, token);
 
-        self.email_service.send_templated_email(
-            &req.email,
-            "Password Reset Request",
-            "Reset Your Password",
-            &format!(
+        self.email_service
+            .send_templated_email(
+                &req.email,
+                "Password Reset Request",
+                "Reset Your Password",
                 "<p>We received a request to reset your password for your administrator account.</p>\
-                 <p>If you made this request, please click the link below to set a new password:</p>\
-                 <p><a href=\"{}\">Reset Password</a></p>\
-                 <p>This link will expire in 15 minutes.</p>\
+                 <p>If you made this request, please click the button below to set a new password. This link will expire in 15 minutes.</p>\
                  <p>If you did not request a password reset, you can safely ignore this email.</p>",
-                reset_link
-            ),
-            None,
-            None,
-        ).await.map_err(AppError::InternalServerError)?;
+                Some("Reset Password"),
+                Some(&reset_link),
+            )
+            .await
+            .map_err(AppError::InternalServerError)?;
 
         Ok(())
     }
@@ -117,6 +116,7 @@ impl ConfirmPasswordResetUseCase {
         }
     }
 
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(&self, req: ConfirmPasswordResetRequest) -> Result<(), AppError> {
         let key = format!("admin_password_reset:{}", req.token);
 
@@ -142,6 +142,7 @@ impl ConfirmPasswordResetUseCase {
         let new_password_hash = self
             .password_service
             .hash_password(&req.new_password)
+            .await
             .map_err(AppError::InternalServerError)?;
 
         // 3. Update password

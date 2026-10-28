@@ -22,7 +22,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { config } from "@/lib/config"
 import { useAuthStore } from "@/lib/auth-store"
-import { useEffect, useState } from "react"
+import { useEffect, useLayoutEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { logoutAction } from "@/app/actions/auth"
 import { Menu, LogOut } from "lucide-react"
@@ -33,16 +33,25 @@ export function Navbar() {
   const { token, user, logout } = useAuthStore()
   const [mounted, setMounted] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
 
   // Avoid hydration mismatch
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Auto-close mobile drawer on route transition
+  // Auto-close transient menus on route transition or React <Activity> hide
   useEffect(() => {
     setMobileOpen(false)
+    setUserMenuOpen(false)
   }, [pathname])
+
+  useLayoutEffect(() => {
+    return () => {
+      setMobileOpen(false)
+      setUserMenuOpen(false)
+    }
+  }, [])
 
   const isLoggedIn = mounted && !!token
   const isAuthPage = pathname === "/login" || pathname === "/register" || pathname.startsWith("/register/verify")
@@ -63,7 +72,7 @@ export function Navbar() {
     }
     await logoutAction();
     logout()
-    router.push("/")
+    window.location.href = "/"
   }
 
   useEffect(() => {
@@ -128,7 +137,7 @@ export function Navbar() {
           )}
 
           {isLoggedIn && (
-            <DropdownMenu>
+            <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
               <DropdownMenuTrigger render={
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">

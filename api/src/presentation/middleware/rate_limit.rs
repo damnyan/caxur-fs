@@ -141,6 +141,7 @@ pub fn public_rate_limit_layer(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use uuid::Uuid;
 
     const TEST_PRIVATE_KEY: &str = "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgXShTihFbNTSa14xH\nQjKpkLjzdhSP5lwJO2h25FosLEKhRANCAAQMC1J0EtKKYd2XmBnZZJd319Ae/K29\nMRbfOkjiINQ1JCIK7wvITDT4HmytHoBh1F2XcjXWlkoGAsRzcm5dcBD6\n-----END PRIVATE KEY-----\n";
     const TEST_PUBLIC_KEY: &str = "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEDAtSdBLSimHdl5gZ2WSXd9fQHvyt\nvTEW3zpI4iDUNSQiCu8LyEw0+B5srR6AYdRdl3I11pZKBgLEc3JuXXAQ+g==\n-----END PUBLIC KEY-----\n";
@@ -169,7 +170,7 @@ mod tests {
             Arc::new(JwtAuthService::new(TEST_PRIVATE_KEY, TEST_PUBLIC_KEY, 900, 604800).unwrap());
         let extractor = SmartRateLimitKeyExtractor::new(auth_service.clone());
 
-        let user_id = uuid::Uuid::new_v4();
+        let user_id = Uuid::new_v4();
         let token = auth_service
             .generate_access_token(user_id, "user".to_string())
             .unwrap();

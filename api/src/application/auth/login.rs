@@ -51,7 +51,7 @@ impl LoginUseCase {
         }
     }
 
-    #[tracing::instrument(skip(self, req), fields(email = %req.email))]
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(&self, req: LoginRequest) -> Result<LoginUseCaseResult, AppError> {
         // Find user by email
         let user = self
@@ -65,6 +65,7 @@ impl LoginUseCase {
         let valid_password = self
             .password_service
             .verify_password(&req.password, &user.password_hash)
+            .await
             .map_err(AppError::InternalServerError)?;
 
         if !valid_password {

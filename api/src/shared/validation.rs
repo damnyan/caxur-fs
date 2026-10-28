@@ -1,11 +1,12 @@
 use crate::shared::error::{AppError, FieldError};
 use axum::{
     Json,
+    body::{self, Body},
     extract::{FromRequest, Request},
 };
-use serde::Deserialize;
 use serde::de::DeserializeOwned;
-use validator::Validate;
+use serde::{Deserialize, Deserializer};
+use validator::{Validate, ValidationError, ValidationErrors};
 
 /// Trims whitespace and converts an email address to ASCII lowercase.
 pub fn normalize_email(email: &str) -> String {
@@ -15,7 +16,7 @@ pub fn normalize_email(email: &str) -> String {
 /// Serde deserializer helper to trim and lowercase a required email string.
 pub fn deserialize_email<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
     Ok(normalize_email(&s))
@@ -24,13 +25,13 @@ where
 /// Serde deserializer helper to trim and lowercase an optional email string.
 pub fn deserialize_optional_email<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
     let opt = Option::<String>::deserialize(deserializer)?;
     Ok(opt.map(|s| normalize_email(&s)))
 }
 
-fn format_validation_error(err: &validator::ValidationError) -> String {
+fn format_validation_error(err: &ValidationError) -> String {
     // 1. Check if a custom message is provided
     if let Some(msg) = &err.message {
         return msg.to_string();
@@ -98,7 +99,7 @@ fn format_validation_error(err: &validator::ValidationError) -> String {
     }
 }
 
-pub fn flatten_validation_errors(e: validator::ValidationErrors) -> Vec<FieldError> {
+pub fn flatten_validation_errors(e: ValidationErrors) -> Vec<FieldError> {
     e.field_errors()
         .iter()
         .map(|(field, errors)| {
@@ -112,9 +113,9 @@ pub fn flatten_validation_errors(e: validator::ValidationErrors) -> Vec<FieldErr
         .collect()
 }
 
-pub fn validate_password_strength(password: &str) -> Result<(), validator::ValidationError> {
+pub fn validate_password_strength(password: &str) -> Result<(), ValidationError> {
     if password.len() < 12 {
-        let mut err = validator::ValidationError::new("password_too_short");
+        let mut err = ValidationError::new("password_too_short");
         err.message = Some("Password must be at least 12 characters long".into());
         return Err(err);
     }
@@ -125,22 +126,22 @@ pub fn validate_password_strength(password: &str) -> Result<(), validator::Valid
     let has_special = password.chars().any(|c| !c.is_alphanumeric());
 
     if !has_uppercase {
-        let mut err = validator::ValidationError::new("password_missing_uppercase");
+        let mut err = ValidationError::new("password_missing_uppercase");
         err.message = Some("Password must contain at least one uppercase letter".into());
         return Err(err);
     }
     if !has_lowercase {
-        let mut err = validator::ValidationError::new("password_missing_lowercase");
+        let mut err = ValidationError::new("password_missing_lowercase");
         err.message = Some("Password must contain at least one lowercase letter".into());
         return Err(err);
     }
     if !has_digit {
-        let mut err = validator::ValidationError::new("password_missing_digit");
+        let mut err = ValidationError::new("password_missing_digit");
         err.message = Some("Password must contain at least one number".into());
         return Err(err);
     }
     if !has_special {
-        let mut err = validator::ValidationError::new("password_missing_special");
+        let mut err = ValidationError::new("password_missing_special");
         err.message = Some("Password must contain at least one special character".into());
         return Err(err);
     }
@@ -184,8 +185,8 @@ where
     type Rejection = AppError;
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        let (parts, body) = req.into_parts();
-        let bytes = axum::body::to_bytes(body, MAX_JSON_BODY_BYTES)
+        let (parts, req_body) = req.into_parts();
+        let bytes = body::to_bytes(req_body, MAX_JSON_BODY_BYTES)
             .await
             .map_err(|e| {
                 AppError::ValidationError(vec![FieldError::new("request_body", e.to_string())])
@@ -195,7 +196,7 @@ where
             return Ok(MaybeValidatedJson(None));
         }
 
-        let new_req = Request::from_parts(parts, axum::body::Body::from(bytes));
+        let new_req = Request::from_parts(parts, Body::from(bytes));
         let res = ValidatedJson::<T>::from_request(new_req, state).await?;
         Ok(MaybeValidatedJson(Some(res.0)))
     }

@@ -1,25 +1,38 @@
+import { cacheLife, cacheTag } from "next/cache"
 import { config } from "@/lib/config"
 
-export async function Footer() {
-  const appName = config.appName
+async function getFooterMetadata(): Promise<{ apiVersion: string; currentYear: number }> {
+  "use cache"
+  cacheLife("minutes")
+  cacheTag("api-health")
 
-  // Query backend API health dynamically on the server side
   let apiVersion = "unknown"
   try {
-    const res = await fetch(`${config.apiUrl}/health`, { next: { revalidate: 60 } })
+    const res = await fetch(`${config.apiUrl}/health`)
     if (res.ok) {
       const data = await res.json()
       apiVersion = data.version || "unknown"
     }
-  } catch (err: any) {
-    const code = err?.cause?.code || err?.code;
-    if (code === 'ECONNREFUSED') {
+  } catch (err: unknown) {
+    const errorObj = err as { cause?: { code?: string }; code?: string; message?: string }
+    const code = errorObj?.cause?.code || errorObj?.code
+    if (code === "ECONNREFUSED") {
       // Subtle warning to keep terminal output clean during startup compiling phase
-      console.warn(`[API Offline] Backend is booting or unreachable at ${config.apiUrl}`);
+      console.warn(`[API Offline] Backend is booting or unreachable at ${config.apiUrl}`)
     } else {
-      console.warn(`Failed to query API version in footer: ${err?.message || err}`);
+      console.warn(`Failed to query API version in footer: ${errorObj?.message || String(err)}`)
     }
   }
+
+  return {
+    apiVersion,
+    currentYear: new Date().getFullYear(),
+  }
+}
+
+export async function Footer() {
+  const appName = config.appName
+  const { apiVersion, currentYear } = await getFooterMetadata()
 
   return (
     <footer className="border-t bg-muted/40 py-8 md:py-12">
@@ -36,7 +49,7 @@ export async function Footer() {
           </p>
         </div>
         <p className="text-sm text-muted-foreground text-center md:text-right">
-          &copy; {new Date().getFullYear()} {appName}. All rights reserved.
+          &copy; {currentYear} {appName}. All rights reserved.
         </p>
       </div>
     </footer>

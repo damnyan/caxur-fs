@@ -1,10 +1,12 @@
 use anyhow::Context;
+use axum::Router;
 use caxur::infrastructure;
 use caxur::presentation;
 use std::env;
 use std::future::{self, Future};
 use std::net::SocketAddr;
 use std::sync::Arc;
+use tokio::net::TcpListener;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -78,10 +80,7 @@ where
     Ok(())
 }
 
-async fn bootstrap(
-    database_url: &str,
-    port: u16,
-) -> anyhow::Result<(tokio::net::TcpListener, axum::Router)> {
+async fn bootstrap(database_url: &str, port: u16) -> anyhow::Result<(TcpListener, Router)> {
     let pool = infrastructure::db::create_pool(database_url).await?;
 
     // Run migrations
@@ -162,7 +161,7 @@ async fn bootstrap(
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     tracing::debug!("listening on {}", addr);
-    let listener = tokio::net::TcpListener::bind(addr).await?;
+    let listener = TcpListener::bind(addr).await?;
 
     Ok((listener, app))
 }

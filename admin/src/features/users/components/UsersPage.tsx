@@ -93,9 +93,13 @@ export default function UsersPage() {
 
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <Input
             placeholder="Search by name or email..."
+            aria-label="Search users by name or email"
+            spellCheck={false}
+            autoCapitalize="none"
+            autoCorrect="off"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="pl-9 bg-card border-border font-mono text-sm"
@@ -165,10 +169,10 @@ export default function UsersPage() {
                       </div>
                     </TableCell>
                     <TableCell className="font-mono text-sm">{attrs.email}</TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
+                    <TableCell className="font-mono text-xs text-muted-foreground tabular-nums">
                       {formatDateTime(attrs.createdAt)}
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
+                    <TableCell className="font-mono text-xs text-muted-foreground tabular-nums">
                       {formatDateTime(attrs.updatedAt)}
                     </TableCell>
                     <TableCell className="text-right">
@@ -178,8 +182,9 @@ export default function UsersPage() {
                         className="h-8 w-8"
                         onClick={() => setSelectedUser(user)}
                         title="View details"
+                        aria-label={`View details for ${fullName}`}
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </TableCell>
                   </TableRow>

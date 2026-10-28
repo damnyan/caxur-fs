@@ -8,7 +8,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { PasswordStrength } from '@/components/ui/PasswordStrength';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { apiClient, isApiError } from '@/lib/api';
+import { apiClient, getApiErrorMessage } from '@/lib/api';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const resetPasswordSchema = z.object({
@@ -65,11 +65,7 @@ export default function ResetPasswordPage() {
       setIsSuccess(true);
       setTimeout(() => navigate('/login'), 3000);
     } catch (err) {
-      if (isApiError(err) && err.response?.data?.errors?.[0]?.detail) {
-        setError(err.response.data.errors[0].detail);
-      } else {
-        setError('An error occurred. The token may be invalid or expired.');
-      }
+      setError(getApiErrorMessage(err, 'An error occurred. The token may be invalid or expired.'));
     } finally {
       setIsLoading(false);
     }
@@ -132,6 +128,7 @@ export default function ResetPasswordPage() {
             <Label htmlFor="password">New Password</Label>
             <PasswordInput
               id="password"
+              autoComplete="new-password"
               {...passwordRegister}
               onFocus={() => setIsPasswordFocused(true)}
               onBlur={(e) => {
@@ -148,6 +145,7 @@ export default function ResetPasswordPage() {
             <Label htmlFor="confirmPassword">Confirm Password</Label>
             <PasswordInput
               id="confirmPassword"
+              autoComplete="new-password"
               {...register('confirmPassword')}
             />
             {errors.confirmPassword && (

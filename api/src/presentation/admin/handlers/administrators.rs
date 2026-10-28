@@ -174,7 +174,8 @@ pub async fn create_admin(
     get,
     path = "/api/v1/admin/administrators/{id}",
     params(
-        ("id" = Uuid, Path, description = "Administrator ID")
+        ("id" = Uuid, Path, description = "Administrator ID"),
+        GetAdministratorRequest
     ),
     responses(
         (status = 200, description = "Administrator found", body = JsonApiResponse<JsonApiResource<AdministratorResource>>),

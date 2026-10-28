@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { administratorsApi } from './administrators';
 import type { CreateAdministratorData, UpdateAdministratorData, AdministratorsParams } from '../types';
 
@@ -14,6 +14,7 @@ export const useAdministrators = (params?: AdministratorsParams) => {
   return useQuery({
     queryKey: administratorsKeys.list(params || {}),
     queryFn: () => administratorsApi.list(params),
+    placeholderData: keepPreviousData,
   });
 };
 

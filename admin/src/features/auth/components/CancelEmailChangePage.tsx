@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { apiClient } from '@/lib/api';
+import { apiClient, getApiErrorMessage } from '@/lib/api';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 export default function CancelEmailChangePage() {
@@ -11,26 +11,32 @@ export default function CancelEmailChangePage() {
   const token = searchParams.get('token');
   const navigate = useNavigate();
 
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>(token ? 'loading' : 'error');
-  const [errorMessage, setErrorMessage] = useState(token ? '' : 'No cancellation token provided.');
-  const hasRequested = useRef(false);
+  const { isPending, isSuccess, isError, error } = useQuery({
+    queryKey: ['cancel-email-change', token],
+    queryFn: async () => {
+      await apiClient.post('/admin/auth/email/cancel', { token });
+      return true;
+    },
+    enabled: Boolean(token),
+    retry: false,
+    staleTime: Infinity,
+  });
 
-  useEffect(() => {
-    if (!token || hasRequested.current) return;
-    hasRequested.current = true;
+  const status: 'loading' | 'success' | 'error' = !token
+    ? 'error'
+    : isPending
+    ? 'loading'
+    : isSuccess
+    ? 'success'
+    : isError
+    ? 'error'
+    : 'loading';
 
-    const cancelRequest = async () => {
-      try {
-        await apiClient.post('/admin/auth/email/cancel', { token });
-        setStatus('success');
-      } catch (error: any) {
-        setStatus('error');
-        setErrorMessage(error?.response?.data?.errors?.[0]?.detail || 'Failed to cancel the email change request. The link may have expired or is invalid.');
-      }
-    };
-
-    cancelRequest();
-  }, [token]);
+  const errorMessage = !token
+    ? 'No cancellation token provided.'
+    : error
+    ? getApiErrorMessage(error, 'Failed to cancel the email change request. The link may have expired or is invalid.')
+    : '';
 
   return (
     <Card className="w-full">
@@ -39,14 +45,17 @@ export default function CancelEmailChangePage() {
           Cancel Email Change
         </CardTitle>
         <CardDescription className="text-center">
-          {status === 'loading' ? 'Processing your request...' : 
-           status === 'success' ? 'Request Cancelled' : 'Cancellation Failed'}
+          {status === 'loading'
+            ? 'Processing your request...'
+            : status === 'success'
+            ? 'Request Cancelled'
+            : 'Cancellation Failed'}
         </CardDescription>
       </CardHeader>
       <CardContent>
         {status === 'loading' && (
           <div className="flex justify-center py-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
           </div>
         )}
 
@@ -60,7 +69,7 @@ export default function CancelEmailChangePage() {
 
         {status === 'error' && (
           <div className="text-center space-y-4">
-            <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-4 rounded-md text-sm">
+            <div role="alert" className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-4 rounded-md text-sm">
               {errorMessage}
             </div>
           </div>

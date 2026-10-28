@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -9,15 +9,23 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { apiClient, isApiError } from '@/lib/api';
+import { apiClient, getApiErrorMessage } from '@/lib/api';
+import { fetchMyProfile } from '@/features/profile/api/profile';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { useHealth } from '@/hooks/useHealth';
+import type { JsonApiResponse } from '@/types/jsonapi';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
-  password: z.string().min(12, 'Password must be at least 12 characters'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
+
+interface LoginAttributes {
+  accessToken: string;
+  refreshToken: string;
+}
 
 export default function LoginPage() {
   useDocumentTitle('Sign In');
@@ -26,35 +34,17 @@ export default function LoginPage() {
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
 
-  const [apiVersion, setApiVersion] = useState<string>('Loading...');
-  const [apiStatus, setApiStatus] = useState<'loading' | 'online' | 'offline'>('loading');
-
-  useEffect(() => {
-    const fetchApiVersion = async () => {
-      try {
-        const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
-        const healthUrl = apiBase.replace(/\/api\/v1\/?$/, '/health');
-        const response = await fetch(healthUrl);
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.version) {
-            setApiVersion(`v${data.version}`);
-            setApiStatus('online');
-          } else {
-            setApiVersion('Unknown');
-            setApiStatus('offline');
-          }
-        } else {
-          setApiVersion('Offline');
-          setApiStatus('offline');
-        }
-      } catch {
-        setApiVersion('Offline');
-        setApiStatus('offline');
-      }
-    };
-    fetchApiVersion();
-  }, []);
+  const { data: healthData, isLoading: isHealthLoading, isError: isHealthError } = useHealth();
+  const apiStatus: 'loading' | 'online' | 'offline' = isHealthLoading
+    ? 'loading'
+    : isHealthError || !healthData?.version
+    ? 'offline'
+    : 'online';
+  const apiVersion = isHealthLoading
+    ? 'Loading...'
+    : apiStatus === 'online' && healthData?.version
+    ? `v${healthData.version}`
+    : 'Offline';
 
   const {
     register,
@@ -68,55 +58,25 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await apiClient.post('/admin/auth/login', {
+      const response = await apiClient.post<JsonApiResponse<LoginAttributes>>('/admin/auth/login', {
         ...data,
         email: data.email.trim().toLowerCase(),
       });
-      
+
       const attributes = response.data.data.attributes;
       const accessToken = attributes.accessToken;
       const refreshToken = attributes.refreshToken;
-      
+
       // Temporarily set tokens to use apiClient for fetching profile
       useAuthStore.getState().setToken(accessToken, refreshToken);
 
       // Fetch actual user profile
-      const profileResponse = await apiClient.get('/admin/my/profile');
-      const profileAttrs = profileResponse.data.data.attributes;
-      const profileId = profileResponse.data.data.id;
-      
-      let roles: any[] = [];
-      if (profileResponse.data.included) {
-        roles = profileResponse.data.included
-          .filter((inc: any) => inc.type === 'roles')
-          .map((role: any) => ({
-            id: role.id,
-            name: role.attributes.name,
-          }));
-      }
+      const user = await fetchMyProfile();
 
-      const permissions = profileResponse.data.meta?.permissions || [];
-
-      const user = {
-        id: profileId,
-        email: profileAttrs.email,
-        firstName: profileAttrs.firstName,
-        middleName: profileAttrs.middleName,
-        lastName: profileAttrs.lastName,
-        suffix: profileAttrs.suffix,
-        contactNumber: profileAttrs.contactNumber,
-        roles,
-        permissions,
-      };
-      
       login(user, accessToken, refreshToken);
       navigate('/');
     } catch (err) {
-      if (isApiError(err) && err.response?.data?.errors?.[0]?.detail) {
-        setError(err.response.data.errors[0].detail);
-      } else {
-        setError('An error occurred during login');
-      }
+      setError(getApiErrorMessage(err, 'An error occurred during login'));
     } finally {
       setIsLoading(false);
     }
@@ -134,7 +94,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <CardContent className="space-y-4">
             {error && (
-              <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
+              <div role="alert" className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-950/30 rounded-md">
                 {error}
               </div>
             )}
@@ -144,6 +104,10 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 placeholder="admin@example.com"
+                autoComplete="username"
+                spellCheck={false}
+                autoCapitalize="none"
+                autoCorrect="off"
                 {...register('email')}
               />
               {errors.email && (
@@ -162,6 +126,7 @@ export default function LoginPage() {
               </div>
               <PasswordInput
                 id="password"
+                autoComplete="current-password"
                 {...register('password')}
               />
               {errors.password && (
@@ -177,7 +142,7 @@ export default function LoginPage() {
         </form>
       </Card>
 
-      <div className="flex items-center justify-between px-1 text-xs text-muted-foreground/60">
+      <div className="flex items-center justify-between px-1 text-xs text-muted-foreground/60 tabular-nums">
         <div className="flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
           <span>Admin v{import.meta.env.VITE_APP_VERSION || '0.0.0'}</span>

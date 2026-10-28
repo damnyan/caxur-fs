@@ -11,6 +11,7 @@ impl DeleteUserUseCase {
         Self { repo }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn execute(&self, id: Uuid) -> Result<bool, anyhow::Error> {
         self.repo.delete(id).await
     }

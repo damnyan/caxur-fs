@@ -2,6 +2,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ContactForm } from "@/components/home/contact-form"
 
+export const unstable_instant = { prefetch: "static" }
+
 export default function Home() {
   const appName = process.env.NEXT_PUBLIC_APP_NAME || "Caxur-FS"
 

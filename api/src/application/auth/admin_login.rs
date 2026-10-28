@@ -49,9 +49,9 @@ impl AdminLoginUseCase {
         }
     }
 
-    #[tracing::instrument(skip(self, req), fields(email = %req.email))]
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(&self, req: AdminLoginRequest) -> Result<AdminLoginResponse, AppError> {
-        tracing::info!("Attempting admin login for email: {}", req.email);
+        tracing::info!("Attempting admin login");
 
         // Find administrator by email
         let admin = self
@@ -63,26 +63,22 @@ impl AdminLoginUseCase {
                 AppError::InternalServerError(e)
             })?
             .ok_or_else(|| {
-                tracing::warn!("Administrator not found for email: {}", req.email);
+                tracing::warn!("Administrator not found for login attempt");
                 AppError::Unauthorized("Invalid credentials".to_string())
             })?;
 
         if admin.revoked_at.is_some() {
-            tracing::warn!("Login attempt for revoked administrator: {}", admin.email);
+            tracing::warn!("Login attempt for revoked administrator: {}", admin.id);
             return Err(AppError::AccountRevoked("Account revoked".to_string()));
         }
 
         if admin.email_verified_at.is_none() {
-            tracing::warn!(
-                "Login attempt for unverified administrator: {}",
-                admin.email
-            );
+            tracing::warn!("Login attempt for unverified administrator: {}", admin.id);
             return Err(AppError::Unauthorized("Email not verified".to_string()));
         }
 
         tracing::info!(
-            "Administrator found: {} (ID: {}). Verifying password...",
-            admin.email,
+            "Administrator found (ID: {}). Verifying password...",
             admin.id
         );
 
@@ -90,6 +86,7 @@ impl AdminLoginUseCase {
         let valid_password = self
             .password_service
             .verify_password(&req.password, &admin.password_hash)
+            .await
             .map_err(|e| {
                 tracing::error!("Password verification internal error: {}", e);
                 AppError::InternalServerError(e)
@@ -98,7 +95,7 @@ impl AdminLoginUseCase {
         if !valid_password {
             tracing::warn!(
                 "Password verification failed for administrator: {}",
-                admin.email
+                admin.id
             );
             return Err(AppError::Unauthorized(
                 "Invalid email or password".to_string(),

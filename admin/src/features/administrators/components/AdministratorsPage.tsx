@@ -47,18 +47,20 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRoles } from '@/features/roles/api/roles';
+import type { Role, JsonApiData } from '@/features/roles/types';
 import { administratorsApi } from '../api/administrators';
+import type { Administrator, UpdateAdministratorData } from '../types';
 import { Checkbox } from '@/components/ui/checkbox';
 
-import { 
-  useAdministrators, 
-  useCreateAdministrator, 
+import {
+  useAdministrators,
+  useCreateAdministrator,
   useUpdateAdministrator,
-  useDeleteAdministrator, 
-  useRevokeAdministrator, 
-  useRestoreAdministrator, 
+  useDeleteAdministrator,
+  useRevokeAdministrator,
+  useRestoreAdministrator,
   useResendVerification,
-  administratorsKeys
+  administratorsKeys,
 } from '../api/queries';
 import { handleApiValidationErrors } from '@/lib/api';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
@@ -85,8 +87,8 @@ type UpdateFormValues = z.infer<typeof updateSchema>;
 export default function AdministratorsPage() {
   useDocumentTitle('Administrators');
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [editAdmin, setEditAdmin] = useState<any | null>(null);
-  const [confirmAction, setConfirmAction] = useState<{type: 'restore'|'revoke'|'delete', id: string} | null>(null);
+  const [editAdmin, setEditAdmin] = useState<Administrator | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'restore' | 'revoke' | 'delete'; id: string } | null>(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
@@ -123,13 +125,13 @@ export default function AdministratorsPage() {
   const administrators = response?.data || [];
   const meta = response?.meta;
   const lastPage = meta ? Math.ceil((meta.total || 0) / (meta.perPage || perPage)) : 1;
-  
+
   // Fetch roles for selection
   const { data: rolesResp, isLoading: isLoadingRoles } = useQuery({
     queryKey: ['roles', 'all'],
     queryFn: () => getRoles(1, 100),
   });
-  const rolesList = useMemo(() => rolesResp?.data || [], [rolesResp]);
+  const rolesList: JsonApiData<Role>[] = useMemo(() => rolesResp?.data || [], [rolesResp]);
 
   const createMutation = useCreateAdministrator();
   const updateMutation = useUpdateAdministrator();
@@ -156,7 +158,9 @@ export default function AdministratorsPage() {
         suffix: editAdmin.suffix || '',
         contactNumber: editAdmin.contactNumber || '',
         email: editAdmin.email,
-        roleIds: rolesList.filter((r: any) => editAdmin.roles?.includes(r.attributes.name)).map((r: any) => r.id),
+        roleIds: rolesList
+          .filter((r) => editAdmin.roles?.includes(r.attributes.name))
+          .map((r) => r.id),
       });
     }
   }, [editAdmin, resetEdit, rolesList]);
@@ -186,42 +190,47 @@ export default function AdministratorsPage() {
         if (!handled) {
           toast.error('Failed to create administrator');
         }
-      }
+      },
     });
   };
 
   const onEditSubmit = (data: UpdateFormValues) => {
     if (!editAdmin) return;
     const { roleIds, ...adminData } = data;
-    const normalizedData = {
+    const normalizedData: UpdateAdministratorData = {
       ...adminData,
       ...(adminData.email ? { email: adminData.email.trim().toLowerCase() } : {}),
     };
-    updateMutation.mutate({ id: editAdmin.id, data: normalizedData as any }, {
-      onSuccess: async () => {
-        if (roleIds) {
-          try {
-            const existingRoles = rolesList.filter((r: any) => editAdmin.roles?.includes(r.attributes.name)).map((r: any) => r.id);
-            const toAttach = roleIds.filter(id => !existingRoles.includes(id));
-            const toDetach = existingRoles.filter(id => !roleIds.includes(id));
-            
-            if (toDetach.length > 0) await administratorsApi.detachRoles(editAdmin.id, { roleIds: toDetach });
-            if (toAttach.length > 0) await administratorsApi.attachRoles(editAdmin.id, { roleIds: toAttach });
-            queryClient.invalidateQueries({ queryKey: administratorsKeys.lists() });
-          } catch {
-            toast.error('Admin updated but failed to sync roles.');
+    updateMutation.mutate(
+      { id: editAdmin.id, data: normalizedData },
+      {
+        onSuccess: async () => {
+          if (roleIds) {
+            try {
+              const existingRoles = rolesList
+                .filter((r) => editAdmin.roles?.includes(r.attributes.name))
+                .map((r) => r.id);
+              const toAttach = roleIds.filter((id) => !existingRoles.includes(id));
+              const toDetach = existingRoles.filter((id) => !roleIds.includes(id));
+
+              if (toDetach.length > 0) await administratorsApi.detachRoles(editAdmin.id, { roleIds: toDetach });
+              if (toAttach.length > 0) await administratorsApi.attachRoles(editAdmin.id, { roleIds: toAttach });
+              queryClient.invalidateQueries({ queryKey: administratorsKeys.lists() });
+            } catch {
+              toast.error('Admin updated but failed to sync roles.');
+            }
           }
-        }
-        toast.success('Administrator updated successfully.');
-        setEditAdmin(null);
-      },
-      onError: (error) => {
-        const handled = handleApiValidationErrors(error, setEditError);
-        if (!handled) {
-          toast.error('Failed to update administrator');
-        }
+          toast.success('Administrator updated successfully.');
+          setEditAdmin(null);
+        },
+        onError: (error) => {
+          const handled = handleApiValidationErrors(error, setEditError);
+          if (!handled) {
+            toast.error('Failed to update administrator');
+          }
+        },
       }
-    });
+    );
   };
 
   return (
@@ -233,12 +242,12 @@ export default function AdministratorsPage() {
             Manage your portal administrators.
           </p>
         </div>
-        
+
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger 
+          <DialogTrigger
             render={
               <Button>
-                <UserPlus className="mr-2 h-4 w-4" /> Add Administrator
+                <UserPlus className="mr-2 h-4 w-4" aria-hidden="true" /> Add Administrator
               </Button>
             }
           />
@@ -270,12 +279,19 @@ export default function AdministratorsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" {...registerCreate('email')} />
+                  <Input
+                    id="email"
+                    type="email"
+                    spellCheck={false}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    {...registerCreate('email')}
+                  />
                   {createErrors.email && <p className="text-sm text-red-500">{createErrors.email.message}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="contactNumber">Contact Number (optional)</Label>
-                  <Input id="contactNumber" {...registerCreate('contactNumber')} />
+                  <Input id="contactNumber" type="tel" {...registerCreate('contactNumber')} />
                   {createErrors.contactNumber && <p className="text-sm text-red-500">{createErrors.contactNumber.message}</p>}
                 </div>
               </div>
@@ -289,22 +305,26 @@ export default function AdministratorsPage() {
                       <>
                         {isLoadingRoles ? (
                           <span className="text-gray-500 italic text-sm">Loading roles...</span>
-                        ) : rolesList.map((role: any) => (
-                          <label key={role.id} className="flex items-center space-x-2 text-sm cursor-pointer">
-                            <Checkbox 
-                              checked={field.value?.includes(role.id)}
-                              onCheckedChange={(checked) => {
-                                const current = field.value || [];
-                                const updated = checked
-                                  ? [...current, role.id]
-                                  : current.filter((id: string) => id !== role.id);
-                                field.onChange(updated);
-                              }}
-                            />
-                            <span>{role.attributes.name}</span>
-                          </label>
-                        ))}
-                        {!isLoadingRoles && rolesList.length === 0 && <span className="text-gray-500 italic text-sm">No roles available</span>}
+                        ) : (
+                          rolesList.map((role) => (
+                            <label key={role.id} className="flex items-center space-x-2 text-sm cursor-pointer">
+                              <Checkbox
+                                checked={field.value?.includes(role.id)}
+                                onCheckedChange={(checked) => {
+                                  const current = field.value || [];
+                                  const updated = checked
+                                    ? [...current, role.id]
+                                    : current.filter((id: string) => id !== role.id);
+                                  field.onChange(updated);
+                                }}
+                              />
+                              <span>{role.attributes.name}</span>
+                            </label>
+                          ))
+                        )}
+                        {!isLoadingRoles && rolesList.length === 0 && (
+                          <span className="text-gray-500 italic text-sm">No roles available</span>
+                        )}
                       </>
                     )}
                   />
@@ -347,12 +367,22 @@ export default function AdministratorsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="editEmail">Email</Label>
-                <Input id="editEmail" type="email" {...registerEdit('email')} disabled={Boolean(editAdmin?.emailVerifiedAt)} className={editAdmin?.emailVerifiedAt ? "bg-gray-100" : ""} title={editAdmin?.emailVerifiedAt ? "Email cannot be changed after verification" : ""} />
+                <Input
+                  id="editEmail"
+                  type="email"
+                  spellCheck={false}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  {...registerEdit('email')}
+                  disabled={Boolean(editAdmin?.emailVerifiedAt)}
+                  className={editAdmin?.emailVerifiedAt ? "bg-gray-100 dark:bg-gray-800" : ""}
+                  title={editAdmin?.emailVerifiedAt ? "Email cannot be changed after verification" : ""}
+                />
                 {editErrors.email && <p className="text-sm text-red-500">{editErrors.email.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="editContactNumber">Contact Number (optional)</Label>
-                <Input id="editContactNumber" {...registerEdit('contactNumber')} />
+                <Input id="editContactNumber" type="tel" {...registerEdit('contactNumber')} />
                 {editErrors.contactNumber && <p className="text-sm text-red-500">{editErrors.contactNumber.message}</p>}
               </div>
             </div>
@@ -366,21 +396,23 @@ export default function AdministratorsPage() {
                     <>
                       {isLoadingRoles ? (
                         <span className="text-gray-500 italic text-sm">Loading roles...</span>
-                      ) : rolesList.map((role: any) => (
-                        <label key={role.id} className="flex items-center space-x-2 text-sm cursor-pointer">
-                          <Checkbox 
-                            checked={field.value?.includes(role.id)}
-                            onCheckedChange={(checked) => {
-                              const current = field.value || [];
-                              const updated = checked
-                                ? [...current, role.id]
-                                : current.filter((id: string) => id !== role.id);
-                              field.onChange(updated);
-                            }}
-                          />
-                          <span>{role.attributes.name}</span>
-                        </label>
-                      ))}
+                      ) : (
+                        rolesList.map((role) => (
+                          <label key={role.id} className="flex items-center space-x-2 text-sm cursor-pointer">
+                            <Checkbox
+                              checked={field.value?.includes(role.id)}
+                              onCheckedChange={(checked) => {
+                                const current = field.value || [];
+                                const updated = checked
+                                  ? [...current, role.id]
+                                  : current.filter((id: string) => id !== role.id);
+                                field.onChange(updated);
+                              }}
+                            />
+                            <span>{role.attributes.name}</span>
+                          </label>
+                        ))
+                      )}
                     </>
                   )}
                 />
@@ -395,38 +427,45 @@ export default function AdministratorsPage() {
 
       <div className="flex flex-col sm:flex-row items-center gap-4 mb-6">
         <div className="relative w-full sm:w-80">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" aria-hidden="true" />
           <Input
             placeholder="Search by name or email..."
+            aria-label="Search administrators by name or email"
+            spellCheck={false}
+            autoCapitalize="none"
+            autoCorrect="off"
             className="pl-9 pr-9"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
           />
           {searchInput && (
             <button
+              type="button"
               onClick={() => setSearchInput('')}
+              aria-label="Clear search"
               className="absolute right-2.5 top-2.5 h-4 w-4 text-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
         </div>
-        
+
         <Popover open={roleOpen} onOpenChange={setRoleOpen}>
-          <PopoverTrigger 
+          <PopoverTrigger
             render={
               <Button
                 variant="outline"
                 role="combobox"
                 aria-expanded={roleOpen}
+                aria-label="Filter by role"
                 className="w-full sm:w-64 justify-between"
               />
             }
           >
             {roleId
-              ? rolesList.find((role: any) => role.id === roleId)?.attributes?.name || "Select role..."
+              ? rolesList.find((role) => role.id === roleId)?.attributes?.name || "Select role..."
               : "Filter by role..."}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" aria-hidden="true" />
           </PopoverTrigger>
           <PopoverContent className="w-full sm:w-64 p-0">
             <Command>
@@ -452,7 +491,7 @@ export default function AdministratorsPage() {
                     />
                     All Roles
                   </CommandItem>
-                  {rolesList.map((role: any) => (
+                  {rolesList.map((role) => (
                     <CommandItem
                       key={role.id}
                       value={role.attributes.name}
@@ -505,10 +544,10 @@ export default function AdministratorsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              administrators.map((admin: any) => {
+              administrators.map((admin) => {
                 const isVerified = !!admin.emailVerifiedAt;
                 const isRevoked = !!admin.revokedAt;
-                
+
                 return (
                   <TableRow key={admin.id} className={isRevoked ? "opacity-60 bg-red-50 dark:bg-red-950/20" : ""}>
                     <TableCell className="font-medium">
@@ -547,11 +586,11 @@ export default function AdministratorsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
-                        <DropdownMenuTrigger 
+                        <DropdownMenuTrigger
                           render={
-                            <Button variant="ghost" className="h-8 w-8 p-0">
+                            <Button variant="ghost" className="h-8 w-8 p-0" aria-label={`Actions for ${admin.firstName} ${admin.lastName}`}>
                               <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
+                              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                             </Button>
                           }
                         />
@@ -559,49 +598,49 @@ export default function AdministratorsPage() {
                           <DropdownMenuGroup>
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => setEditAdmin(admin)}>
-                              <Pencil className="mr-2 h-4 w-4" /> Edit
+                              <Pencil className="mr-2 h-4 w-4" aria-hidden="true" /> Edit
                             </DropdownMenuItem>
-                            
+
                             {!isVerified && (
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={(e) => {
                                   e.preventDefault();
                                   toast.promise(resendMutation.mutateAsync(admin.id), {
                                     loading: 'Sending verification email...',
                                     success: 'Verification email sent!',
-                                    error: 'Failed to send verification email'
+                                    error: 'Failed to send verification email',
                                   });
                                 }}
                               >
-                                <Mail className="mr-2 h-4 w-4" /> Resend Verification
+                                <Mail className="mr-2 h-4 w-4" aria-hidden="true" /> Resend Verification
                               </DropdownMenuItem>
                             )}
-                            
+
                             <DropdownMenuSeparator />
-                            
+
                             {isRevoked ? (
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 className="text-green-600 focus:text-green-600"
                                 onClick={() => setConfirmAction({ type: 'restore', id: admin.id })}
                               >
-                                <ShieldCheck className="mr-2 h-4 w-4" /> Restore Access
+                                <ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" /> Restore Access
                               </DropdownMenuItem>
                             ) : (
                               isVerified && (
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   className="text-orange-600 focus:text-orange-600"
                                   onClick={() => setConfirmAction({ type: 'revoke', id: admin.id })}
                                 >
-                                  <ShieldAlert className="mr-2 h-4 w-4" /> Revoke Access
+                                  <ShieldAlert className="mr-2 h-4 w-4" aria-hidden="true" /> Revoke Access
                                 </DropdownMenuItem>
                               )
                             )}
-                            
-                            <DropdownMenuItem 
+
+                            <DropdownMenuItem
                               className="text-red-600 focus:text-red-600"
                               onClick={() => setConfirmAction({ type: 'delete', id: admin.id })}
                             >
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" /> Delete
                             </DropdownMenuItem>
                           </DropdownMenuGroup>
                         </DropdownMenuContent>
@@ -614,34 +653,33 @@ export default function AdministratorsPage() {
           </TableBody>
         </Table>
       </div>
-      
+
       {meta && lastPage > 1 && (
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex justify-end tabular-nums">
           <Pagination className="mx-0 w-auto">
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious 
+                <PaginationPrevious
                   onClick={() => {
                     if (page > 1) {
                       const newParams = new URLSearchParams(searchParams);
                       newParams.set('page', (page - 1).toString());
                       setSearchParams(newParams);
                     }
-                  }} 
+                  }}
                   className={page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                 />
               </PaginationItem>
-              
-              {Array.from({ length: lastPage }, (_, i) => i + 1).map(p => {
-                // Show ellipsis if too many pages
+
+              {Array.from({ length: lastPage }, (_, i) => i + 1).map((p) => {
                 if (
-                  p === 1 || 
-                  p === lastPage || 
+                  p === 1 ||
+                  p === lastPage ||
                   (p >= page - 1 && p <= page + 1)
                 ) {
                   return (
                     <PaginationItem key={p}>
-                      <PaginationLink 
+                      <PaginationLink
                         onClick={() => {
                           const newParams = new URLSearchParams(searchParams);
                           newParams.set('page', p.toString());
@@ -655,7 +693,7 @@ export default function AdministratorsPage() {
                     </PaginationItem>
                   );
                 } else if (
-                  p === page - 2 || 
+                  p === page - 2 ||
                   p === page + 2
                 ) {
                   return (
@@ -666,16 +704,16 @@ export default function AdministratorsPage() {
                 }
                 return null;
               })}
-              
+
               <PaginationItem>
-                <PaginationNext 
+                <PaginationNext
                   onClick={() => {
                     if (page < lastPage) {
                       const newParams = new URLSearchParams(searchParams);
                       newParams.set('page', (page + 1).toString());
                       setSearchParams(newParams);
                     }
-                  }} 
+                  }}
                   className={page >= lastPage ? "pointer-events-none opacity-50" : "cursor-pointer"}
                 />
               </PaginationItem>
@@ -703,26 +741,28 @@ export default function AdministratorsPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className={
-                confirmAction?.type === 'delete' ? 'bg-red-600 hover:bg-red-700 focus:ring-red-600' :
-                confirmAction?.type === 'revoke' ? 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-600' :
-                'bg-green-600 hover:bg-green-700 focus:ring-green-600'
+                confirmAction?.type === 'delete'
+                  ? 'bg-red-600 hover:bg-red-700 focus:ring-red-600'
+                  : confirmAction?.type === 'revoke'
+                  ? 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-600'
+                  : 'bg-green-600 hover:bg-green-700 focus:ring-green-600'
               }
               onClick={() => {
                 if (!confirmAction) return;
                 switch (confirmAction.type) {
                   case 'restore':
                     restoreMutation.mutate(confirmAction.id, {
-                      onSuccess: () => toast.success('Administrator restored')
+                      onSuccess: () => toast.success('Administrator restored'),
                     });
                     break;
                   case 'revoke':
                     revokeMutation.mutate(confirmAction.id, {
-                      onSuccess: () => toast.success('Administrator revoked')
+                      onSuccess: () => toast.success('Administrator revoked'),
                     });
                     break;
                   case 'delete':
                     deleteMutation.mutate(confirmAction.id, {
-                      onSuccess: () => toast.success('Administrator deleted')
+                      onSuccess: () => toast.success('Administrator deleted'),
                     });
                     break;
                 }

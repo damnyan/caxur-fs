@@ -1,5 +1,7 @@
 use crate::shared::response::JsonApiLinks;
 use axum::http::Uri;
+use serde::Deserialize;
+use utoipa::{IntoParams, ToSchema};
 
 /// Default page number for pagination
 pub fn default_page_number() -> i64 {
@@ -17,7 +19,7 @@ pub fn default_sort() -> String {
 }
 
 /// Shared page parameters for pagination
-#[derive(serde::Deserialize, utoipa::IntoParams, utoipa::ToSchema, Debug, Clone)]
+#[derive(Deserialize, IntoParams, ToSchema, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PageParams {
     /// Page number (1-indexed)
@@ -42,7 +44,7 @@ impl Default for PageParams {
 }
 
 /// Shared pagination request with page and sort parameters
-#[derive(serde::Deserialize, utoipa::IntoParams, utoipa::ToSchema, Debug, Clone)]
+#[derive(Deserialize, IntoParams, ToSchema, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 #[into_params(parameter_in = Query)]
 pub struct PaginationRequest {

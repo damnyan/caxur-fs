@@ -170,10 +170,7 @@ pub async fn register_initiate(
     let use_case =
         InitiateRegistrationUseCase::new(user_repo, cache_service, email_service, password_service);
 
-    use_case
-        .execute(req)
-        .await
-        .map_err(|e| AppError::BadRequest(e.to_string()))?;
+    use_case.execute(req).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

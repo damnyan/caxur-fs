@@ -1,3 +1,11 @@
+import type {
+  JsonApiData,
+  JsonApiListResponse,
+  JsonApiResponse,
+} from '@/types/jsonapi';
+
+export type { JsonApiData, JsonApiListResponse, JsonApiResponse };
+
 export interface Role {
   id: string;
   name: string;
@@ -19,24 +27,4 @@ export interface CreateRoleRequest {
 export interface UpdateRoleRequest {
   name?: string;
   description?: string | null;
-}
-
-// JSON API Response formats matching the backend
-export interface JsonApiData<T> {
-  id: string;
-  type: string;
-  attributes: T;
-}
-
-export interface JsonApiResponse<T> {
-  data: JsonApiData<T>;
-}
-
-export interface JsonApiListResponse<T> {
-  data: JsonApiData<T>[];
-  meta?: {
-    page: number;
-    perPage: number;
-    total: number;
-  };
 }

@@ -66,7 +66,7 @@ impl AdministratorRepository for PostgresAdministratorRepository {
         Ok(admin_db.map(|a| a.into()))
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, email))]
     async fn find_by_email(&self, email: &str) -> Result<Option<Administrator>, anyhow::Error> {
         let admin_db = sqlx::query_as::<_, AdministratorDbModel>(
             r#"
@@ -86,7 +86,7 @@ impl AdministratorRepository for PostgresAdministratorRepository {
         Ok(admin_db.map(|a| a.into()))
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, search))]
     async fn find_all(
         &self,
         search: Option<String>,
@@ -133,7 +133,7 @@ impl AdministratorRepository for PostgresAdministratorRepository {
         Ok(admins)
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, search))]
     async fn count(
         &self,
         search: Option<String>,

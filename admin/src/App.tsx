@@ -1,97 +1,18 @@
-import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { RouterProvider } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from '@/components/ui/sonner';
-
-import AuthLayout from './layouts/AuthLayout';
-import AdminLayout from './layouts/AdminLayout';
-import ErrorPage from './components/ErrorPage';
-
-import ProtectedRoute from './components/ProtectedRoute';
-
-import LoginPage from './features/auth/components/LoginPage';
-import SetPasswordPage from './features/auth/components/SetPasswordPage';
-import CancelEmailChangePage from './features/auth/components/CancelEmailChangePage';
-import ForgotPasswordPage from './features/auth/components/ForgotPasswordPage';
-import ResetPasswordPage from './features/auth/components/ResetPasswordPage';
-import DashboardPage from './features/dashboard/components/DashboardPage';
-import AdministratorsPage from './features/administrators/components/AdministratorsPage';
-import RolesPage from './features/roles/components/RolesPage';
-import UsersPage from './features/users/components/UsersPage';
-import ProfilePage from './features/profile/components/ProfilePage';
 import { ThemeProvider } from 'next-themes';
+import { Toaster } from '@/components/ui/sonner';
+import { router } from '@/routes';
 
-// Create a client
-const queryClient = new QueryClient();
-
-const router = createBrowserRouter([
-  {
-    path: '/',
-    element: <AdminLayout />,
-    errorElement: <ErrorPage />,
-    children: [
-      {
-        index: true,
-        element: <DashboardPage />,
-      },
-      {
-        element: <ProtectedRoute requiredPermission="administrator_management" />,
-        children: [
-          {
-            path: 'administrators',
-            element: <AdministratorsPage />,
-          },
-          {
-            path: 'users',
-            element: <UsersPage />,
-          },
-        ],
-      },
-      {
-        element: <ProtectedRoute requiredPermission="role_management" />,
-        children: [
-          {
-            path: 'roles',
-            element: <RolesPage />,
-          },
-        ],
-      },
-      {
-        path: 'profile',
-        element: <ProfilePage />,
-      },
-    ],
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
   },
-  {
-    element: <AuthLayout />,
-    errorElement: <ErrorPage />,
-    children: [
-      {
-        path: 'login',
-        element: <LoginPage />,
-      },
-      {
-        path: 'set-password',
-        element: <SetPasswordPage />,
-      },
-      {
-        path: 'forgot-password',
-        element: <ForgotPasswordPage />,
-      },
-      {
-        path: 'reset-password',
-        element: <ResetPasswordPage />,
-      },
-      {
-        path: 'auth/cancel-email-change',
-        element: <CancelEmailChangePage />,
-      },
-    ],
-  },
-  {
-    path: '*',
-    element: <Navigate to="/" replace />,
-  },
-]);
+});
 
 function App() {
   return (

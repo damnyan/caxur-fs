@@ -11,6 +11,7 @@ impl GetUserUseCase {
         Self { repo }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn execute(&self, id: Uuid) -> Result<Option<User>, anyhow::Error> {
         self.repo.find_by_id(id).await
     }

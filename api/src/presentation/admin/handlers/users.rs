@@ -1,9 +1,7 @@
 use crate::application::users::list::{ListUsersRequest, ListUsersUseCase};
-use crate::domain::administrators::AdministratorRepository;
 use crate::domain::users::UserRepository;
-use crate::infrastructure::repositories::administrators::PostgresAdministratorRepository;
+use crate::infrastructure::db::DbPool;
 use crate::infrastructure::repositories::users::PostgresUserRepository;
-use crate::infrastructure::state::AppState;
 use crate::presentation::dtos::UserResource;
 use crate::presentation::extractors::AuthUser;
 use crate::shared::error::{AppError, ErrorResponse};
@@ -33,53 +31,12 @@ use std::sync::Arc;
     tag = "Admin / User Management"
 )]
 pub async fn list_users(
-    State(state): State<AppState>,
+    State(pool): State<DbPool>,
     uri: Uri,
     Qs(req): Qs<ListUsersRequest>,
-    auth: AuthUser,
+    _auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
-    if auth.claims.user_type != "admin" {
-        return Err(AppError::Forbidden("Insufficient permissions".to_string()));
-    }
-
-    let admin_id = auth
-        .claims
-        .user_id()
-        .map_err(|e| AppError::Unauthorized(e.to_string()))?;
-
-    let status_and_permissions = if let Some(cached) = state.admin_permissions_cache.get(&admin_id)
-    {
-        cached
-    } else {
-        let admin_repo = PostgresAdministratorRepository::new(state.pool.clone());
-        let fetched = admin_repo
-            .find_permissions_and_status(admin_id)
-            .await
-            .map_err(|e| {
-                tracing::error!(
-                    "Failed to fetch permissions and status for admin {}: {}",
-                    admin_id,
-                    e
-                );
-                AppError::InternalServerError(e)
-            })?;
-        state
-            .admin_permissions_cache
-            .insert(admin_id, fetched.clone());
-        fetched
-    };
-
-    if !status_and_permissions.is_found {
-        return Err(AppError::Unauthorized(
-            "Administrator not found".to_string(),
-        ));
-    }
-
-    if status_and_permissions.revoked_at.is_some() {
-        return Err(AppError::AccountRevoked("Account revoked".to_string()));
-    }
-
-    let repo = Arc::new(PostgresUserRepository::new(state.pool));
+    let repo = Arc::new(PostgresUserRepository::new(pool));
     let use_case = ListUsersUseCase::new(repo.clone());
 
     // Capture pagination and search values before moving req

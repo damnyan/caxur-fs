@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useForm, type UseFormSetError } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -17,26 +17,32 @@ const roleSchema = z.object({
   description: z.string().max(255, 'Description cannot exceed 255 characters').optional().nullable(),
 });
 
-type RoleFormValues = z.infer<typeof roleSchema>;
+export type RoleFormValues = z.infer<typeof roleSchema>;
 
 interface RoleFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: RoleFormValues, selectedPermissions: Set<string>, allPermissions: Permission[], initialPermissions: string[], setError: UseFormSetError<RoleFormValues>) => void;
+  onSubmit: (
+    data: RoleFormValues,
+    selectedPermissions: Set<string>,
+    allPermissions: Permission[],
+    initialPermissions: string[],
+    setError: UseFormSetError<RoleFormValues>
+  ) => void;
   role: Role | null; // null means create mode
   isPending: boolean;
   title: string;
 }
 
 export function RoleForm({ open, onOpenChange, onSubmit, role, isPending, title }: RoleFormProps) {
-  const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
+  const [permissionOverrides, setPermissionOverrides] = useState<Set<string> | null>(null);
   const savedPermissionsRef = useRef<Set<string>>(new Set());
 
   const { register, handleSubmit, reset, setError, formState: { errors } } = useForm<RoleFormValues>({
     resolver: zodResolver(roleSchema),
-    defaultValues: {
-      name: '',
-      description: '',
+    values: {
+      name: role?.name || '',
+      description: role?.description || '',
     },
   });
 
@@ -46,7 +52,10 @@ export function RoleForm({ open, onOpenChange, onSubmit, role, isPending, title 
     queryFn: () => getPermissions(1, 100),
     enabled: open,
   });
-  const allPermissions = allPermissionsResp?.data.map(p => p.attributes) || [];
+  const allPermissions = useMemo(
+    () => allPermissionsResp?.data.map((p) => p.attributes) || [],
+    [allPermissionsResp]
+  );
 
   // Fetch the current role's permissions
   const { data: rolePermissionsResp, isLoading: isLoadingRole } = useQuery({
@@ -54,52 +63,50 @@ export function RoleForm({ open, onOpenChange, onSubmit, role, isPending, title 
     queryFn: () => getRolePermissions(role!.id),
     enabled: open && !!role?.id,
   });
-  const rolePermissions = (rolePermissionsResp?.data || []).map((p) =>
-    typeof p === 'string' ? p : p.name
+  const rolePermissions = useMemo(
+    () => (rolePermissionsResp?.data || []).map((p) => (typeof p === 'string' ? p : p.name)),
+    [rolePermissionsResp]
   );
 
-  // Reset form and selected permissions when the modal opens/closes or role changes
-  useEffect(() => {
-    if (open) {
+  const selectedPermissions = useMemo(() => {
+    if (permissionOverrides !== null) {
+      return permissionOverrides;
+    }
+    if (role?.id) {
+      return new Set(rolePermissions);
+    }
+    return new Set<string>();
+  }, [permissionOverrides, role?.id, rolePermissions]);
+
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setPermissionOverrides(null);
+      savedPermissionsRef.current = new Set();
       reset({
         name: role?.name || '',
         description: role?.description || '',
       });
-
-      if (role?.id && rolePermissionsResp) {
-        setSelectedPermissions(
-          new Set(
-            rolePermissionsResp.data.map((p) => (typeof p === 'string' ? p : p.name))
-          )
-        );
-      } else if (!role) {
-        setSelectedPermissions(new Set()); // Clear on create
-      }
-      savedPermissionsRef.current = new Set(); // Reset saved state
     }
-  }, [open, role, rolePermissionsResp, reset]);
+    onOpenChange(nextOpen);
+  };
 
   const handleToggle = (permissionName: string, checked: boolean) => {
-    setSelectedPermissions((prev) => {
-      let next = new Set(prev);
-      if (checked) {
-        if (permissionName === '*') {
-          // Save current state before clearing
-          savedPermissionsRef.current = new Set(prev);
-          next.clear();
-        }
-        next.add(permissionName);
-      } else {
-        if (permissionName === '*') {
-          // Restore previously saved state
-          next = new Set(savedPermissionsRef.current);
-          next.delete('*'); // Just in case it was in the saved set
-        } else {
-          next.delete(permissionName);
-        }
+    let next = new Set(selectedPermissions);
+    if (checked) {
+      if (permissionName === '*') {
+        savedPermissionsRef.current = new Set(selectedPermissions);
+        next.clear();
       }
-      return next;
-    });
+      next.add(permissionName);
+    } else {
+      if (permissionName === '*') {
+        next = new Set(savedPermissionsRef.current);
+        next.delete('*');
+      } else {
+        next.delete(permissionName);
+      }
+    }
+    setPermissionOverrides(next);
   };
 
   const handleFormSubmit = (data: RoleFormValues) => {
@@ -110,13 +117,12 @@ export function RoleForm({ open, onOpenChange, onSubmit, role, isPending, title 
   const hasSuperAdmin = selectedPermissions.has('*');
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col flex-1 overflow-hidden pt-4">
-          
           {/* Top section: Name and Description */}
           <div className="space-y-4 shrink-0 mb-6">
             <div className="space-y-2">
@@ -142,28 +148,29 @@ export function RoleForm({ open, onOpenChange, onSubmit, role, isPending, title 
                   {allPermissions.map((permission) => {
                     const isDisabled = hasSuperAdmin && permission.name !== '*';
                     return (
-                    <div key={permission.name} className={`flex items-start space-x-3 transition-opacity ${isDisabled ? 'opacity-40' : ''}`}>
-                      <Checkbox
-                        id={`perm-${permission.name}`}
-                        checked={selectedPermissions.has(permission.name)}
-                        disabled={isDisabled}
-                        onCheckedChange={(checked: boolean | 'indeterminate') => handleToggle(permission.name, checked === true)}
-                      />
-                      <div className="grid gap-1.5 leading-none">
-                        <label
-                          htmlFor={`perm-${permission.name}`}
-                          className={`text-sm font-medium leading-none ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                        >
-                          {permission.description}
-                        </label>
-                        {permission.name !== '*' && (
-                          <p className={`text-sm font-mono ${isDisabled ? 'text-gray-400 dark:text-gray-600' : 'text-gray-500 dark:text-gray-400'}`}>
-                            {permission.name}
-                          </p>
-                        )}
+                      <div key={permission.name} className={`flex items-start space-x-3 transition-opacity ${isDisabled ? 'opacity-40' : ''}`}>
+                        <Checkbox
+                          id={`perm-${permission.name}`}
+                          checked={selectedPermissions.has(permission.name)}
+                          disabled={isDisabled}
+                          onCheckedChange={(checked: boolean | 'indeterminate') => handleToggle(permission.name, checked === true)}
+                        />
+                        <div className="grid gap-1.5 leading-none">
+                          <label
+                            htmlFor={`perm-${permission.name}`}
+                            className={`text-sm font-medium leading-none ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                          >
+                            {permission.description}
+                          </label>
+                          {permission.name !== '*' && (
+                            <p className={`text-sm font-mono ${isDisabled ? 'text-gray-400 dark:text-gray-600' : 'text-gray-500 dark:text-gray-400'}`}>
+                              {permission.name}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )})}
+                    );
+                  })}
                   {allPermissions.length === 0 && (
                     <p className="text-gray-500 text-center">No permissions found in the system.</p>
                   )}
@@ -174,7 +181,7 @@ export function RoleForm({ open, onOpenChange, onSubmit, role, isPending, title 
 
           {/* Bottom section: Actions */}
           <div className="flex justify-end pt-4 mt-4 border-t shrink-0">
-            <Button type="button" variant="outline" className="mr-2" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" className="mr-2" onClick={() => handleDialogOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={isPending || isLoading}>

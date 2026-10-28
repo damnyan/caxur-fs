@@ -10,7 +10,10 @@ import { PasswordStrength } from '@/components/ui/PasswordStrength';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { apiClient, handleApiValidationErrors } from '@/lib/api';
+import { apiClient, getApiErrorMessage, handleApiValidationErrors } from '@/lib/api';
+import { fetchMyProfile } from '@/features/profile/api/profile';
+import type { ProfileAttributes } from '@/features/profile/api/profile';
+import type { JsonApiResponse } from '@/types/jsonapi';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const profileSchema = z.object({
@@ -126,27 +129,27 @@ export default function ProfilePage() {
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
     try {
-      const response = await apiClient.patch('/admin/my/profile', {
+      const response = await apiClient.patch<JsonApiResponse<ProfileAttributes>>('/admin/my/profile', {
         firstName: data.firstName,
         middleName: data.middleName || null,
         lastName: data.lastName,
         suffix: data.suffix || null,
         contactNumber: data.contactNumber || null,
       });
-      
+
       const attrs = response.data.data.attributes;
       updateUser({
         firstName: attrs.firstName,
-        middleName: attrs.middleName,
+        middleName: attrs.middleName ?? undefined,
         lastName: attrs.lastName,
-        suffix: attrs.suffix,
-        contactNumber: attrs.contactNumber,
+        suffix: attrs.suffix ?? undefined,
+        contactNumber: attrs.contactNumber ?? undefined,
       });
-      
+
       toast.success('Profile updated successfully');
-    } catch (error: any) {
+    } catch (error) {
       if (!handleApiValidationErrors(error, setProfileError)) {
-        toast.error(error?.response?.data?.errors?.[0]?.detail || 'Failed to update profile');
+        toast.error(getApiErrorMessage(error, 'Failed to update profile'));
       }
     }
   };
@@ -158,12 +161,12 @@ export default function ProfilePage() {
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
       });
-      
+
       toast.success('Password updated successfully');
       resetPasswordForm();
-    } catch (error: any) {
+    } catch (error) {
       if (!handleApiValidationErrors(error, setPasswordError)) {
-        toast.error(error?.response?.data?.errors?.[0]?.detail || 'Failed to update password');
+        toast.error(getApiErrorMessage(error, 'Failed to update password'));
       }
     } finally {
       setIsUpdatingPassword(false);
@@ -183,12 +186,12 @@ export default function ProfilePage() {
         currentPassword: data.currentPassword,
         newEmail: normalizedNewEmail,
       });
-      
+
       setIsWaitingForOtp(true);
       toast.success('Verification code sent to your new email');
-    } catch (error: any) {
+    } catch (error) {
       if (!handleApiValidationErrors(error, setEmailInitiateError)) {
-        toast.error(error?.response?.data?.errors?.[0]?.detail || 'Failed to initiate email change');
+        toast.error(getApiErrorMessage(error, 'Failed to initiate email change'));
       }
     } finally {
       setIsInitiatingEmail(false);
@@ -201,23 +204,17 @@ export default function ProfilePage() {
       await apiClient.post('/admin/my/profile/email/verify', {
         otp: data.otp,
       });
-      
+
       toast.success('Email updated successfully');
       setIsWaitingForOtp(false);
       resetEmailInitiateForm();
       resetEmailVerifyForm();
-      
-      // Update user state to reflect new email.
-      // Note: A full page reload or refetch might be better depending on the app structure,
-      // but if the endpoint succeeds, the next session will use the new email.
-      // We can also fetch the updated profile to sync the state perfectly.
-      const res = await apiClient.get('/admin/my/profile');
-      if (res.data?.data?.attributes?.email) {
-        updateUser({ email: res.data.data.attributes.email });
-      }
-    } catch (error: any) {
+
+      const updatedProfile = await fetchMyProfile();
+      updateUser(updatedProfile);
+    } catch (error) {
       if (!handleApiValidationErrors(error, setEmailVerifyError)) {
-        toast.error(error?.response?.data?.errors?.[0]?.detail || 'Failed to verify email change');
+        toast.error(getApiErrorMessage(error, 'Failed to verify email change'));
       }
     } finally {
       setIsVerifyingEmail(false);
@@ -245,29 +242,29 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>
-                <Input id="firstName" {...registerProfile('firstName')} />
+                <Input id="firstName" autoComplete="given-name" {...registerProfile('firstName')} />
                 {profileErrors.firstName && <p className="text-sm text-red-500">{profileErrors.firstName.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="middleName">Middle Name (optional)</Label>
-                <Input id="middleName" {...registerProfile('middleName')} />
+                <Input id="middleName" autoComplete="additional-name" {...registerProfile('middleName')} />
                 {profileErrors.middleName && <p className="text-sm text-red-500">{profileErrors.middleName.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last Name</Label>
-                <Input id="lastName" {...registerProfile('lastName')} />
+                <Input id="lastName" autoComplete="family-name" {...registerProfile('lastName')} />
                 {profileErrors.lastName && <p className="text-sm text-red-500">{profileErrors.lastName.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="suffix">Suffix (optional)</Label>
-                <Input id="suffix" placeholder="e.g. Jr, Sr" {...registerProfile('suffix')} />
+                <Input id="suffix" placeholder="e.g. Jr, Sr" autoComplete="honorific-suffix" {...registerProfile('suffix')} />
                 {profileErrors.suffix && <p className="text-sm text-red-500">{profileErrors.suffix.message}</p>}
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="contactNumber">Contact Number (optional)</Label>
-              <Input id="contactNumber" {...registerProfile('contactNumber')} />
+              <Input id="contactNumber" type="tel" autoComplete="tel" {...registerProfile('contactNumber')} />
               {profileErrors.contactNumber && <p className="text-sm text-red-500">{profileErrors.contactNumber.message}</p>}
             </div>
           </CardContent>
@@ -286,22 +283,30 @@ export default function ProfilePage() {
             Update your account's primary email address. This requires a verification code sent to your new email.
           </CardDescription>
         </CardHeader>
-        
+
         {!isWaitingForOtp ? (
           <form onSubmit={handleEmailInitiateSubmit(onEmailInitiateSubmit)}>
             <CardContent className="space-y-4 pb-4">
               <div className="space-y-2">
-                <Label>Current Email</Label>
-                <Input value={user?.email || ''} disabled className="bg-gray-50 dark:bg-gray-900 text-gray-500" />
+                <Label htmlFor="currentEmail">Current Email</Label>
+                <Input id="currentEmail" value={user?.email || ''} disabled className="bg-gray-50 dark:bg-gray-900 text-gray-500" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="newEmail">New Email Address</Label>
-                <Input id="newEmail" type="email" {...registerEmailInitiate('newEmail')} />
+                <Input
+                  id="newEmail"
+                  type="email"
+                  autoComplete="email"
+                  spellCheck={false}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  {...registerEmailInitiate('newEmail')}
+                />
                 {emailInitiateErrors.newEmail && <p className="text-sm text-red-500">{emailInitiateErrors.newEmail.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="emailCurrentPassword">Current Password</Label>
-                <PasswordInput id="emailCurrentPassword" {...registerEmailInitiate('currentPassword')} />
+                <PasswordInput id="emailCurrentPassword" autoComplete="current-password" {...registerEmailInitiate('currentPassword')} />
                 {emailInitiateErrors.currentPassword && <p className="text-sm text-red-500">{emailInitiateErrors.currentPassword.message}</p>}
               </div>
             </CardContent>
@@ -321,17 +326,20 @@ export default function ProfilePage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="otp">Verification Code</Label>
-                <Input 
-                  id="otp" 
+                <Input
+                  id="otp"
                   type="text"
                   inputMode="numeric"
                   pattern="\d*"
-                  placeholder="123456" 
-                  maxLength={6} 
-                  autoComplete="one-time-code" 
-                  data-1p-ignore="true" 
+                  placeholder="123456"
+                  maxLength={6}
+                  autoComplete="one-time-code"
+                  spellCheck={false}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  data-1p-ignore="true"
                   data-lpignore="true"
-                  {...registerEmailVerify('otp')} 
+                  {...registerEmailVerify('otp')}
                 />
                 {emailVerifyErrors.otp && <p className="text-sm text-red-500">{emailVerifyErrors.otp.message}</p>}
               </div>
@@ -340,11 +348,15 @@ export default function ProfilePage() {
               <Button type="submit" variant="default" disabled={isVerifyingEmail}>
                 {isVerifyingEmail ? 'Verifying...' : 'Verify & Update Email'}
               </Button>
-              <Button type="button" variant="ghost" onClick={() => {
-                setIsWaitingForOtp(false);
-                resetEmailInitiateForm();
-                resetEmailVerifyForm();
-              }}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setIsWaitingForOtp(false);
+                  resetEmailInitiateForm();
+                  resetEmailVerifyForm();
+                }}
+              >
                 Cancel
               </Button>
             </CardFooter>
@@ -363,18 +375,19 @@ export default function ProfilePage() {
           <CardContent className="space-y-4 pb-4">
             <div className="space-y-2">
               <Label htmlFor="currentPassword">Current Password</Label>
-              <PasswordInput id="currentPassword" {...registerPassword('currentPassword')} />
+              <PasswordInput id="currentPassword" autoComplete="current-password" {...registerPassword('currentPassword')} />
               {passwordErrors.currentPassword && <p className="text-sm text-red-500">{passwordErrors.currentPassword.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="newPassword">New Password</Label>
-              <PasswordInput 
-                id="newPassword" 
-                {...newPasswordRegister} 
+              <PasswordInput
+                id="newPassword"
+                autoComplete="new-password"
+                {...newPasswordRegister}
                 onFocus={() => setIsNewPasswordFocused(true)}
                 onBlur={(e) => {
-                  newPasswordRegister.onBlur(e)
-                  setIsNewPasswordFocused(false)
+                  newPasswordRegister.onBlur(e);
+                  setIsNewPasswordFocused(false);
                 }}
               />
               <PasswordStrength value={newPasswordValue} isFocused={isNewPasswordFocused} />
@@ -382,7 +395,7 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <PasswordInput id="confirmPassword" {...registerPassword('confirmPassword')} />
+              <PasswordInput id="confirmPassword" autoComplete="new-password" {...registerPassword('confirmPassword')} />
               {passwordErrors.confirmPassword && <p className="text-sm text-red-500">{passwordErrors.confirmPassword.message}</p>}
             </div>
           </CardContent>

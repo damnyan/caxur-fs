@@ -9,11 +9,11 @@ pub struct MockPasswordHasher;
 
 #[async_trait]
 impl PasswordHashingService for MockPasswordHasher {
-    fn hash_password(&self, password: &str) -> anyhow::Result<String> {
+    async fn hash_password(&self, password: &str) -> anyhow::Result<String> {
         Ok(format!("{}_hashed", password))
     }
 
-    fn verify_password(&self, password: &str, hash: &str) -> anyhow::Result<bool> {
+    async fn verify_password(&self, password: &str, hash: &str) -> anyhow::Result<bool> {
         Ok(format!("{}_hashed", password) == hash)
     }
 }

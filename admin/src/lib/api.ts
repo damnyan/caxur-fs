@@ -1,21 +1,25 @@
+import { type FieldValues, type Path, type UseFormSetError } from 'react-hook-form';
 import { useAuthStore } from '../store/authStore';
-import { type UseFormSetError } from 'react-hook-form';
+import type { JsonApiErrorResponse, JsonApiResponse } from '../types/jsonapi';
 
 // Determine base URL from environment or fallback to '/api/v1'
 const baseURL = import.meta.env.VITE_API_URL || '/api/v1';
 
-// Custom API Error class to mimic Axios error structure for compatibility
+export type QueryParams = Record<string, string | number | boolean | undefined | null>;
+
+export interface ApiErrorResponse {
+  status: number;
+  data: JsonApiErrorResponse | string | null;
+  headers: Headers;
+}
+
 export class ApiError extends Error {
   status?: number;
-  data?: any;
-  config?: any;
-  response?: {
-    status: number;
-    data: any;
-    headers: Headers;
-  };
+  data?: JsonApiErrorResponse | string | null;
+  config?: RequestInit;
+  response?: ApiErrorResponse;
 
-  constructor(message: string, response?: { status: number; data: any; headers: Headers }, config?: any) {
+  constructor(message: string, response?: ApiErrorResponse, config?: RequestInit) {
     super(message);
     this.name = 'ApiError';
     if (response) {
@@ -31,11 +35,21 @@ export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
 
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (isApiError(error)) {
+    const data = error.response?.data;
+    if (data && typeof data === 'object' && 'errors' in data && data.errors?.[0]?.detail) {
+      return data.errors[0].detail;
+    }
+  }
+  return fallback;
+}
+
 // Token refreshing queue
 let isRefreshing = false;
-let failedQueue: { resolve: (token: string | null) => void; reject: (err: any) => void }[] = [];
+let failedQueue: { resolve: (token: string | null) => void; reject: (err: unknown) => void }[] = [];
 
-const processQueue = (error: Error | null, token: string | null = null) => {
+const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
@@ -46,7 +60,7 @@ const processQueue = (error: Error | null, token: string | null = null) => {
   failedQueue = [];
 };
 
-function buildUrl(url: string, params?: Record<string, any>): string {
+function buildUrl(url: string, params?: object): string {
   const fullUrl = url.startsWith('http') ? url : `${baseURL}${url}`;
   if (!params) return fullUrl;
 
@@ -59,9 +73,9 @@ function buildUrl(url: string, params?: Record<string, any>): string {
   return urlObj.toString();
 }
 
-async function performFetch(url: string, init: RequestInit, bodyData?: any) {
+async function performFetch(url: string, init: RequestInit, bodyData?: unknown) {
   const headers = new Headers(init.headers);
-  
+
   // Inject auth token
   const token = useAuthStore.getState().token;
   if (token && !headers.has('Authorization')) {
@@ -85,18 +99,33 @@ async function performFetch(url: string, init: RequestInit, bodyData?: any) {
   return fetch(url, fetchInit);
 }
 
-async function request<T>(url: string, options: RequestInit & { params?: Record<string, any>; data?: any; _retry?: boolean } = {}): Promise<{ data: T; status: number; headers: Headers }> {
+interface RequestOptions extends RequestInit {
+  params?: object;
+  data?: unknown;
+  _retry?: boolean;
+}
+
+interface RefreshTokenAttributes {
+  accessToken: string;
+  refreshToken: string;
+}
+
+async function request<T>(
+  url: string,
+  options: RequestOptions = {}
+): Promise<{ data: T; status: number; headers: Headers }> {
   const { params, data, _retry, ...init } = options;
   const fullUrl = buildUrl(url, params);
 
   let response: Response;
   try {
     response = await performFetch(fullUrl, init, data);
-  } catch (err: any) {
-    throw new ApiError(err.message || 'Network Error', undefined, options);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Network Error';
+    throw new ApiError(message, undefined, options);
   }
 
-  let responseData: any = null;
+  let responseData: unknown = null;
   const contentType = response.headers.get('content-type');
   if (
     contentType &&
@@ -118,24 +147,33 @@ async function request<T>(url: string, options: RequestInit & { params?: Record<
 
   if (response.ok) {
     return {
-      data: responseData,
+      data: responseData as T,
       status: response.status,
       headers: response.headers,
     };
   }
 
+  const errorPayload =
+    responseData && typeof responseData === 'object'
+      ? (responseData as JsonApiErrorResponse)
+      : typeof responseData === 'string'
+        ? responseData
+        : null;
+
   // Handle 403 Forbidden (Auto-logout if the account is revoked)
-  if (response.status === 403) {
-    const isRevoked = responseData?.errors?.some(
-      (err: any) => err.code === 'account_revoked'
-    );
+  if (response.status === 403 && errorPayload && typeof errorPayload === 'object') {
+    const isRevoked = errorPayload.errors?.some((err) => err.code === 'account_revoked');
     if (isRevoked) {
       const authStore = useAuthStore.getState();
       authStore.logout();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
-      throw new ApiError('Account Revoked', { status: response.status, data: responseData, headers: response.headers }, options);
+      throw new ApiError(
+        'Account Revoked',
+        { status: response.status, data: errorPayload, headers: response.headers },
+        options
+      );
     }
   }
 
@@ -144,14 +182,10 @@ async function request<T>(url: string, options: RequestInit & { params?: Record<
     if (isRefreshing) {
       return new Promise<string | null>((resolve, reject) => {
         failedQueue.push({ resolve, reject });
-      })
-      .then((newToken) => {
+      }).then((newToken) => {
         const headers = new Headers(init.headers);
         headers.set('Authorization', `Bearer ${newToken}`);
         return request<T>(url, { ...options, headers, _retry: true });
-      })
-      .catch((err) => {
-        throw err;
       });
     }
 
@@ -167,11 +201,14 @@ async function request<T>(url: string, options: RequestInit & { params?: Record<
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
-      throw new ApiError('Unauthorized', { status: response.status, data: responseData, headers: response.headers }, options);
+      throw new ApiError(
+        'Unauthorized',
+        { status: response.status, data: errorPayload, headers: response.headers },
+        options
+      );
     }
 
     try {
-      // Call token refresh route directly with raw fetch
       const refreshResponse = await fetch(buildUrl('/admin/auth/refresh'), {
         method: 'POST',
         headers: {
@@ -184,74 +221,87 @@ async function request<T>(url: string, options: RequestInit & { params?: Record<
         throw new Error('Refresh failed');
       }
 
-      const refreshData = await refreshResponse.json();
+      const refreshData = (await refreshResponse.json()) as JsonApiResponse<RefreshTokenAttributes>;
       const newAccessToken = refreshData.data.attributes.accessToken;
       const newRefreshToken = refreshData.data.attributes.refreshToken;
 
       authStore.setToken(newAccessToken, newRefreshToken);
       processQueue(null, newAccessToken);
 
-      // Retry original request
       const headers = new Headers(init.headers);
       headers.set('Authorization', `Bearer ${newAccessToken}`);
       return request<T>(url, { ...options, headers, _retry: true });
-    } catch (err) {
-      processQueue(err as Error, null);
+    } catch (err: unknown) {
+      processQueue(err, null);
       authStore.logout();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
-      throw new ApiError('Unauthorized (Refresh Failed)', { status: response.status, data: responseData, headers: response.headers }, options);
+      throw new ApiError(
+        'Unauthorized (Refresh Failed)',
+        { status: response.status, data: errorPayload, headers: response.headers },
+        options
+      );
     } finally {
       isRefreshing = false;
     }
   }
 
+  const detailMessage =
+    errorPayload && typeof errorPayload === 'object'
+      ? errorPayload.errors?.[0]?.detail
+      : undefined;
+
   throw new ApiError(
-    responseData?.errors?.[0]?.detail || response.statusText || 'Request failed',
-    { status: response.status, data: responseData, headers: response.headers },
+    detailMessage || response.statusText || 'Request failed',
+    { status: response.status, data: errorPayload, headers: response.headers },
     options
   );
 }
 
 export const apiClient = {
-  get: <T = any>(url: string, config?: RequestInit & { params?: Record<string, any> }) =>
+  get: <T = unknown>(url: string, config?: RequestInit & { params?: object }) =>
     request<T>(url, { method: 'GET', ...config }),
-    
-  post: <T = any>(url: string, data?: any, config?: RequestInit & { params?: Record<string, any> }) =>
+
+  post: <T = unknown>(url: string, data?: unknown, config?: RequestInit & { params?: object }) =>
     request<T>(url, { method: 'POST', data, ...config }),
-    
-  put: <T = any>(url: string, data?: any, config?: RequestInit & { params?: Record<string, any> }) =>
+
+  put: <T = unknown>(url: string, data?: unknown, config?: RequestInit & { params?: object }) =>
     request<T>(url, { method: 'PUT', data, ...config }),
-    
-  patch: <T = any>(url: string, data?: any, config?: RequestInit & { params?: Record<string, any> }) =>
+
+  patch: <T = unknown>(url: string, data?: unknown, config?: RequestInit & { params?: object }) =>
     request<T>(url, { method: 'PATCH', data, ...config }),
-    
-  delete: <T = any>(url: string, config?: RequestInit & { params?: Record<string, any>; data?: any }) =>
-    request<T>(url, { method: 'DELETE', ...config }),
+
+  delete: <T = unknown>(
+    url: string,
+    config?: RequestInit & { params?: object; data?: unknown }
+  ) => request<T>(url, { method: 'DELETE', ...config }),
 };
 
-export function handleApiValidationErrors<T extends Record<string, any>>(
+export function handleApiValidationErrors<T extends FieldValues>(
   error: unknown,
   setError: UseFormSetError<T>
 ): boolean {
-  if (error instanceof ApiError && error.status === 422 && error.data?.errors) {
-    const apiErrors = error.data.errors;
+  if (
+    error instanceof ApiError &&
+    error.status === 422 &&
+    error.data &&
+    typeof error.data === 'object' &&
+    Array.isArray(error.data.errors)
+  ) {
     let handled = false;
-    
-    apiErrors.forEach((apiErr: any) => {
+
+    error.data.errors.forEach((apiErr) => {
       if (apiErr.source?.pointer) {
-        // pointer could be "/data/attributes/name" or "/permissions"
         const parts = apiErr.source.pointer.split('/');
         let fieldName = parts[parts.length - 1];
-        
-        // Handle array indices in pointer, e.g. "/permissions[0]" -> "permissions"
+
         if (fieldName && fieldName.includes('[')) {
           fieldName = fieldName.split('[')[0];
         }
 
         if (fieldName) {
-          setError(fieldName as any, { type: 'server', message: apiErr.detail });
+          setError(fieldName as Path<T>, { type: 'server', message: apiErr.detail });
           handled = true;
         }
       }

@@ -110,7 +110,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(user_db.map(|u| u.into()))
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, email))]
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, anyhow::Error> {
         let user_db = sqlx::query_as::<_, UserDbModel>(
             r#"
@@ -126,7 +126,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(user_db.map(|u| u.into()))
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, search))]
     async fn find_all(
         &self,
         search: Option<String>,
@@ -166,7 +166,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(users)
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, search))]
     async fn count(&self, search: Option<String>) -> Result<i64, anyhow::Error> {
         let mut query_builder = sqlx::QueryBuilder::new(
             r#"

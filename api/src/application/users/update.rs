@@ -78,6 +78,7 @@ impl UpdateUserUseCase {
         }
     }
 
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(&self, id: Uuid, req: UpdateUserRequest) -> Result<User, AppError> {
         // Check if user exists
         let existing = self
@@ -103,6 +104,7 @@ impl UpdateUserUseCase {
             let is_valid = self
                 .password_hasher
                 .verify_password(current_password, &existing.password_hash)
+                .await
                 .map_err(AppError::InternalServerError)?;
 
             if !is_valid {
@@ -122,6 +124,7 @@ impl UpdateUserUseCase {
             Some(
                 self.password_hasher
                     .hash_password(password)
+                    .await
                     .map_err(AppError::InternalServerError)?,
             )
         } else {

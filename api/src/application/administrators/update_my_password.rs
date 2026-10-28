@@ -33,6 +33,7 @@ impl UpdateMyPasswordUseCase {
         }
     }
 
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(&self, id: Uuid, req: UpdateMyPasswordRequest) -> Result<(), AppError> {
         let administrator = self
             .repo
@@ -45,6 +46,7 @@ impl UpdateMyPasswordUseCase {
         let is_valid = self
             .password_service
             .verify_password(&req.current_password, &administrator.password_hash)
+            .await
             .map_err(AppError::InternalServerError)?;
 
         if !is_valid {
@@ -65,6 +67,7 @@ impl UpdateMyPasswordUseCase {
         let new_password_hash = self
             .password_service
             .hash_password(&req.new_password)
+            .await
             .map_err(AppError::InternalServerError)?;
 
         let update_struct = UpdateAdministrator {

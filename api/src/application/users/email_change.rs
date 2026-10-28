@@ -1,7 +1,7 @@
 use crate::domain::cache::{CacheService, PendingEmailChange};
+use crate::domain::email::EmailService;
 use crate::domain::password::PasswordHashingService;
 use crate::domain::users::{UpdateUser, UserRepository};
-use crate::infrastructure::email::EmailService;
 use crate::shared::error::{AppError, FieldError};
 use rand::RngExt;
 use serde::Deserialize;
@@ -43,6 +43,7 @@ impl InitiateUserEmailChangeUseCase {
         }
     }
 
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(
         &self,
         id: Uuid,
@@ -59,6 +60,7 @@ impl InitiateUserEmailChangeUseCase {
         let is_valid = self
             .password_service
             .verify_password(&req.current_password, &user.password_hash)
+            .await
             .map_err(AppError::InternalServerError)?;
 
         if !is_valid {
@@ -126,19 +128,21 @@ impl InitiateUserEmailChangeUseCase {
             base_url, cancel_token
         );
 
-        self.email_service.send_templated_email(
-            &user.email,
-            "Security Alert: Email change requested",
-            "Security Alert",
-            &format!(
-                "<p>A request was made to change the email address associated with your account to {}.</p>\
-                 <p>If you did not make this request, please click the link below to cancel it immediately:</p>\
-                 <p><a href=\"{}\">Cancel Request</a></p>",
-                req.new_email, cancel_link
-            ),
-            None,
-            None,
-        ).await.map_err(AppError::InternalServerError)?;
+        self.email_service
+            .send_templated_email(
+                &user.email,
+                "Security Alert: Email change requested",
+                "Security Alert",
+                &format!(
+                    "<p>A request was made to change the email address associated with your account to <strong>{}</strong>.</p>\
+                     <p>If you did not make this request, please click the button below to cancel it immediately.</p>",
+                    req.new_email
+                ),
+                Some("Cancel Request"),
+                Some(&cancel_link),
+            )
+            .await
+            .map_err(AppError::InternalServerError)?;
 
         Ok(())
     }
@@ -170,6 +174,7 @@ impl VerifyUserEmailChangeUseCase {
         }
     }
 
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(
         &self,
         id: Uuid,
@@ -206,6 +211,21 @@ impl VerifyUserEmailChangeUseCase {
             .await
             .map_err(AppError::InternalServerError)?
             .ok_or_else(|| AppError::NotFound("User not found".to_string()))?;
+
+        // Re-verify email uniqueness before committing update
+        if self
+            .repo
+            .find_by_email(&pending.new_email)
+            .await
+            .map_err(AppError::InternalServerError)?
+            .filter(|existing| existing.id != id)
+            .is_some()
+        {
+            return Err(AppError::ValidationError(vec![FieldError::new(
+                "newEmail",
+                "Email is already in use",
+            )]));
+        }
 
         let old_email = user.email.clone();
 
@@ -268,6 +288,7 @@ impl CancelUserEmailChangeUseCase {
         Self { cache_service }
     }
 
+    #[tracing::instrument(skip(self, token))]
     pub async fn execute(&self, token: &str) -> Result<(), AppError> {
         let cancel_key = format!("user_email_change:cancel:{}", token);
         let user_id_str = self

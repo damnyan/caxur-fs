@@ -48,17 +48,22 @@ src/
 
 ## 4. Next.js 16, React 19.2 & Vercel React Best Practices
 
-- **Server-First Approach**: Default to React Server Components (RSC). Use them for data fetching, backend logic, and static UI.
-- **Client Boundaries**: Only add the `'use client'` directive at the top of the file when interactivity, hooks (`useState`, `useEffect`), or browser APIs are required. Keep the client boundary as far down the component tree as possible.
+- **Server-First Approach**: Default to React Server Components (RSC). Use them for data fetching, backend logic, and static UI. Every `page.tsx` and `layout.tsx` MUST remain a Server Component so Next.js can prerender its static shell and validate instant navigations.
+- **Client Boundaries**: Only add the `'use client'` directive at the top of leaf component files (e.g., `src/components/<domain>/*-form.tsx`) when interactivity, hooks (`useState`, `useEffect`, `useLayoutEffect`), or browser APIs are required. Never place `'use client'` at the top of `page.tsx` or `layout.tsx`.
 - **Next.js 16 Async Request APIs & Route Types**:
   - `params`, `searchParams`, `cookies()`, `headers()`, and `draftMode()` are strictly **asynchronous** in Next.js 16. Always `await` them in Server Components/Actions or unwrap `params`/`searchParams` with `React.use()` in Client Components.
   - Run `bunx next typegen` when adding routes to generate global `PageProps`, `LayoutProps`, and `RouteContext` helpers.
 - **`proxy.ts` Request Interception & Turbopack**:
   - Next.js 16 deprecates `middleware.ts` in favor of `src/proxy.ts` exporting `export function proxy(request: NextRequest)` (always runs on the `nodejs` runtime). Never create `middleware.ts` or `src/middleware.ts`.
   - Turbopack is the default bundler in Next.js 16; configure `turbopack: {}` at the top level of `next.config.ts` (never under `experimental.turbo`).
-- **Next.js 16 Caching (`use cache`)**:
-  - Next.js 16 uses explicit opt-in caching (`cacheComponents: true` with the `"use cache"` directive and stable `cacheLife` / `cacheTag` from `next/cache`).
-  - Use `revalidateTag(tag, profile)` for stale-while-revalidate invalidation, `updateTag(tag)` inside Server Actions for read-your-writes consistency, and `refresh()` for uncached dynamic data refreshes.
+- **Next.js 16 Cache Components (`cacheComponents: true`) & Partial Prerendering (PPR)**:
+  - Consult [`.agents/skills/nextjs-client/references/cache-components-ppr.md`](file:///Users/dmn/jeprox/tools/caxur-fs/.agents/skills/nextjs-client/references/cache-components-ppr.md) for the full `next-cache-components-adoption` and `next-cache-components-optimizer` workflows.
+  - `cacheComponents: true` is enabled in `client/next.config.ts` alongside `experimental.instantNavigationDevToolsToggle: true`. Never use deprecated route segment configs (`dynamic`, `revalidate`, `fetchCache`, `runtime = 'edge'`).
+  - **Shared / Public Data (`"use cache"`)**: Cache shared/non-personalized async fetches and non-deterministic build values (`new Date().getFullYear()`) using `"use cache"` with `cacheLife(...)` and `cacheTag(...)` from `next/cache` so they are included in the prerendered static shell.
+  - **Authenticated / Request-Time Data (`<Suspense>` Streaming)**: Never read `cookies()`, `headers()`, `searchParams`, or uncached `fetchServerApi()` at the top level of a page/layout outside `<Suspense>`. Push request-time reads into leaf async Server Components wrapped in `<Suspense fallback={<Skeleton />}>` so the page header and layout shell prerender instantly.
+  - **Instant Navigation Validation (`unstable_instant`)**: Export `export const unstable_instant = { prefetch: "static" }` on Server Component `page.tsx` routes to enforce at dev and build time that every route entry point produces a non-blocking static shell.
+  - **Revalidation**: Use `updateTag(tag)` inside Server Actions for immediate read-your-own-writes expiration, `revalidateTag(tag, "max")` for background stale-while-revalidate invalidation, and `refresh()` for uncached dynamic refreshes.
+  - **React `<Activity>` State Preservation Hygiene**: Under `cacheComponents: true`, Next.js preserves up to 3 visited routes in the DOM (`display: none`) via React `<Activity>`. Reset transient UI state (dropdowns, mobile sheets, OTP steps, password fields) in a `useLayoutEffect` cleanup function, key user-scoped forms with `key={user?.email ?? "anonymous"}`, and use `window.location.href` on logout to clear preserved private DOM state.
 - **Eliminating Waterfalls & Server Serialization**:
   - Parallelize independent async fetches with `Promise.all([...])`.
   - Use `React.cache()` for per-request deduplication of server helper queries.

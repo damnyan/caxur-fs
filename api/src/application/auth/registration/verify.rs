@@ -50,6 +50,7 @@ impl VerifyRegistrationUseCase {
         }
     }
 
+    #[tracing::instrument(skip(self, request))]
     pub async fn execute(
         &self,
         request: VerifyRegistrationRequest,

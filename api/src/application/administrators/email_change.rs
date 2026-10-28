@@ -1,12 +1,13 @@
 use crate::domain::administrators::{AdministratorRepository, UpdateAdministrator};
 use crate::domain::cache::{CacheService, PendingEmailChange};
+use crate::domain::email::EmailService;
 use crate::domain::password::PasswordHashingService;
-use crate::infrastructure::email::EmailService;
 use crate::shared::error::{AppError, FieldError};
 use rand::RngExt;
 use serde::Deserialize;
 use std::env;
 use std::sync::Arc;
+use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
@@ -43,6 +44,7 @@ impl InitiateEmailChangeUseCase {
         }
     }
 
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(&self, id: Uuid, req: InitiateEmailChangeRequest) -> Result<(), AppError> {
         let admin = self
             .repo
@@ -55,6 +57,7 @@ impl InitiateEmailChangeUseCase {
         let is_valid = self
             .password_service
             .verify_password(&req.current_password, &admin.password_hash)
+            .await
             .map_err(AppError::InternalServerError)?;
 
         if !is_valid {
@@ -124,19 +127,21 @@ impl InitiateEmailChangeUseCase {
             base_url, cancel_token
         );
 
-        self.email_service.send_templated_email(
-            &admin.email,
-            "Security Alert: Email change requested",
-            "Security Alert",
-            &format!(
-                "<p>A request was made to change the email address associated with your account to {}.</p>\
-                 <p>If you did not make this request, please click the link below to cancel it immediately:</p>\
-                 <p><a href=\"{}\">Cancel Request</a></p>",
-                req.new_email, cancel_link
-            ),
-            None,
-            None,
-        ).await.map_err(AppError::InternalServerError)?;
+        self.email_service
+            .send_templated_email(
+                &admin.email,
+                "Security Alert: Email change requested",
+                "Security Alert",
+                &format!(
+                    "<p>A request was made to change the email address associated with your account to <strong>{}</strong>.</p>\
+                     <p>If you did not make this request, please click the button below to cancel it immediately.</p>",
+                    req.new_email
+                ),
+                Some("Cancel Request"),
+                Some(&cancel_link),
+            )
+            .await
+            .map_err(AppError::InternalServerError)?;
 
         Ok(())
     }
@@ -168,6 +173,7 @@ impl VerifyEmailChangeUseCase {
         }
     }
 
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(&self, id: Uuid, req: VerifyEmailChangeRequest) -> Result<(), AppError> {
         let key = format!("admin_email_change:pending:{}", id);
         let pending_json = self
@@ -201,6 +207,21 @@ impl VerifyEmailChangeUseCase {
             .map_err(AppError::InternalServerError)?
             .ok_or_else(|| AppError::NotFound("Administrator not found".to_string()))?;
 
+        // Re-verify email uniqueness before committing update
+        if self
+            .repo
+            .find_by_email(&pending.new_email)
+            .await
+            .map_err(AppError::InternalServerError)?
+            .filter(|existing| existing.id != id)
+            .is_some()
+        {
+            return Err(AppError::ValidationError(vec![FieldError::new(
+                "newEmail",
+                "Email is already in use",
+            )]));
+        }
+
         let old_email = admin.email.clone();
 
         // Update email
@@ -212,7 +233,7 @@ impl VerifyEmailChangeUseCase {
             contact_number: None,
             email: Some(pending.new_email.clone()),
             password_hash: None,
-            email_verified_at: None, // Or Some(OffsetDateTime::now_utc())
+            email_verified_at: Some(Some(OffsetDateTime::now_utc())),
             revoked_at: None,
         };
 
@@ -264,6 +285,7 @@ impl CancelEmailChangeUseCase {
         Self { cache_service }
     }
 
+    #[tracing::instrument(skip(self, token))]
     pub async fn execute(&self, token: &str) -> Result<(), AppError> {
         let cancel_key = format!("admin_email_change:cancel:{}", token);
         let user_id_str = self

@@ -1,7 +1,8 @@
 use crate::domain::administrators::AdministratorRepository;
 use crate::domain::auth::AuthService;
-use crate::infrastructure::email::EmailService;
+use crate::domain::email::EmailService;
 use crate::shared::error::AppError;
+use std::env;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -27,6 +28,7 @@ impl ResendVerificationUseCase {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn execute(&self, id: Uuid) -> Result<(), AppError> {
         let admin = self
             .repo
@@ -48,6 +50,8 @@ impl ResendVerificationUseCase {
 
         let set_password_link = format!("{}/set-password?token={}", self.admin_url, token);
 
+        let app_name = env::var("APP_NAME").unwrap_or_else(|_| "Application".to_string());
+        let email_subject = format!("{} Admin - Verify Email and Set Password", app_name);
         let email_title = "Account Verification";
         let email_content = format!(
             "<p>Hello {} {},</p><p>Please verify your email and set your password by clicking the button below to gain access to your account.</p>",
@@ -57,7 +61,7 @@ impl ResendVerificationUseCase {
         self.email_service
             .send_templated_email(
                 &admin.email,
-                "Caxur Admin - Verify Email and Set Password",
+                &email_subject,
                 email_title,
                 &email_content,
                 Some("Verify and Set Password"),

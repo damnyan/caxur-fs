@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/api';
+import type { JsonApiData, JsonApiListResponse, JsonApiResponse } from '@/types/jsonapi';
 import type {
   Administrator,
   CreateAdministratorData,
@@ -7,76 +8,71 @@ import type {
   AdministratorsParams,
 } from '../types';
 
+type AdministratorAttributes = Omit<Administrator, 'id' | 'roles'>;
+
+function extractRoleNames(
+  item: JsonApiData<AdministratorAttributes>,
+  included: JsonApiData<Record<string, unknown>>[] = []
+): string[] {
+  const relData = item.relationships?.roles?.data;
+  if (!Array.isArray(relData)) {
+    return [];
+  }
+  const roleIds = new Set(relData.map((r) => r.id));
+  return included
+    .filter((inc) => inc.type === 'roles' && roleIds.has(inc.id))
+    .map((inc) => (typeof inc.attributes?.name === 'string' ? inc.attributes.name : undefined))
+    .filter((name): name is string => Boolean(name));
+}
+
 export const administratorsApi = {
   list: async (params?: AdministratorsParams) => {
-    const response = await apiClient.get('/admin/administrators', { 
-      params: { ...params, include: 'roles' } 
+    const response = await apiClient.get<JsonApiListResponse<AdministratorAttributes>>('/admin/administrators', {
+      params: { ...params, include: 'roles' },
     });
-    // Normalize JSON:API response
-    const included = response.data.included || [];
-    
-    const data = response.data.data.map((item: any) => {
-      // Extract roles from included data based on relationships
-      let roles: string[] = [];
-      if (item.relationships?.roles?.data) {
-        const roleIds = item.relationships.roles.data.map((r: any) => r.id);
-        roles = included
-          .filter((inc: any) => inc.type === 'roles' && roleIds.includes(inc.id))
-          .map((inc: any) => inc.attributes?.name)
-          .filter(Boolean);
-      }
-      
-      return {
-        id: item.id,
-        ...item.attributes,
-        roles,
-      };
-    });
-    
+    const included = response.data.included ?? [];
+
+    const data: Administrator[] = response.data.data.map((item) => ({
+      ...item.attributes,
+      id: item.id,
+      roles: extractRoleNames(item, included),
+    }));
+
     return {
       data,
       meta: response.data.meta,
     };
   },
 
-  get: async (id: string) => {
-    const response = await apiClient.get(`/admin/administrators/${id}`, {
-      params: { include: 'roles' }
+  get: async (id: string): Promise<Administrator> => {
+    const response = await apiClient.get<JsonApiResponse<AdministratorAttributes>>(`/admin/administrators/${id}`, {
+      params: { include: 'roles' },
     });
-    
+
     const item = response.data.data;
-    const included = response.data.included || [];
-    
-    let roles: string[] = [];
-    if (item.relationships?.roles?.data) {
-      const roleIds = item.relationships.roles.data.map((r: any) => r.id);
-      roles = included
-        .filter((inc: any) => inc.type === 'roles' && roleIds.includes(inc.id))
-        .map((inc: any) => inc.attributes?.name)
-        .filter(Boolean);
-    }
-      
+    const included = response.data.included ?? [];
+
     return {
-      id: item.id,
       ...item.attributes,
-      roles,
-    } as Administrator;
+      id: item.id,
+      roles: extractRoleNames(item, included),
+    };
   },
 
-  create: async (data: CreateAdministratorData) => {
-    const response = await apiClient.post('/admin/administrators', data);
+  create: async (data: CreateAdministratorData): Promise<Administrator> => {
+    const response = await apiClient.post<JsonApiResponse<AdministratorAttributes>>('/admin/administrators', data);
     return {
-      id: response.data.data.id,
       ...response.data.data.attributes,
-    } as Administrator;
+      id: response.data.data.id,
+    };
   },
 
-  update: async (id: string, data: UpdateAdministratorData) => {
-    const response = await apiClient.put(`/admin/administrators/${id}`, data);
+  update: async (id: string, data: UpdateAdministratorData): Promise<Administrator> => {
+    const response = await apiClient.put<JsonApiResponse<AdministratorAttributes>>(`/admin/administrators/${id}`, data);
     return {
-      id: response.data.data.id,
       ...response.data.data.attributes,
-    } as Administrator;
+      id: response.data.data.id,
+    };
   },
 
   delete: async (id: string) => {
@@ -84,20 +80,20 @@ export const administratorsApi = {
     return response.data;
   },
 
-  revoke: async (id: string) => {
-    const response = await apiClient.post(`/admin/administrators/${id}/revoke`);
+  revoke: async (id: string): Promise<Administrator> => {
+    const response = await apiClient.post<JsonApiResponse<AdministratorAttributes>>(`/admin/administrators/${id}/revoke`);
     return {
-      id: response.data.data.id,
       ...response.data.data.attributes,
-    } as Administrator;
+      id: response.data.data.id,
+    };
   },
 
-  restore: async (id: string) => {
-    const response = await apiClient.post(`/admin/administrators/${id}/restore`);
+  restore: async (id: string): Promise<Administrator> => {
+    const response = await apiClient.post<JsonApiResponse<AdministratorAttributes>>(`/admin/administrators/${id}/restore`);
     return {
-      id: response.data.data.id,
       ...response.data.data.attributes,
-    } as Administrator;
+      id: response.data.data.id,
+    };
   },
 
   resendVerification: async (id: string) => {

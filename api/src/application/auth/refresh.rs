@@ -37,6 +37,7 @@ impl RefreshTokenUseCase {
         }
     }
 
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(
         &self,
         req: RefreshTokenRequest,

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { usersApi } from './users';
 import type { ListUsersParams } from '../types';
 
@@ -12,6 +12,6 @@ export function useUsers(params: ListUsersParams) {
   return useQuery({
     queryKey: usersKeys.list(params),
     queryFn: () => usersApi.getUsers(params),
-    placeholderData: (prev) => prev,
+    placeholderData: keepPreviousData,
   });
 }

@@ -3,9 +3,10 @@ use crate::domain::auth::RefreshTokenRepository;
 use crate::shared::error::AppError;
 use serde::Deserialize;
 use std::sync::Arc;
+use utoipa::ToSchema;
 use validator::Validate;
 
-#[derive(Debug, Deserialize, Validate, utoipa::ToSchema)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct LogoutRequest {
     #[validate(length(min = 1, message = "Refresh token is required"))]
@@ -21,6 +22,7 @@ impl LogoutUseCase {
         Self { refresh_token_repo }
     }
 
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(&self, req: LogoutRequest) -> Result<(), AppError> {
         // Hash the refresh token to find it in the database
         let token_hash = hash_token(&req.refresh_token);

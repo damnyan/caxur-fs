@@ -19,8 +19,8 @@ export default defineConfig([
       globals: globals.browser,
     },
     rules: {
-      'react-hooks/set-state-in-effect': 'off',
-      '@typescript-eslint/no-explicit-any': 'off',
+      'react-hooks/set-state-in-effect': 'error',
+      '@typescript-eslint/no-explicit-any': 'error',
       'react-refresh/only-export-components': 'off',
     },
   },

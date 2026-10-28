@@ -1,5 +1,6 @@
 use crate::domain::administrators::Administrator;
 use sqlx::FromRow;
+use sqlx::types::JsonValue;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -13,7 +14,7 @@ pub struct AdministratorDbModel {
     pub contact_number: Option<String>,
     pub email: String,
     pub password_hash: String,
-    pub roles: Option<sqlx::types::JsonValue>,
+    pub roles: Option<JsonValue>,
     pub email_verified_at: Option<OffsetDateTime>,
     pub revoked_at: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,

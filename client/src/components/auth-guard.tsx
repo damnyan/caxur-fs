@@ -27,6 +27,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
     await logoutAction()
     logout()
+    window.location.href = "/login"
   }
 
   useIdleTimeout(handleLogout, 15 * 60 * 1000)

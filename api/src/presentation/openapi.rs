@@ -38,6 +38,7 @@ use crate::presentation::dtos::{AuthTokenResource, PermissionDto, UserResource};
 use crate::shared::error::{ErrorResponse, JsonApiError, JsonApiErrorSource};
 use crate::shared::pagination::PageParams;
 use crate::shared::response::{JsonApiLinks, JsonApiMeta, JsonApiResource, JsonApiResponse};
+use utoipa::openapi::OpenApi as OpenApiDoc;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
@@ -197,7 +198,7 @@ pub struct ApiDoc;
 struct SecurityAddon;
 
 impl Modify for SecurityAddon {
-    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+    fn modify(&self, openapi: &mut OpenApiDoc) {
         if let Some(components) = openapi.components.as_mut() {
             components.add_security_scheme(
                 "bearer_auth",
@@ -215,13 +216,14 @@ impl Modify for SecurityAddon {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
     use utoipa::OpenApi;
 
     #[test]
     fn generate_openapi_json() {
         let openapi = ApiDoc::openapi();
         let json = serde_json::to_string_pretty(&openapi).unwrap();
-        std::fs::write("openapi.json", json).expect("Failed to write openapi.json");
+        fs::write("openapi.json", json).expect("Failed to write openapi.json");
         println!("OpenAPI schema generated successfully at api/openapi.json");
     }
 }

@@ -28,6 +28,11 @@ export const metadata: Metadata = {
   description: "Modern, secure customer portal powered by Next.js and Rust Axum",
 };
 
+export const unstable_instant = {
+  prefetch: "static",
+  unstable_disableBuildValidation: true,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

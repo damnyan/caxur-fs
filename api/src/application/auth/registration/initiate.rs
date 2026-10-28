@@ -1,7 +1,9 @@
 use crate::domain::cache::{CacheService, PendingRegistration};
+use crate::domain::email::EmailService;
 use crate::domain::password::PasswordHashingService;
 use crate::domain::users::UserRepository;
-use crate::infrastructure::email::EmailService;
+use crate::shared::error::AppError;
+use crate::shared::validation::flatten_validation_errors;
 use rand::RngExt;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -40,21 +42,29 @@ impl InitiateRegistrationUseCase {
         }
     }
 
-    pub async fn execute(&self, request: InitiateRegistrationRequest) -> Result<(), anyhow::Error> {
-        request.validate()?;
+    #[tracing::instrument(skip(self, request))]
+    pub async fn execute(&self, request: InitiateRegistrationRequest) -> Result<(), AppError> {
+        request
+            .validate()
+            .map_err(|e| AppError::ValidationError(flatten_validation_errors(e)))?;
 
         // 1. Check for email uniqueness
         if self
             .user_repository
             .find_by_email(&request.email)
-            .await?
+            .await
+            .map_err(AppError::InternalServerError)?
             .is_some()
         {
-            return Err(anyhow::anyhow!("Email already registered"));
+            return Err(AppError::BadRequest("Email already registered".to_string()));
         }
 
         // 2. Hash password
-        let password_hash = self.password_service.hash_password(&request.password)?;
+        let password_hash = self
+            .password_service
+            .hash_password(&request.password)
+            .await
+            .map_err(AppError::InternalServerError)?;
 
         // 3. Generate 6-digit OTP
         let otp: String = rand::rng().random_range(100_000..999_999).to_string();
@@ -66,9 +76,13 @@ impl InitiateRegistrationUseCase {
             otp: otp.clone(),
         };
 
-        let pending_json = serde_json::to_string(&pending)?;
+        let pending_json =
+            serde_json::to_string(&pending).map_err(|e| AppError::InternalServerError(e.into()))?;
         let key = format!("registration:pending:{}", request.email);
-        self.cache_service.set(&key, pending_json, 600).await?; // 10 minutes
+        self.cache_service
+            .set(&key, pending_json, 600)
+            .await
+            .map_err(AppError::InternalServerError)?; // 10 minutes
 
         // 5. Send email
         self.email_service.send_templated_email(
@@ -78,7 +92,9 @@ impl InitiateRegistrationUseCase {
             &format!("<p>Your verification code is: <strong style='font-size: 24px; letter-spacing: 4px;'>{}</strong></p><p>This code will expire in 10 minutes.</p>", otp),
             None,
             None,
-        ).await?;
+        )
+        .await
+        .map_err(AppError::InternalServerError)?;
 
         Ok(())
     }

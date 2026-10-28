@@ -87,16 +87,17 @@ pub async fn get_my_profile(
     tag = "Admin / My Profile"
 )]
 pub async fn update_my_profile(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     auth: AuthUser,
     ValidatedJson(req): ValidatedJson<UpdateMyProfileRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let repo = Arc::new(PostgresAdministratorRepository::new(pool));
+    let repo = Arc::new(PostgresAdministratorRepository::new(state.pool));
     let use_case = UpdateMyProfileUseCase::new(repo);
 
     let user_id = Uuid::parse_str(&auth.claims.sub)
         .map_err(|_| AppError::Unauthorized("Invalid user ID".to_string()))?;
     let admin = use_case.execute(user_id, req).await?;
+    state.admin_permissions_cache.invalidate(&user_id);
     let (resource, _) = build_admin_resource(admin, true);
     Ok((StatusCode::OK, JsonApiResponse::new(resource)))
 }
@@ -117,17 +118,18 @@ pub async fn update_my_profile(
     tag = "Admin / My Profile"
 )]
 pub async fn update_my_password(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     auth: AuthUser,
     ValidatedJson(req): ValidatedJson<UpdateMyPasswordRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let repo = Arc::new(PostgresAdministratorRepository::new(pool));
+    let repo = Arc::new(PostgresAdministratorRepository::new(state.pool));
     let hasher = Arc::new(PasswordService::new());
     let use_case = UpdateMyPasswordUseCase::new(repo, hasher);
 
     let user_id = Uuid::parse_str(&auth.claims.sub)
         .map_err(|_| AppError::Unauthorized("Invalid user ID".to_string()))?;
     use_case.execute(user_id, req).await?;
+    state.admin_permissions_cache.invalidate(&user_id);
     Ok((
         StatusCode::OK,
         JsonApiResponse::new(json!({ "success": true })),
@@ -197,6 +199,7 @@ pub async fn verify_email_change(
     let user_id = Uuid::parse_str(&auth.claims.sub)
         .map_err(|_| AppError::Unauthorized("Invalid user ID".to_string()))?;
     use_case.execute(user_id, req).await?;
+    state.admin_permissions_cache.invalidate(&user_id);
     Ok((
         StatusCode::OK,
         JsonApiResponse::new(json!({ "success": true })),

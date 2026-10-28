@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import type { UseFormSetError } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { toast } from 'sonner';
 import { handleApiValidationErrors } from '@/lib/api';
 import { getRoles, createRole, updateRole, deleteRole, attachRolePermissions, detachRolePermissions } from '../api/roles';
 import type { Role, Permission } from '../types';
-import { RoleForm } from './RoleForm';
+import { RoleForm, type RoleFormValues } from './RoleForm';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import {
   AlertDialog,
@@ -42,13 +43,14 @@ export default function RolesPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editRole, setEditRole] = useState<Role | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  
+
   // Track global saving state across multiple mutations
   const [isSaving, setIsSaving] = useState(false);
 
   const { data: rolesResp, isLoading } = useQuery({
     queryKey: ['roles', page, perPage],
     queryFn: () => getRoles(page, perPage),
+    placeholderData: keepPreviousData,
   });
 
   const deleteMutation = useMutation({
@@ -60,7 +62,7 @@ export default function RolesPage() {
     onError: (error) => {
       toast.error('Failed to delete role');
       console.error('Failed to delete role', error);
-    }
+    },
   });
 
   const roles = rolesResp?.data.map((r) => ({ ...r.attributes, id: r.id })) || [];
@@ -68,11 +70,11 @@ export default function RolesPage() {
   const lastPage = meta ? Math.ceil((meta.total || 0) / (meta.perPage || perPage)) : 1;
 
   const handleCreateSubmit = async (
-    data: { name: string; description?: string | null },
+    data: RoleFormValues,
     selectedPermissions: Set<string>,
     allPermissions: Permission[],
     _initialPermissions: string[],
-    setError: any
+    setError: UseFormSetError<RoleFormValues>
   ) => {
     setIsSaving(true);
     try {
@@ -82,7 +84,7 @@ export default function RolesPage() {
 
       // 2. Attach Permissions if any
       if (selectedPermissions.size > 0) {
-        const toAttach = allPermissions.filter(p => selectedPermissions.has(p.name));
+        const toAttach = allPermissions.filter((p) => selectedPermissions.has(p.name));
         await attachRolePermissions(newRoleId, toAttach);
       }
 
@@ -100,14 +102,14 @@ export default function RolesPage() {
   };
 
   const handleEditSubmit = async (
-    data: { name: string; description?: string | null },
+    data: RoleFormValues,
     selectedPermissions: Set<string>,
     allPermissions: Permission[],
     initialPermissions: string[],
-    setError: any
+    setError: UseFormSetError<RoleFormValues>
   ) => {
     if (!editRole) return;
-    
+
     setIsSaving(true);
     try {
       // 1. Update Role Details
@@ -115,11 +117,11 @@ export default function RolesPage() {
 
       // 2. Compute Permission diffs
       const currentNames = new Set(initialPermissions);
-      const toAttachNames = Array.from(selectedPermissions).filter(x => !currentNames.has(x));
-      const toDetachNames = Array.from(currentNames).filter(x => !selectedPermissions.has(x));
+      const toAttachNames = Array.from(selectedPermissions).filter((x) => !currentNames.has(x));
+      const toDetachNames = Array.from(currentNames).filter((x) => !selectedPermissions.has(x));
 
-      const toAttach = allPermissions.filter(p => toAttachNames.includes(p.name));
-      const toDetach = allPermissions.filter(p => toDetachNames.includes(p.name));
+      const toAttach = allPermissions.filter((p) => toAttachNames.includes(p.name));
+      const toDetach = allPermissions.filter((p) => toDetachNames.includes(p.name));
 
       const promises = [];
       if (toAttach.length > 0) {
@@ -158,7 +160,7 @@ export default function RolesPage() {
           </p>
         </div>
         <Button onClick={() => setIsAddOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" /> Add Role
+          <Plus className="mr-2 h-4 w-4" aria-hidden="true" /> Add Role
         </Button>
       </div>
 
@@ -197,7 +199,7 @@ export default function RolesPage() {
                   <TableRow key={role.id}>
                     <TableCell className="font-medium">{role.name}</TableCell>
                     <TableCell>{role.description}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground tabular-nums">
                       {formatDateTime(role.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
@@ -205,20 +207,22 @@ export default function RolesPage() {
                         variant="ghost"
                         size="icon"
                         title="Edit Role & Permissions"
+                        aria-label={`Edit role ${role.name}`}
                         onClick={() => setEditRole(role)}
                         className="mr-2"
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
                         title="Delete Role"
+                        aria-label={`Delete role ${role.name}`}
                         onClick={() => handleDelete(role.id)}
                         className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
                         disabled={deleteMutation.isPending}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -230,31 +234,31 @@ export default function RolesPage() {
       </Card>
 
       {meta && lastPage > 1 && (
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex justify-end tabular-nums">
           <Pagination className="mx-0 w-auto">
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious 
+                <PaginationPrevious
                   onClick={() => {
                     if (page > 1) {
                       const newParams = new URLSearchParams(searchParams);
                       newParams.set('page', (page - 1).toString());
                       setSearchParams(newParams);
                     }
-                  }} 
+                  }}
                   className={page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                 />
               </PaginationItem>
-              
-              {Array.from({ length: lastPage }, (_, i) => i + 1).map(p => {
+
+              {Array.from({ length: lastPage }, (_, i) => i + 1).map((p) => {
                 if (
-                  p === 1 || 
-                  p === lastPage || 
+                  p === 1 ||
+                  p === lastPage ||
                   (p >= page - 1 && p <= page + 1)
                 ) {
                   return (
                     <PaginationItem key={p}>
-                      <PaginationLink 
+                      <PaginationLink
                         onClick={() => {
                           const newParams = new URLSearchParams(searchParams);
                           newParams.set('page', p.toString());
@@ -268,7 +272,7 @@ export default function RolesPage() {
                     </PaginationItem>
                   );
                 } else if (
-                  p === page - 2 || 
+                  p === page - 2 ||
                   p === page + 2
                 ) {
                   return (
@@ -279,16 +283,16 @@ export default function RolesPage() {
                 }
                 return null;
               })}
-              
+
               <PaginationItem>
-                <PaginationNext 
+                <PaginationNext
                   onClick={() => {
                     if (page < lastPage) {
                       const newParams = new URLSearchParams(searchParams);
                       newParams.set('page', (page + 1).toString());
                       setSearchParams(newParams);
                     }
-                  }} 
+                  }}
                   className={page >= lastPage ? "pointer-events-none opacity-50" : "cursor-pointer"}
                 />
               </PaginationItem>
@@ -298,14 +302,16 @@ export default function RolesPage() {
       )}
 
       {/* Create Role Modal */}
-      <RoleForm
-        open={isAddOpen}
-        onOpenChange={setIsAddOpen}
-        onSubmit={handleCreateSubmit}
-        role={null}
-        isPending={isSaving}
-        title="Add New Role"
-      />
+      {isAddOpen && (
+        <RoleForm
+          open={isAddOpen}
+          onOpenChange={setIsAddOpen}
+          onSubmit={handleCreateSubmit}
+          role={null}
+          isPending={isSaving}
+          title="Add New Role"
+        />
+      )}
 
       {/* Edit Role Modal */}
       {editRole && (

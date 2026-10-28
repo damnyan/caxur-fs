@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { apiClient, isApiError } from '@/lib/api';
+import { apiClient, getApiErrorMessage } from '@/lib/api';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const forgotPasswordSchema = z.object({
@@ -40,11 +40,7 @@ export default function ForgotPasswordPage() {
       });
       setIsSuccess(true);
     } catch (err) {
-      if (isApiError(err) && err.response?.data?.errors?.[0]?.detail) {
-        setError(err.response.data.errors[0].detail);
-      } else {
-        setError('An error occurred. Please try again.');
-      }
+      setError(getApiErrorMessage(err, 'An error occurred. Please try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -89,6 +85,10 @@ export default function ForgotPasswordPage() {
               id="email"
               type="email"
               placeholder="admin@example.com"
+              autoComplete="email"
+              spellCheck={false}
+              autoCapitalize="none"
+              autoCorrect="off"
               {...register('email')}
             />
             {errors.email && (

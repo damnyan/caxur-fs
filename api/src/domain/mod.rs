@@ -2,6 +2,7 @@ pub mod access_scope;
 pub mod administrators;
 pub mod auth;
 pub mod cache;
+pub mod email;
 pub mod password;
 pub mod permissions;
 pub mod roles;

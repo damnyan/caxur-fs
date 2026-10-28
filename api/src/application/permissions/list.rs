@@ -38,7 +38,7 @@ impl ListPermissionsUseCase {
         self
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, req))]
     pub fn execute(&self, req: ListPermissionsRequest) -> Vec<PermissionResponse> {
         let all_permissions: Vec<PermissionResponse> = Permission::all()
             .into_iter()

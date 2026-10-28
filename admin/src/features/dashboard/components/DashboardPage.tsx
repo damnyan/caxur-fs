@@ -21,8 +21,8 @@ export default function DashboardPage() {
             <CardTitle className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Total Users</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-serif tracking-tight text-foreground">128</div>
-            <span className="inline-block mt-2 font-mono text-[10px] uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-[#EDF3EC] text-[#346538] dark:bg-[#346538]/20 dark:text-[#EDF3EC]">
+            <div className="text-3xl font-serif tracking-tight text-foreground tabular-nums">128</div>
+            <span className="inline-block mt-2 font-mono text-[10px] uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-[#EDF3EC] text-[#346538] dark:bg-[#346538]/20 dark:text-[#EDF3EC] tabular-nums">
               +4 this month
             </span>
           </CardContent>
@@ -32,7 +32,7 @@ export default function DashboardPage() {
             <CardTitle className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Active Roles</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-serif tracking-tight text-foreground">5</div>
+            <div className="text-3xl font-serif tracking-tight text-foreground tabular-nums">5</div>
             <span className="inline-block mt-2 font-mono text-[10px] uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-[#FBF3DB] text-[#956400] dark:bg-[#956400]/20 dark:text-[#FBF3DB]">
               No modifications
             </span>

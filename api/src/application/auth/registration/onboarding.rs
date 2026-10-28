@@ -27,6 +27,7 @@ impl CompleteOnboardingUseCase {
         Self { user_repository }
     }
 
+    #[tracing::instrument(skip(self, request))]
     pub async fn execute(
         &self,
         user_id: Uuid,

@@ -56,6 +56,7 @@ impl CreateUserUseCase {
         let password_hash = self
             .password_hasher
             .hash_password(&req.password)
+            .await
             .map_err(AppError::InternalServerError)?;
 
         let new_user = NewUser {
