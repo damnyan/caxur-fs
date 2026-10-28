@@ -14,7 +14,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { PasswordInput } from "@/components/ui/password-input"
 import { PasswordStrength } from "@/components/ui/password-strength"
-import { useState } from "react"
+import { useEffect, useLayoutEffect, useState } from "react"
 import { config } from "@/lib/config"
 import { toast } from "sonner"
 import { useForm, useWatch } from "react-hook-form"
@@ -49,6 +49,7 @@ export function ResetPasswordForm() {
   const {
     register,
     handleSubmit,
+    reset,
     control,
     formState: { errors },
   } = useForm<ResetPasswordValues>({
@@ -58,6 +59,23 @@ export function ResetPasswordForm() {
       confirmPassword: "",
     },
   })
+
+  useLayoutEffect(() => {
+    return () => {
+      reset()
+      setError(null)
+      setIsSuccess(false)
+      setIsPasswordFocused(false)
+    }
+  }, [reset])
+
+  useEffect(() => {
+    if (!isSuccess) return
+    const timer = setTimeout(() => {
+      router.push("/login")
+    }, 3000)
+    return () => clearTimeout(timer)
+  }, [isSuccess, router])
 
   const passwordValue = useWatch({ control, name: "password", defaultValue: "" })
   const passwordRegister = register("password")
@@ -86,11 +104,8 @@ export function ResetPasswordForm() {
 
       setIsSuccess(true)
       toast.success("Password reset successfully")
-      setTimeout(() => {
-        router.push("/login")
-      }, 3000)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to reset password")
     } finally {
       setIsLoading(false)
     }

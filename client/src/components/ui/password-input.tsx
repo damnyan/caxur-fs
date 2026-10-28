@@ -6,8 +6,17 @@ import { Eye, EyeOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 
-function PasswordInput({ className, ...props }: React.ComponentProps<"input">) {
+function PasswordInput({
+  className,
+  ...props
+}: Omit<React.ComponentProps<"input">, "type">) {
   const [showPassword, setShowPassword] = React.useState(false)
+
+  React.useLayoutEffect(() => {
+    return () => {
+      setShowPassword(false)
+    }
+  }, [])
 
   return (
     <div className="relative">
@@ -19,7 +28,9 @@ function PasswordInput({ className, ...props }: React.ComponentProps<"input">) {
       <button
         type="button"
         onClick={() => setShowPassword(!showPassword)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+        aria-label={showPassword ? "Hide password" : "Show password"}
+        aria-pressed={showPassword}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
       >
         {showPassword ? (
           <EyeOff className="h-4 w-4" aria-hidden="true" />

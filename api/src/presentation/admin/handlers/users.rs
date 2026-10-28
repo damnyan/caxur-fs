@@ -1,7 +1,7 @@
 use crate::application::users::list::{ListUsersRequest, ListUsersUseCase};
 use crate::domain::users::UserRepository;
-use crate::infrastructure::db::DbPool;
 use crate::infrastructure::repositories::users::PostgresUserRepository;
+use crate::infrastructure::state::AppState;
 use crate::presentation::dtos::UserResource;
 use crate::presentation::extractors::AuthUser;
 use crate::shared::error::{AppError, ErrorResponse};
@@ -31,12 +31,12 @@ use std::sync::Arc;
     tag = "Admin / User Management"
 )]
 pub async fn list_users(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     uri: Uri,
     Qs(req): Qs<ListUsersRequest>,
     _auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
-    let repo = Arc::new(PostgresUserRepository::new(pool));
+    let repo = Arc::new(PostgresUserRepository::new(state.pool));
     let use_case = ListUsersUseCase::new(repo.clone());
 
     // Capture pagination and search values before moving req
@@ -55,10 +55,12 @@ pub async fn list_users(
         .await
         .map_err(AppError::InternalServerError)?;
 
-    let resources: Vec<JsonApiResource<UserResource>> = users
-        .into_iter()
-        .map(|user| JsonApiResource::new("users", user.id.to_string(), UserResource::from(user)))
-        .collect();
+    let mut resources = Vec::with_capacity(users.len());
+    for user in users {
+        let user_id = user.id.to_string();
+        let user_resource = UserResource::from_user(user, &*state.storage_service).await;
+        resources.push(JsonApiResource::new("users", user_id, user_resource));
+    }
 
     // Calculate pagination metadata
     let meta = JsonApiMeta::new()

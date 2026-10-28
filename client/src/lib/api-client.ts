@@ -1,10 +1,10 @@
 import { useAuthStore } from "./auth-store";
-import { refreshAction } from "@/app/actions/auth";
+import { logoutAction, refreshAction } from "@/app/actions/auth";
 
 let isRefreshing = false;
-let failedQueue: { resolve: (value: string | null) => void; reject: (reason?: any) => void; }[] = [];
+let failedQueue: { resolve: (value: string | null) => void; reject: (reason?: unknown) => void }[] = [];
 
-const processQueue = (error: Error | null, token: string | null = null) => {
+const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
@@ -40,9 +40,10 @@ export async function fetchApi(input: RequestInfo | URL, init?: RequestInit): Pr
   if (response.status === 403) {
     const clonedResponse = response.clone();
     try {
-      const data = await clonedResponse.json();
-      const isRevoked = data?.errors?.some((err: any) => err.code === 'account_revoked');
+      const data = (await clonedResponse.json()) as { errors?: { code?: string }[] };
+      const isRevoked = data?.errors?.some((err) => err.code === 'account_revoked');
       if (isRevoked) {
+        await logoutAction();
         authStore.logout();
         if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
           window.location.href = '/login';
@@ -64,13 +65,14 @@ export async function fetchApi(input: RequestInfo | URL, init?: RequestInit): Pr
         headers.set('Authorization', `Bearer ${newToken}`);
         return fetch(input, { ...init, headers });
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         return Promise.reject(err);
       });
     }
 
     const refreshToken = authStore.refreshToken;
     if (!refreshToken) {
+      await logoutAction();
       authStore.logout();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';
@@ -97,8 +99,9 @@ export async function fetchApi(input: RequestInfo | URL, init?: RequestInit): Pr
       headers.set('Authorization', `Bearer ${newAccessToken}`);
       response = await fetch(input, { ...init, headers });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       processQueue(error, null);
+      await logoutAction();
       authStore.logout();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';

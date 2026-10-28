@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 
-import { useState } from "react"
+import { useLayoutEffect, useState } from "react"
 import { useAuthStore } from "@/lib/auth-store"
 import { toast } from "sonner"
 import { loginAction } from "@/app/actions/auth"
@@ -38,6 +38,7 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -46,6 +47,12 @@ export function LoginForm() {
       password: "",
     },
   })
+
+  useLayoutEffect(() => {
+    return () => {
+      reset()
+    }
+  }, [reset])
 
   const onSubmit = async (values: LoginValues) => {
     setIsLoading(true)
@@ -66,8 +73,8 @@ export function LoginForm() {
         toast.success("Welcome back!")
         router.push("/dashboard")
       }
-    } catch (error: any) {
-      toast.error(error.message)
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to sign in")
     } finally {
       setIsLoading(false)
     }

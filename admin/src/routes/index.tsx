@@ -128,15 +128,16 @@ export const router = createBrowserRouter([
           </RouteLoader>
         ),
       },
-      {
-        path: 'auth/cancel-email-change',
-        element: (
-          <RouteLoader>
-            <CancelEmailChangePage />
-          </RouteLoader>
-        ),
-      },
     ],
+  },
+  {
+    path: 'auth/cancel-email-change',
+    errorElement: <ErrorPage />,
+    element: (
+      <RouteLoader>
+        <CancelEmailChangePage />
+      </RouteLoader>
+    ),
   },
   {
     path: '*',

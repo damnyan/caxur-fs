@@ -135,3 +135,27 @@ export async function refreshAction(refreshToken: string) {
     return { error: error instanceof Error ? error.message : "An unexpected error occurred" }
   }
 }
+
+export async function syncSessionAction(fallbackRefreshToken?: string | null) {
+  const cookieStore = await cookies()
+  const accessToken = cookieStore.get("accessToken")?.value
+  if (accessToken) {
+    return { valid: true as const }
+  }
+
+  const refreshToken = cookieStore.get("refreshToken")?.value || fallbackRefreshToken
+  if (refreshToken) {
+    const refreshed = await refreshAction(refreshToken)
+    if (refreshed.success && refreshed.data) {
+      return {
+        valid: true as const,
+        data: refreshed.data as { accessToken: string; refreshToken: string },
+      }
+    }
+  }
+
+  cookieStore.delete("accessToken")
+  cookieStore.delete("refreshToken")
+  return { valid: false as const }
+}
+

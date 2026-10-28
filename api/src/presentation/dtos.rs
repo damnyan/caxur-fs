@@ -67,6 +67,16 @@ impl AuthTokenResource {
             user: user.map(UserResource::from),
         }
     }
+
+    pub fn with_user(response: LoginResponse, user: Option<UserResource>) -> Self {
+        Self {
+            access_token: response.access_token,
+            refresh_token: response.refresh_token,
+            token_type: response.token_type,
+            expires_in: response.expires_in,
+            user,
+        }
+    }
 }
 
 #[derive(Serialize, ToSchema)]

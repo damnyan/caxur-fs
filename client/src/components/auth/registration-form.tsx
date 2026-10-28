@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useLayoutEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -39,6 +39,7 @@ export function RegistrationForm() {
   const {
     register,
     handleSubmit,
+    reset,
     control,
     formState: { errors },
   } = useForm<RegisterValues>({
@@ -49,6 +50,13 @@ export function RegistrationForm() {
       confirmPassword: "",
     },
   })
+
+  useLayoutEffect(() => {
+    return () => {
+      reset()
+      setIsPasswordFocused(false)
+    }
+  }, [reset])
 
   const passwordValue = useWatch({ control, name: "password", defaultValue: "" })
   const passwordRegister = register("password")
@@ -73,8 +81,8 @@ export function RegistrationForm() {
 
       toast.success("Verification code sent to your email")
       router.push(`/register/verify?email=${encodeURIComponent(normalizedEmail)}`)
-    } catch (error: any) {
-      toast.error(error.message)
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Registration failed")
     } finally {
       setIsLoading(false)
     }

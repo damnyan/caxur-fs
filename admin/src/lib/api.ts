@@ -1,5 +1,6 @@
 import { type FieldValues, type Path, type UseFormSetError } from 'react-hook-form';
 import { useAuthStore } from '../store/authStore';
+import { queryClient } from './queryClient';
 import type { JsonApiErrorResponse, JsonApiResponse } from '../types/jsonapi';
 
 // Determine base URL from environment or fallback to '/api/v1'
@@ -165,6 +166,7 @@ async function request<T>(
     const isRevoked = errorPayload.errors?.some((err) => err.code === 'account_revoked');
     if (isRevoked) {
       const authStore = useAuthStore.getState();
+      queryClient.clear();
       authStore.logout();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';
@@ -197,6 +199,7 @@ async function request<T>(
 
     if (!refreshToken) {
       isRefreshing = false;
+      queryClient.clear();
       authStore.logout();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';
@@ -233,6 +236,7 @@ async function request<T>(
       return request<T>(url, { ...options, headers, _retry: true });
     } catch (err: unknown) {
       processQueue(err, null);
+      queryClient.clear();
       authStore.logout();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';

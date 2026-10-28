@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useLayoutEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 
 import { config } from "@/lib/config"
 import { useAuthStore } from "@/lib/auth-store"
+import { fetchApi } from "@/lib/api-client"
 import { handleApiErrors } from "@/lib/utils/api-errors"
 
 const onboardingSchema = z.object({
@@ -32,6 +33,7 @@ export function OnboardingForm() {
   const {
     register,
     handleSubmit,
+    reset,
     setError,
     formState: { errors },
   } = useForm<OnboardingValues>({
@@ -44,6 +46,12 @@ export function OnboardingForm() {
     },
   })
 
+  useLayoutEffect(() => {
+    return () => {
+      reset()
+    }
+  }, [reset])
+
   const onSubmit = async (values: OnboardingValues) => {
     if (!token) {
       toast.error("Session expired. Please sign in again.")
@@ -53,12 +61,8 @@ export function OnboardingForm() {
 
     setIsLoading(true)
     try {
-      const response = await fetch(`${config.apiUrl}/api/v1/profile/onboarding`, {
+      const response = await fetchApi(`${config.apiUrl}/api/v1/profile/onboarding`, {
         method: "PATCH",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
         body: JSON.stringify(values),
       })
 
@@ -79,8 +83,9 @@ export function OnboardingForm() {
 
       toast.success("Profile completed successfully!")
       router.push("/dashboard")
-    } catch (error: any) {
-      toast.error(error.message)
+      router.refresh()
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Onboarding failed")
     } finally {
       setIsLoading(false)
     }

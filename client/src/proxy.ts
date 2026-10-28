@@ -14,8 +14,10 @@ export function proxy(request: NextRequest) {
   }
 
   // Redirect authenticated users away from auth pages
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/login') || 
-                      request.nextUrl.pathname.startsWith('/register')
+  const isAuthRoute = request.nextUrl.pathname.startsWith('/login') ||
+                      request.nextUrl.pathname.startsWith('/register') ||
+                      request.nextUrl.pathname.startsWith('/forgot-password') ||
+                      request.nextUrl.pathname.startsWith('/reset-password')
 
   if (isAuthRoute && token) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
@@ -25,5 +27,14 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/profile/:path*', '/onboarding/:path*', '/login', '/register'],
+  matcher: [
+    '/dashboard/:path*',
+    '/profile/:path*',
+    '/onboarding/:path*',
+    '/login',
+    '/register',
+    '/register/:path*',
+    '/forgot-password',
+    '/reset-password',
+  ],
 }

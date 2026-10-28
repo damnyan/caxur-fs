@@ -16,7 +16,7 @@ use crate::infrastructure::password::PasswordService;
 use crate::infrastructure::repositories::refresh_tokens::PostgresRefreshTokenRepository;
 use crate::infrastructure::repositories::users::PostgresUserRepository;
 use crate::infrastructure::state::AppState;
-use crate::presentation::dtos::AuthTokenResource;
+use crate::presentation::dtos::{AuthTokenResource, UserResource};
 use crate::shared::error::{AppError, ErrorResponse};
 use crate::shared::response::{JsonApiResource, JsonApiResponse};
 use crate::shared::validation::ValidatedJson;
@@ -45,6 +45,7 @@ pub async fn login(
     ValidatedJson(req): ValidatedJson<LoginRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let auth_service = state.auth_service;
+    let storage_service = state.storage_service;
     let pool = state.pool;
 
     let user_repo = Arc::new(PostgresUserRepository::new(pool.clone()));
@@ -70,10 +71,11 @@ pub async fn login(
     );
 
     let (response, user) = use_case.execute(req).await?;
+    let user_resource = UserResource::from_user(user, &*storage_service).await;
     let resource = JsonApiResource::new(
         "auth-tokens",
         "session",
-        AuthTokenResource::new(response, Some(user)),
+        AuthTokenResource::with_user(response, Some(user_resource)),
     );
 
     Ok((StatusCode::OK, JsonApiResponse::new(resource)))

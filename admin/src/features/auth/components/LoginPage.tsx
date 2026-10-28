@@ -76,6 +76,7 @@ export default function LoginPage() {
       login(user, accessToken, refreshToken);
       navigate('/');
     } catch (err) {
+      useAuthStore.getState().logout();
       setError(getApiErrorMessage(err, 'An error occurred during login'));
     } finally {
       setIsLoading(false);

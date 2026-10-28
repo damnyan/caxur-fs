@@ -6,7 +6,7 @@ interface HealthResponse {
 }
 
 async function fetchHealth(): Promise<HealthResponse> {
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+  const apiBase = import.meta.env.VITE_API_URL || '/api/v1';
   const healthUrl = apiBase.replace(/\/api\/v1\/?$/, '/health');
   const response = await fetch(healthUrl);
   if (!response.ok) {

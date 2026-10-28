@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Outlet, Navigate, NavLink, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { Outlet, Navigate, NavLink, Link, useLocation } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import { LayoutDashboard, Users, UserCheck, Shield, UserCircle, LogOut, Menu } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -19,14 +19,24 @@ import {
 const APP_NAME = import.meta.env.VITE_APP_NAME || 'Caxur-FS Admin';
 
 export default function AdminLayout() {
+  const queryClient = useQueryClient();
+  const location = useLocation();
   const { isAuthenticated, user, updateUser, logout, refreshToken } = useAuthStore();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [mobileNavState, setMobileNavState] = useState<{ pathname: string; open: boolean }>({
+    pathname: '',
+    open: false,
+  });
+  const mobileNavOpen =
+    mobileNavState.pathname === location.pathname ? mobileNavState.open : false;
+  const setMobileNavOpen = (open: boolean) => {
+    setMobileNavState({ pathname: location.pathname, open });
+  };
 
   const { data: healthData } = useHealth();
   const apiVersion = healthData?.version ?? '';
 
   const { data: profileData } = useQuery({
-    queryKey: ['admin', 'my-profile'],
+    queryKey: ['admin', 'my-profile', user?.id],
     queryFn: fetchMyProfile,
     enabled: isAuthenticated,
     staleTime: 60 * 1000,
@@ -46,6 +56,7 @@ export default function AdminLayout() {
         console.error('Logout failed', error);
       }
     }
+    queryClient.clear();
     logout();
   };
 

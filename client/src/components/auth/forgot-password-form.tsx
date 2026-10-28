@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useState } from "react"
+import { useLayoutEffect, useState } from "react"
 import { config } from "@/lib/config"
 
 export function ForgotPasswordForm() {
@@ -20,6 +20,14 @@ export function ForgotPasswordForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useLayoutEffect(() => {
+    return () => {
+      setEmail("")
+      setIsSuccess(false)
+      setError(null)
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,8 +48,8 @@ export function ForgotPasswordForm() {
       }
 
       setIsSuccess(true)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to send reset link")
     } finally {
       setIsLoading(false)
     }

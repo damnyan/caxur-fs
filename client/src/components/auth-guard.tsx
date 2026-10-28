@@ -2,24 +2,32 @@
 
 import { useAuthStore } from "@/lib/auth-store"
 import { useRouter, usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useSyncExternalStore } from "react"
 import { useIdleTimeout } from "@/hooks/use-idle-timeout"
 import { config } from "@/lib/config"
-import { logoutAction } from "@/app/actions/auth"
+import { logoutAction, syncSessionAction } from "@/app/actions/auth"
+
+const emptySubscribe = () => () => {}
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { token, refreshToken, logout } = useAuthStore()
+  const { token, refreshToken, user, setToken, logout } = useAuthStore()
   const router = useRouter()
   const pathname = usePathname()
-  const [mounted, setMounted] = useState(false)
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  )
 
   const handleLogout = async () => {
-    if (refreshToken) {
+    if (!useAuthStore.getState().token) return
+    const currentRefreshToken = useAuthStore.getState().refreshToken
+    if (currentRefreshToken) {
       try {
         await fetch(`${config.apiUrl}/api/v1/auth/logout`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken }),
+          body: JSON.stringify({ refreshToken: currentRefreshToken }),
         })
       } catch (error) {
         console.error("Logout failed", error)
@@ -33,24 +41,45 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   useIdleTimeout(handleLogout, 15 * 60 * 1000)
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    if (!mounted) return
 
-  useEffect(() => {
-    if (mounted) {
-      const isAuthPage = pathname === "/login" || pathname === "/register" || pathname.startsWith("/register/verify")
-      const isProtectedRoute = pathname.startsWith("/dashboard") || pathname.startsWith("/profile") || pathname.startsWith("/onboarding")
+    let active = true
+    const isAuthPage =
+      pathname === "/login" ||
+      pathname === "/register" ||
+      pathname.startsWith("/register/verify") ||
+      pathname === "/forgot-password" ||
+      pathname === "/reset-password"
+    const isProtectedRoute =
+      pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/profile") ||
+      pathname.startsWith("/onboarding")
 
-      if (token && isAuthPage) {
-        router.push("/dashboard")
-      } else if (!token && isProtectedRoute) {
-        router.push("/login")
-      }
+    if (token && isAuthPage) {
+      void syncSessionAction(refreshToken).then((res) => {
+        if (!active) return
+        if (!res.valid) {
+          logout()
+          return
+        }
+        if (res.data) {
+          setToken(res.data.accessToken, res.data.refreshToken)
+        }
+        const target =
+          pathname.startsWith("/register/verify") || (user && !user.firstName)
+            ? "/onboarding"
+            : "/dashboard"
+        router.push(target)
+      })
+    } else if (!token && isProtectedRoute) {
+      void logoutAction()
+      router.push("/login")
     }
-  }, [token, pathname, router, mounted])
 
-  if (!mounted) return null
+    return () => {
+      active = false
+    }
+  }, [token, refreshToken, user, setToken, logout, pathname, router, mounted])
 
-  // Optional: Add loading state if checking token
   return <>{children}</>
 }

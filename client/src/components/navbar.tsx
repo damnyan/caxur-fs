@@ -22,64 +22,124 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { config } from "@/lib/config"
 import { useAuthStore } from "@/lib/auth-store"
-import { useEffect, useLayoutEffect, useState } from "react"
+import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation"
-import { logoutAction } from "@/app/actions/auth"
+import { logoutAction, syncSessionAction } from "@/app/actions/auth"
+import { useIdleTimeout } from "@/hooks/use-idle-timeout"
 import { Menu, LogOut } from "lucide-react"
+
+const emptySubscribe = () => () => {}
 
 export function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
-  const { token, user, logout } = useAuthStore()
-  const [mounted, setMounted] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const { token, refreshToken, user, setToken, logout } = useAuthStore()
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  )
+  const [menuState, setMenuState] = useState<{
+    pathname: string
+    mobileOpen: boolean
+    userMenuOpen: boolean
+  }>({
+    pathname: "",
+    mobileOpen: false,
+    userMenuOpen: false,
+  })
 
-  // Avoid hydration mismatch
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const mobileOpen = menuState.pathname === pathname ? menuState.mobileOpen : false
+  const userMenuOpen = menuState.pathname === pathname ? menuState.userMenuOpen : false
 
-  // Auto-close transient menus on route transition or React <Activity> hide
-  useEffect(() => {
-    setMobileOpen(false)
-    setUserMenuOpen(false)
-  }, [pathname])
+  const setMobileOpen = (open: boolean) => {
+    setMenuState((prev) => ({
+      pathname,
+      mobileOpen: open,
+      userMenuOpen: prev.pathname === pathname ? prev.userMenuOpen : false,
+    }))
+  }
+
+  const setUserMenuOpen = (open: boolean) => {
+    setMenuState((prev) => ({
+      pathname,
+      mobileOpen: prev.pathname === pathname ? prev.mobileOpen : false,
+      userMenuOpen: open,
+    }))
+  }
 
   useLayoutEffect(() => {
     return () => {
-      setMobileOpen(false)
-      setUserMenuOpen(false)
+      setMenuState({ pathname: "", mobileOpen: false, userMenuOpen: false })
     }
   }, [])
 
   const isLoggedIn = mounted && !!token
-  const isAuthPage = pathname === "/login" || pathname === "/register" || pathname.startsWith("/register/verify")
+  const isAuthPage =
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname.startsWith("/register/verify") ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password"
+  const isProtectedRoute =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/profile") ||
+    pathname.startsWith("/onboarding")
   const appName = config.appName
 
   const handleLogout = async () => {
-    const refreshToken = useAuthStore.getState().refreshToken;
-    if (refreshToken) {
+    const currentRefreshToken = useAuthStore.getState().refreshToken
+    if (currentRefreshToken) {
       try {
         await fetch(`${config.apiUrl}/api/v1/auth/logout`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken }),
-        });
+          body: JSON.stringify({ refreshToken: currentRefreshToken }),
+        })
       } catch (error) {
-        console.error("Logout failed", error);
+        console.error("Logout failed", error)
       }
     }
-    await logoutAction();
+    await logoutAction()
     logout()
     window.location.href = "/"
   }
 
-  useEffect(() => {
-    if (isLoggedIn && isAuthPage) {
-      router.push("/dashboard")
+  useIdleTimeout(() => {
+    if (useAuthStore.getState().token) {
+      void handleLogout()
     }
-  }, [isLoggedIn, isAuthPage, router])
+  }, 15 * 60 * 1000)
+
+  useEffect(() => {
+    if (!mounted) return
+
+    let active = true
+    if (isLoggedIn && isAuthPage) {
+      void syncSessionAction(refreshToken).then((res) => {
+        if (!active) return
+        if (!res.valid) {
+          logout()
+          return
+        }
+        if (res.data) {
+          setToken(res.data.accessToken, res.data.refreshToken)
+        }
+        const target =
+          pathname.startsWith("/register/verify") || (user && !user.firstName)
+            ? "/onboarding"
+            : "/dashboard"
+        router.push(target)
+      })
+    } else if (!isLoggedIn && isProtectedRoute) {
+      void logoutAction()
+      router.push("/login")
+    }
+
+    return () => {
+      active = false
+    }
+  }, [mounted, isLoggedIn, isAuthPage, isProtectedRoute, pathname, refreshToken, user, setToken, logout, router])
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

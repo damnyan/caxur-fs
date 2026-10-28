@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useLayoutEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -36,6 +36,7 @@ export function VerifyForm() {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<VerifyValues>({
     resolver: zodResolver(verifySchema),
@@ -43,6 +44,12 @@ export function VerifyForm() {
       otp: "",
     },
   })
+
+  useLayoutEffect(() => {
+    return () => {
+      reset()
+    }
+  }, [reset])
 
   const onSubmit = async (values: VerifyValues) => {
     if (!email) return
@@ -55,15 +62,15 @@ export function VerifyForm() {
         throw new Error(response.error || "Verification failed")
       }
 
-      // Store token and user
+      // Store user and token
       const { accessToken, refreshToken, user } = response.data
-      setToken(accessToken, refreshToken)
       if (user) setUser(user)
+      setToken(accessToken, refreshToken)
 
       toast.success("Account verified successfully!")
       router.push("/onboarding")
-    } catch (error: any) {
-      toast.error(error.message)
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Verification failed")
     } finally {
       setIsLoading(false)
     }

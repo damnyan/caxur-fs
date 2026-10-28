@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
 import * as z from 'zod';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
@@ -57,6 +58,7 @@ type EmailVerifyFormValues = z.infer<typeof emailVerifySchema>;
 
 export default function ProfilePage() {
   useDocumentTitle('Profile');
+  const queryClient = useQueryClient();
   const { user, updateUser } = useAuthStore();
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [isInitiatingEmail, setIsInitiatingEmail] = useState(false);
@@ -131,20 +133,21 @@ export default function ProfilePage() {
     try {
       const response = await apiClient.patch<JsonApiResponse<ProfileAttributes>>('/admin/my/profile', {
         firstName: data.firstName,
-        middleName: data.middleName || null,
+        middleName: data.middleName ?? '',
         lastName: data.lastName,
-        suffix: data.suffix || null,
-        contactNumber: data.contactNumber || null,
+        suffix: data.suffix ?? '',
+        contactNumber: data.contactNumber ?? '',
       });
 
       const attrs = response.data.data.attributes;
       updateUser({
         firstName: attrs.firstName,
-        middleName: attrs.middleName ?? undefined,
+        middleName: attrs.middleName ?? null,
         lastName: attrs.lastName,
-        suffix: attrs.suffix ?? undefined,
-        contactNumber: attrs.contactNumber ?? undefined,
+        suffix: attrs.suffix ?? null,
+        contactNumber: attrs.contactNumber ?? null,
       });
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'my-profile'] });
 
       toast.success('Profile updated successfully');
     } catch (error) {
@@ -212,6 +215,7 @@ export default function ProfilePage() {
 
       const updatedProfile = await fetchMyProfile();
       updateUser(updatedProfile);
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'my-profile'] });
     } catch (error) {
       if (!handleApiValidationErrors(error, setEmailVerifyError)) {
         toast.error(getApiErrorMessage(error, 'Failed to verify email change'));
