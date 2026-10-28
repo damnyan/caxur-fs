@@ -1,6 +1,6 @@
 ---
 trigger: glob
-globs: ["client/**/*"]
+globs: "client/**/*"
 description: "Rules for developing the Next.js client portal utilizing App Router, Tailwind v4, and Shadcn UI with high code quality and server-first principles."
 ---
 

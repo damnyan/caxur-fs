@@ -33,10 +33,7 @@ pub struct CreateRoleRequest {
 
 impl CreateRoleRequest {
     /// Custom async validation to check if role name already exists
-    pub async fn validate_unique_name(
-        &self,
-        repo: &Arc<dyn RoleRepository>,
-    ) -> Result<(), AppError> {
+    pub async fn validate_unique_name(&self, repo: &dyn RoleRepository) -> Result<(), AppError> {
         if repo
             .find_by_name(&self.name, self.scope, self.group_id)
             .await?
@@ -63,7 +60,7 @@ impl CreateRoleUseCase {
     #[tracing::instrument(skip(self, req))]
     pub async fn execute(&self, req: CreateRoleRequest) -> Result<Role, AppError> {
         // Validate unique name
-        req.validate_unique_name(&self.repo).await?;
+        req.validate_unique_name(self.repo.as_ref()).await?;
 
         let new_role = NewRole {
             name: req.name,

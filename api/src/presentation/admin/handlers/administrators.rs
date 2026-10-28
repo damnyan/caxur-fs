@@ -41,6 +41,7 @@ use serde::Serialize;
 use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
+use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -55,16 +56,16 @@ pub struct AdministratorResource {
     pub email: String,
     #[serde(with = "time::serde::iso8601::option")]
     #[schema(value_type = Option<String>)]
-    pub email_verified_at: Option<time::OffsetDateTime>,
+    pub email_verified_at: Option<OffsetDateTime>,
     #[serde(with = "time::serde::iso8601::option")]
     #[schema(value_type = Option<String>)]
-    pub revoked_at: Option<time::OffsetDateTime>,
+    pub revoked_at: Option<OffsetDateTime>,
     #[serde(with = "time::serde::iso8601")]
     #[schema(value_type = String)]
-    pub created_at: time::OffsetDateTime,
+    pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::iso8601")]
     #[schema(value_type = String)]
-    pub updated_at: time::OffsetDateTime,
+    pub updated_at: OffsetDateTime,
 }
 
 impl From<Administrator> for AdministratorResource {

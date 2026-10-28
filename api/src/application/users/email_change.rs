@@ -5,6 +5,7 @@ use crate::infrastructure::email::EmailService;
 use crate::shared::error::{AppError, FieldError};
 use rand::RngExt;
 use serde::Deserialize;
+use std::env;
 use std::sync::Arc;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -119,7 +120,7 @@ impl InitiateUserEmailChangeUseCase {
         ).await.map_err(AppError::InternalServerError)?;
 
         let base_url =
-            std::env::var("CLIENT_URL").unwrap_or_else(|_| "http://localhost:3002".to_string());
+            env::var("CLIENT_URL").unwrap_or_else(|_| "http://localhost:3002".to_string());
         let cancel_link = format!(
             "{}/auth/cancel-email-change?token={}",
             base_url, cancel_token

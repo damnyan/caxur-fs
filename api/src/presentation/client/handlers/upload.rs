@@ -7,6 +7,7 @@ use axum::{
     http::StatusCode,
 };
 use serde::Serialize;
+use std::env;
 use std::path::Path;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -140,7 +141,7 @@ pub async fn upload_file(
     }
 
     // Body limit safety check
-    let max_upload_size_mb: usize = std::env::var("MAX_UPLOAD_SIZE_MB")
+    let max_upload_size_mb: usize = env::var("MAX_UPLOAD_SIZE_MB")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(10);

@@ -32,7 +32,7 @@ impl UpdateAdministratorRequest {
     /// Custom async validation to check if email already exists (excluding current user)
     pub async fn validate_unique_email(
         &self,
-        repo: &Arc<dyn AdministratorRepository>,
+        repo: &dyn AdministratorRepository,
         current_user_id: Uuid,
     ) -> Result<(), AppError> {
         if let Some(email) = &self.email
@@ -83,7 +83,7 @@ impl UpdateAdministratorUseCase {
         }
 
         // Validate unique email using custom validator (ignoring current user)
-        req.validate_unique_email(&self.repo, id).await?;
+        req.validate_unique_email(self.repo.as_ref(), id).await?;
 
         let password_hash = if let Some(password) = req.password {
             Some(

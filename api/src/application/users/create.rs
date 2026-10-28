@@ -20,10 +20,7 @@ pub struct CreateUserRequest {
 
 impl CreateUserRequest {
     /// Custom async validation to check if email already exists
-    pub async fn validate_unique_email(
-        &self,
-        repo: &Arc<dyn UserRepository>,
-    ) -> Result<(), AppError> {
+    pub async fn validate_unique_email(&self, repo: &dyn UserRepository) -> Result<(), AppError> {
         if (repo.find_by_email(&self.email).await?).is_some() {
             return Err(AppError::ValidationError(vec![FieldError::new(
                 "email",
@@ -53,7 +50,7 @@ impl CreateUserUseCase {
     #[tracing::instrument(skip(self, req))]
     pub async fn execute(&self, req: CreateUserRequest) -> Result<User, AppError> {
         // Validate unique email using custom validator
-        req.validate_unique_email(&self.repo).await?;
+        req.validate_unique_email(self.repo.as_ref()).await?;
 
         // Hash the password using Argon2
         let password_hash = self

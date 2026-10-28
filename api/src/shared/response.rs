@@ -3,6 +3,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::Serialize;
+use std::collections::HashMap;
 use utoipa::ToSchema;
 
 /// Type alias for standard API responses conforming to JSON:API
@@ -17,7 +18,7 @@ pub struct JsonApiResource<T> {
     pub id: String,
     pub attributes: T,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub relationships: Option<std::collections::HashMap<String, JsonApiRelationship>>,
+    pub relationships: Option<HashMap<String, JsonApiRelationship>>,
 }
 
 #[derive(Serialize, ToSchema, Default)]
@@ -192,7 +193,7 @@ impl<T: Serialize> JsonApiResource<T> {
     /// Add relationships to the resource
     pub fn with_relationships(
         mut self,
-        relationships: std::collections::HashMap<String, JsonApiRelationship>,
+        relationships: HashMap<String, JsonApiRelationship>,
     ) -> Self {
         self.relationships = Some(relationships);
         self

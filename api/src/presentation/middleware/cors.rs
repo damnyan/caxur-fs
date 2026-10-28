@@ -1,30 +1,26 @@
+use axum::http::{HeaderValue, Method, header};
 use std::env;
 use tower_http::cors::{Any, CorsLayer};
-
-use axum::http::HeaderValue;
 
 pub fn cors_layer() -> anyhow::Result<CorsLayer> {
     let allowed_origins = env::var("CORS_ALLOWED_ORIGINS").unwrap_or_else(|_| "".to_string());
 
     let mut layer = CorsLayer::new()
         .allow_methods([
-            axum::http::Method::GET,
-            axum::http::Method::POST,
-            axum::http::Method::PATCH,
-            axum::http::Method::PUT,
-            axum::http::Method::DELETE,
-            axum::http::Method::OPTIONS,
+            Method::GET,
+            Method::POST,
+            Method::PATCH,
+            Method::PUT,
+            Method::DELETE,
+            Method::OPTIONS,
         ])
         .allow_headers([
-            axum::http::header::AUTHORIZATION,
-            axum::http::header::CONTENT_TYPE,
-            axum::http::header::ACCEPT,
-            axum::http::header::ORIGIN,
+            header::AUTHORIZATION,
+            header::CONTENT_TYPE,
+            header::ACCEPT,
+            header::ORIGIN,
         ])
-        .expose_headers([
-            axum::http::header::CONTENT_DISPOSITION,
-            axum::http::header::CONTENT_LENGTH,
-        ]);
+        .expose_headers([header::CONTENT_DISPOSITION, header::CONTENT_LENGTH]);
 
     if allowed_origins == "*" {
         layer = layer.allow_origin(Any);

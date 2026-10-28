@@ -2,12 +2,12 @@ use crate::domain::auth::{AuthService, NewRefreshToken, RefreshTokenRepository};
 use crate::shared::error::AppError;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
-use std::sync::Arc;
 use time::OffsetDateTime;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 /// Common response structure for token operations
-#[derive(Debug, Serialize, utoipa::ToSchema)]
+#[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TokenResponse {
     pub access_token: String,
@@ -27,8 +27,8 @@ pub fn hash_token(token: &str) -> String {
 pub async fn generate_and_store_tokens(
     user_id: Uuid,
     user_type: String,
-    auth_service: &Arc<dyn AuthService>,
-    refresh_token_repo: &Arc<dyn RefreshTokenRepository>,
+    auth_service: &dyn AuthService,
+    refresh_token_repo: &dyn RefreshTokenRepository,
     access_token_expiry: i64,
     refresh_token_expiry: i64,
 ) -> Result<TokenResponse, AppError> {

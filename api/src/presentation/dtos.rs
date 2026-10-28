@@ -3,6 +3,7 @@ use crate::domain::permissions::Permission;
 use crate::domain::storage::StorageService;
 use crate::domain::users::User;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ToSchema)]
@@ -80,10 +81,10 @@ pub struct UserResource {
     pub face_photo_url: Option<String>,
     #[serde(with = "time::serde::iso8601")]
     #[schema(value_type = String)]
-    pub created_at: time::OffsetDateTime,
+    pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::iso8601")]
     #[schema(value_type = String)]
-    pub updated_at: time::OffsetDateTime,
+    pub updated_at: OffsetDateTime,
 }
 
 impl From<User> for UserResource {
@@ -103,13 +104,12 @@ impl From<User> for UserResource {
 }
 
 impl UserResource {
-    #[allow(clippy::collapsible_if)]
     pub async fn from_user(user: User, storage_service: &dyn StorageService) -> Self {
         let mut resource = Self::from(user);
-        if let Some(ref photo) = resource.face_photo {
-            if let Ok(url) = storage_service.get_presigned_url(photo, 3600).await {
-                resource.face_photo_url = Some(url);
-            }
+        if let Some(ref photo) = resource.face_photo
+            && let Ok(url) = storage_service.get_presigned_url(photo, 3600).await
+        {
+            resource.face_photo_url = Some(url);
         }
         resource
     }

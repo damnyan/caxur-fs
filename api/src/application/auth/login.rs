@@ -5,9 +5,10 @@ use crate::domain::users::{User, UserRepository};
 use crate::shared::error::AppError;
 use serde::Deserialize;
 use std::sync::Arc;
+use utoipa::ToSchema;
 use validator::Validate;
 
-#[derive(Debug, Deserialize, Validate, utoipa::ToSchema)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct LoginRequest {
     #[serde(deserialize_with = "crate::shared::validation::deserialize_email")]
@@ -76,8 +77,8 @@ impl LoginUseCase {
         let tokens = generate_and_store_tokens(
             user.id,
             "user".to_string(),
-            &self.auth_service,
-            &self.refresh_token_repo,
+            self.auth_service.as_ref(),
+            self.refresh_token_repo.as_ref(),
             self.access_token_expiry,
             self.refresh_token_expiry,
         )

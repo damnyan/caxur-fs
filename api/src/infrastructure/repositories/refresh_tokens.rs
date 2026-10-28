@@ -3,7 +3,6 @@ use crate::infrastructure::db::DbPool;
 use crate::infrastructure::db::models::auth::RefreshTokenDbModel;
 use anyhow::Result;
 use async_trait::async_trait;
-use sqlx;
 use uuid::Uuid;
 
 pub struct PostgresRefreshTokenRepository {

@@ -1,6 +1,6 @@
 ---
 trigger: glob
-globs: ["api/**/*.rs"]
+globs: "api/**/*.rs"
 description: "Rules for the Rust Axum API project, enforcing Clean Architecture layers, Domain-Driven Design, JSON:API compliance, and Axum/SQLx standards."
 ---
 
@@ -71,8 +71,12 @@ To ensure contract correctness and maximize development efficiency, you MUST lev
     - **Private/Standard**: `api_rate_limit_layer` (configured via `RATE_LIMIT_PER_MINUTE`, default: `300`). For standard data fetching by authenticated users.
   - Health checks and internal monitoring endpoints MUST bypass rate limiting entirely.
   - Serve the router using `app.into_make_service_with_connect_info::<std::net::SocketAddr>()` in `main.rs` so `SmartIpKeyExtractor` can fall back to peer socket IP when proxy headers are absent.
-- **Code Style**:
-  - **No Fully Qualified Names (FQN) or Mid-File Imports**: Always import types, functions, and modules at the top of the file (or at the top of a `#[cfg(test)] mod tests` block). Never scatter `use` statements inside handler functions or mid-file between structs.
+- **Code Style (Google Rust Style Guide Adapted)**:
+  - **Import Qualification & Top-of-File `use`**: Place all `use` declarations at the top of the file (or at the top of a `#[cfg(test)] mod tests` block). Never scatter `use` statements inside functions or mid-file between structs, and never write redundant single-segment crate imports (`use tracing;`, `use sqlx;`). Import **types, traits, and macros** directly (`use std::sync::Arc;`, `use uuid::Uuid;`), and qualify **free functions** via their imported parent module (`use std::env; env::var(...)`, `tracing::error!(...)`) rather than writing inline multi-segment paths (`std::env::var(...)`). **Explicit Exemptions**: `#[openapi(paths(...))]` in `src/presentation/openapi.rs`, `#[serde(...)]`/`#[validate(...)]` attribute strings, and Axum routing builders (`axum::routing::{get, post}`).
+  - **Wildcard Import Ban**: Wildcard/glob imports (`use foo::*;`) are banned in production code (`clippy::wildcard_imports`). `use super::*;` is permitted exclusively inside `#[cfg(test)] mod tests` blocks.
+  - **Local Borrowing Over Unnecessary `Arc`**: Function and method signatures must never accept `&Arc<T>` or `&Arc<dyn Trait>` (double indirection); accept `&T` or `&dyn Trait` instead (passing `.as_ref()` or `&*` at the call site). Local values that do not cross task/thread boundaries must be borrowed rather than wrapped in `Arc`. (`AppState` and `*UseCase` struct fields holding `Arc<dyn *Repository>` / `Arc<dyn *Service>` are the mandated Dependency Injection boundary).
+  - **Concrete Types Over Speculative Generics**: Internal `application/` use cases and `presentation/` handlers must use concrete parameter types (`AccessScope`, `&str`, `String`) rather than single-caller generic bounds (`impl Into<AccessScope>`, `impl AsRef<str>`). Shared generic extractors (`ValidatedJson<T>`, `Qs<T>`), response wrappers (`JsonApiResponse<T>`), and ergonomic string builders (`impl Into<String>`) in `src/shared/` are exempt.
+  - **Newtype & Error Discipline**: Never implement `Deref` or `DerefMut` on domain or shared newtypes to simulate inheritance, and never use `std::panic::catch_unwind` for normal error control flow.
 - **Email Notifications**:
   - ALL email notifications MUST use a uniform internal HTML template implemented in the `infrastructure` layer.
   - Emails MUST include a Header (with branding), a Body (with a prominent CTA button), and a Footer.
@@ -90,8 +94,8 @@ To ensure contract correctness and maximize development efficiency, you MUST lev
   - Place `FromRequestParts` extractors (`State`, `Path`, `Qs`, `HeaderMap`, `Claims`) BEFORE the body-consuming `FromRequest` extractor (`ValidatedJson`, `MaybeValidatedJson`, `Multipart`), which must always be the final handler argument.
   - When protecting admin routes with `check_permissions`, remember `.route_layer` wraps only routes registered before it (or merge pre-layered sub-routers).
   - Any handler that mutates roles, role-permission assignments, or administrator role assignments MUST invalidate `state.admin_permissions_cache` (`invalidate(&id)` or `invalidate_all()`).
-- **Panic-Free Production Code**:
-  - `.unwrap()` and `.expect()` are strictly forbidden in non-test production code (`src/**` outside `#[cfg(test)]`). Propagate errors with `?`, `ok_or_else`, or `if let Some(...)`, and return `anyhow::Result<()>` from `main`.
+- **Panic-Free & Safe Production Code (`[lints]` Enforced)**:
+  - `.unwrap()`, `.expect()`, `dbg!()`, `todo!()`, `unimplemented!()`, and `unsafe` blocks are strictly forbidden in non-test production code (`src/**` outside `#[cfg(test)]`) and enforced at compile time via `[lints.rust]` (`unsafe_code = "forbid"`) and `[lints.clippy]` in `api/Cargo.toml` paired with `api/clippy.toml` (`allow-unwrap-in-tests = true`, `allow-expect-in-tests = true`, `allow-dbg-in-tests = true`). Never add ad-hoc `#[allow(clippy::...)]` suppressions without an inline justification comment. Propagate errors with `?`, `ok_or_else`, or `if let Some(...)`, and return `anyhow::Result<()>` from `main`.
 - **SQLx 0.8 & Observability**:
   - Wrap multi-step database writes in explicit SQLx transactions (`let mut tx = self.pool.begin().await?; ... tx.commit().await?;`).
   - Never interpolate user-controlled strings into dynamic SQL (`ORDER BY`, filter columns) without strict enum/whitelist validation.
@@ -108,7 +112,7 @@ When adding or modifying a feature, follow this strict order:
 4. **Application**: Create Request DTO (with validation), Use Case struct, and implement `execute` logic.
 5. **Presentation**: Create Handler function, use `ValidatedJson` / `Qs`, call Use Case, return `ApiResponse` directly (without `axum::Json`). Document all public API endpoints using `utoipa` macros.
 6. **Router**: Register the new handler with appropriate rate-limit and permission layers.
-7. **OpenAPI Spec Sync (`openapi.rs` & `api/openapi.json`)**: Register any new or modified `#[utoipa::path]` handlers and `ToSchema` DTOs in `src/presentation/openapi.rs`, and run `cargo test --lib` to automatically regenerate `api/openapi.json` via the `export_openapi_spec` unit test.
+7. **OpenAPI Spec Sync (`openapi.rs` & `api/openapi.json`)**: Register any new or modified `#[utoipa::path]` handlers and `ToSchema` DTOs in `src/presentation/openapi.rs`, and run `cargo test --lib` to automatically regenerate `api/openapi.json` via the `generate_openapi_json` unit test.
 
 ## 7. Helper & Verification Scripts
 
@@ -129,7 +133,8 @@ When adding or modifying a feature, follow this strict order:
 - **Leaking Internal Errors in `500`/`503` Responses**: Returning raw `sqlx::Error` or `e.to_string()` details to API clients instead of logging via `tracing::error!` and returning a sanitized message.
 - **Using `.unwrap()` / `.expect()` in Production Code**: Introducing panic paths outside `#[cfg(test)]`.
 - **Writing Integration Tests**: Attempting to write integration tests (e.g., loading real database connections or starting HTTP listeners in Rust test blocks) instead of focused unit tests.
-- **Using Fully Qualified Names (FQN) or Mid-File `use`**: Writing inline `crate::...` paths in functions or placing `use` declarations mid-file instead of at the top of the file.
+- **Using Inline Multi-Segment FQN Paths, Wildcard Imports, or Mid-File `use`**: Writing inline `std::env::var` / `uuid::Uuid` paths in function bodies, using wildcard imports (`use ...::*;`) outside `#[cfg(test)]`, or placing `use` declarations mid-file instead of at the top of the file.
+- **Passing `&Arc<T>` / `&Arc<dyn Trait>` Parameters or Speculative Generics**: Accepting `&Arc<dyn Repository>` instead of `&dyn Repository` on borrowing helper/validation methods, or adding single-type generic bounds (`impl Into<AccessScope>`) on application use cases.
 - **Leaking DB Models**: Exposing infrastructure database models directly to handlers or presentation DTOs without mapping them to proper Domain entities first.
 - **Bypassing Rate Limiters**: Omitting rate limiting middleware configuration on new routes or placing health-checks inside a rate-limiting tier.
 - **Anemic Domain Entities**: Putting all core business validation and state transition logic into handlers or application use cases instead of encapsulating it within the domain entity.

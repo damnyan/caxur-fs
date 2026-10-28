@@ -10,13 +10,14 @@ use axum::{
     extract::DefaultBodyLimit,
     routing::{get, post},
 };
+use std::env;
 
 pub fn routes(state: AppState) -> anyhow::Result<Router<AppState>> {
     let auth_router = Router::new()
         .nest("/auth", auth::routes())
         .layer(auth_rate_limit_layer(state.auth_service.clone())?);
 
-    let max_upload_size_mb: usize = std::env::var("MAX_UPLOAD_SIZE_MB")
+    let max_upload_size_mb: usize = env::var("MAX_UPLOAD_SIZE_MB")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(10);

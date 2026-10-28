@@ -1,6 +1,6 @@
 ---
 name: setup-project
-description: Bootstrap the caxur-fs project stack: install dependencies and setup env files.
+description: "Bootstrap the caxur-fs project stack: install dependencies and setup env files."
 ---
 
 # Setup Project Skill

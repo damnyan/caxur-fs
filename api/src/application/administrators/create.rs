@@ -6,6 +6,7 @@ use crate::shared::error::{AppError, FieldError};
 use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::ToSchema;
+use uuid::Uuid;
 use validator::Validate;
 
 #[derive(Deserialize, ToSchema, Validate)]
@@ -27,7 +28,7 @@ impl CreateAdministratorRequest {
     /// Custom async validation to check if email already exists
     pub async fn validate_unique_email(
         &self,
-        repo: &Arc<dyn AdministratorRepository>,
+        repo: &dyn AdministratorRepository,
     ) -> Result<(), AppError> {
         if repo.find_by_email(&self.email).await?.is_some() {
             return Err(AppError::ValidationError(vec![FieldError::new(
@@ -69,9 +70,9 @@ impl CreateAdministratorUseCase {
         req: CreateAdministratorRequest,
     ) -> Result<Administrator, AppError> {
         // Check if email already exists
-        req.validate_unique_email(&self.repo).await?;
+        req.validate_unique_email(self.repo.as_ref()).await?;
 
-        let random_password = uuid::Uuid::new_v4().to_string();
+        let random_password = Uuid::new_v4().to_string();
         let password_hash = self
             .password_service
             .hash_password(&random_password)

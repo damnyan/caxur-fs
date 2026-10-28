@@ -121,8 +121,8 @@ impl VerifyRegistrationUseCase {
         let tokens = generate_and_store_tokens(
             user.id,
             "user".to_string(),
-            &self.auth_service,
-            &self.refresh_token_repo,
+            self.auth_service.as_ref(),
+            self.refresh_token_repo.as_ref(),
             self.access_token_expiry,
             self.refresh_token_expiry,
         )

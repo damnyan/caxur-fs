@@ -141,6 +141,7 @@ Before modifying code, the agent MUST review the strict boundaries defined for e
   - **Auth/Strict**: `auth_rate_limit_layer` (default: 10/min).
   - **Public/Guest**: `public_rate_limit_layer` (default: 60/min).
   - **Private/Standard**: `api_rate_limit_layer` (default: 300/min).
+* **Google Rust Style & Clippy Enforcement**: Place all `use` declarations at the top of the file; import types/traits directly and qualify free functions via their imported parent module (`use std::env; env::var(...)`). Wildcard imports (`use ...::*;` outside `#[cfg(test)]`), `&Arc<T>` / `&Arc<dyn Trait>` function parameters, speculative generics in application code, `Deref` polymorphism on newtypes, `catch_unwind`, `unsafe` blocks, and production `.unwrap()` / `.expect()` are strictly banned and enforced via `[lints]` in `api/Cargo.toml` + `api/clippy.toml`.
 * **Testing**: Only write **Unit Tests** for core logic. DO NOT write integration tests.
 
 ### 🖥️ 2. Next.js Client Portal (`client/`)

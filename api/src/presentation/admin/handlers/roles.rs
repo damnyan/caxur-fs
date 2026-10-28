@@ -27,6 +27,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
+use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
@@ -38,10 +39,10 @@ pub struct RoleResource {
     pub description: Option<String>,
     #[serde(with = "time::serde::iso8601")]
     #[schema(value_type = String)]
-    pub created_at: time::OffsetDateTime,
+    pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::iso8601")]
     #[schema(value_type = String)]
-    pub updated_at: time::OffsetDateTime,
+    pub updated_at: OffsetDateTime,
 }
 
 impl From<Role> for RoleResource {

@@ -1,14 +1,11 @@
+use anyhow::Context;
 use caxur::infrastructure;
 use caxur::presentation;
-
-use dotenvy::dotenv;
 use std::env;
+use std::future::{self, Future};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-use anyhow::Context;
-
-use std::future::Future;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -36,13 +33,13 @@ async fn run_with_signal(port: u16) -> anyhow::Result<()> {
                 }
                 Err(err) => {
                     tracing::error!("Failed to install SIGTERM handler: {}", err);
-                    std::future::pending::<()>().await;
+                    future::pending::<()>().await;
                 }
             }
         };
 
         #[cfg(not(unix))]
-        let terminate = std::future::pending::<()>();
+        let terminate = future::pending::<()>();
 
         tokio::select! {
             _ = ctrl_c => {},
@@ -56,7 +53,7 @@ async fn run<F>(port: u16, shutdown_signal: F) -> anyhow::Result<()>
 where
     F: Future<Output = ()> + Send + 'static,
 {
-    dotenv().ok();
+    dotenvy::dotenv().ok();
 
     // Initialize tracing only if it hasn't been initialized yet
     // We ignore the error because in tests it might be called multiple times
@@ -91,24 +88,24 @@ async fn bootstrap(
     sqlx::migrate!().run(&pool).await?;
 
     // Get configuration from environment
-    let private_key_pem = std::env::var("JWT_PRIVATE_KEY")
+    let private_key_pem = env::var("JWT_PRIVATE_KEY")
         .context("JWT_PRIVATE_KEY must be set")?
         .replace("\\n", "\n");
 
-    let public_key_pem = std::env::var("JWT_PUBLIC_KEY")
+    let public_key_pem = env::var("JWT_PUBLIC_KEY")
         .context("JWT_PUBLIC_KEY must be set")?
         .replace("\\n", "\n");
-    let access_token_expiry = std::env::var("JWT_ACCESS_TOKEN_EXPIRY")
+    let access_token_expiry = env::var("JWT_ACCESS_TOKEN_EXPIRY")
         .unwrap_or_else(|_| "900".to_string())
         .parse::<i64>()
         .unwrap_or(900);
-    let refresh_token_expiry = std::env::var("JWT_REFRESH_TOKEN_EXPIRY")
+    let refresh_token_expiry = env::var("JWT_REFRESH_TOKEN_EXPIRY")
         .unwrap_or_else(|_| "604800".to_string())
         .parse::<i64>()
         .unwrap_or(604800);
 
     // Initialize auth service
-    let auth_service = std::sync::Arc::new(
+    let auth_service = Arc::new(
         infrastructure::auth::JwtAuthService::new(
             &private_key_pem,
             &public_key_pem,
@@ -128,7 +125,7 @@ async fn bootstrap(
     let smtp_from = env::var("SMTP_FROM").unwrap_or_else(|_| "noreply@caxur.com".to_string());
     let app_name = env::var("APP_NAME").unwrap_or_else(|_| "Caxur".to_string());
 
-    let email_service = std::sync::Arc::new(
+    let email_service = Arc::new(
         infrastructure::email::SmtpEmailService::new(
             &smtp_host,
             smtp_port,
@@ -140,9 +137,9 @@ async fn bootstrap(
         .map_err(|e| anyhow::anyhow!("Failed to initialize email service: {}", e))?,
     );
 
-    let cache_service = std::sync::Arc::new(infrastructure::cache::MokaCacheService::new(1000));
+    let cache_service = Arc::new(infrastructure::cache::MokaCacheService::new(1000));
 
-    let storage_service = std::sync::Arc::new(infrastructure::storage::s3::S3StorageService::new());
+    let storage_service = Arc::new(infrastructure::storage::s3::S3StorageService::new());
     storage_service
         .init_bucket()
         .await

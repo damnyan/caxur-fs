@@ -17,6 +17,7 @@ use crate::shared::validation::ValidatedJson;
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use serde::Deserialize;
 use serde_json::json;
+use std::env;
 use std::sync::Arc;
 use utoipa::ToSchema;
 use validator::Validate;
@@ -44,11 +45,11 @@ pub async fn admin_login(
     let refresh_token_repo = Arc::new(PostgresRefreshTokenRepository::new(pool));
     let password_service = Arc::new(PasswordService::new());
 
-    let access_token_expiry = std::env::var("JWT_ACCESS_TOKEN_EXPIRY")
+    let access_token_expiry = env::var("JWT_ACCESS_TOKEN_EXPIRY")
         .unwrap_or_else(|_| "900".to_string())
         .parse::<i64>()
         .unwrap_or(900);
-    let refresh_token_expiry = std::env::var("JWT_REFRESH_TOKEN_EXPIRY")
+    let refresh_token_expiry = env::var("JWT_REFRESH_TOKEN_EXPIRY")
         .unwrap_or_else(|_| "604800".to_string())
         .parse::<i64>()
         .unwrap_or(604800);
@@ -85,11 +86,11 @@ pub async fn refresh_token(
     State(state): State<AppState>,
     ValidatedJson(req): ValidatedJson<RefreshTokenRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let access_token_expiry = std::env::var("JWT_ACCESS_TOKEN_EXPIRY")
+    let access_token_expiry = env::var("JWT_ACCESS_TOKEN_EXPIRY")
         .unwrap_or_else(|_| "900".to_string())
         .parse::<i64>()
         .unwrap_or(900);
-    let refresh_token_expiry = std::env::var("JWT_REFRESH_TOKEN_EXPIRY")
+    let refresh_token_expiry = env::var("JWT_REFRESH_TOKEN_EXPIRY")
         .unwrap_or_else(|_| "604800".to_string())
         .parse::<i64>()
         .unwrap_or(604800);

@@ -5,11 +5,11 @@ use crate::infrastructure::state::AppState; // Correct import
 use crate::presentation::extractors::AuthUser;
 use crate::shared::error::AppError;
 use axum::{
+    Extension,
     extract::{Request, State},
     middleware::Next,
     response::Response,
 };
-use tracing;
 
 #[derive(Clone)]
 pub struct RequiredPermissions {
@@ -19,7 +19,7 @@ pub struct RequiredPermissions {
 
 pub async fn check_permissions(
     State(state): State<AppState>,
-    axum::Extension(config): axum::Extension<RequiredPermissions>,
+    Extension(config): Extension<RequiredPermissions>,
     auth_user: AuthUser,
     mut request: Request,
     next: Next,

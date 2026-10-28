@@ -4,6 +4,7 @@ use crate::domain::storage::StorageService;
 use crate::infrastructure::auth::JwtAuthService;
 use crate::infrastructure::db::DbPool;
 use crate::infrastructure::email::EmailService;
+use axum::extract::FromRef;
 use moka::sync::Cache;
 use std::sync::Arc;
 use std::time::Duration;
@@ -50,31 +51,31 @@ impl AppState {
     }
 }
 
-impl axum::extract::FromRef<AppState> for DbPool {
+impl FromRef<AppState> for DbPool {
     fn from_ref(app_state: &AppState) -> Self {
         app_state.pool.clone()
     }
 }
 
-impl axum::extract::FromRef<AppState> for Arc<JwtAuthService> {
+impl FromRef<AppState> for Arc<JwtAuthService> {
     fn from_ref(app_state: &AppState) -> Self {
         app_state.auth_service.clone()
     }
 }
 
-impl axum::extract::FromRef<AppState> for Arc<dyn EmailService> {
+impl FromRef<AppState> for Arc<dyn EmailService> {
     fn from_ref(app_state: &AppState) -> Self {
         app_state.email_service.clone()
     }
 }
 
-impl axum::extract::FromRef<AppState> for Arc<dyn CacheService> {
+impl FromRef<AppState> for Arc<dyn CacheService> {
     fn from_ref(app_state: &AppState) -> Self {
         app_state.cache_service.clone()
     }
 }
 
-impl axum::extract::FromRef<AppState> for Arc<dyn StorageService> {
+impl FromRef<AppState> for Arc<dyn StorageService> {
     fn from_ref(app_state: &AppState) -> Self {
         app_state.storage_service.clone()
     }

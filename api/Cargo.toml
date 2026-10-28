@@ -1,6 +1,6 @@
 [package]
 name = "caxur"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2024"
 default-run = "caxur"
 
@@ -63,4 +63,15 @@ opt-level = 3
 lto = "thin"
 codegen-units = 1
 strip = true
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
+wildcard_imports = "warn"
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
 

@@ -4,6 +4,7 @@ use crate::domain::password::PasswordHashingService;
 use crate::infrastructure::email::EmailService;
 use crate::shared::error::AppError;
 use serde::Deserialize;
+use std::env;
 use std::sync::Arc;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -64,7 +65,7 @@ impl RequestPasswordResetUseCase {
 
         // 4. Send email
         let base_url =
-            std::env::var("ADMIN_URL").unwrap_or_else(|_| "http://localhost:3001".to_string());
+            env::var("ADMIN_URL").unwrap_or_else(|_| "http://localhost:3001".to_string());
         let reset_link = format!("{}/reset-password?token={}", base_url, token);
 
         self.email_service.send_templated_email(

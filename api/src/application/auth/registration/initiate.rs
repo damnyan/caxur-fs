@@ -70,9 +70,6 @@ impl InitiateRegistrationUseCase {
         let key = format!("registration:pending:{}", request.email);
         self.cache_service.set(&key, pending_json, 600).await?; // 10 minutes
 
-        // Log OTP to console in development
-        tracing::info!("🔑 [DEV ONLY] Generated OTP for {}: {}", request.email, otp);
-
         // 5. Send email
         self.email_service.send_templated_email(
             &request.email,

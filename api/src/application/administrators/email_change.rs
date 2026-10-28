@@ -5,6 +5,7 @@ use crate::infrastructure::email::EmailService;
 use crate::shared::error::{AppError, FieldError};
 use rand::RngExt;
 use serde::Deserialize;
+use std::env;
 use std::sync::Arc;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -117,7 +118,7 @@ impl InitiateEmailChangeUseCase {
 
         // To old email (Security Alert)
         let base_url =
-            std::env::var("ADMIN_URL").unwrap_or_else(|_| "http://localhost:3001".to_string());
+            env::var("ADMIN_URL").unwrap_or_else(|_| "http://localhost:3001".to_string());
         let cancel_link = format!(
             "{}/auth/cancel-email-change?token={}",
             base_url, cancel_token

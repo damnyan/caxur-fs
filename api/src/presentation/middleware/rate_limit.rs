@@ -1,13 +1,20 @@
 use crate::domain::auth::AuthService;
 use crate::infrastructure::auth::JwtAuthService;
-use axum::{body::Body, extract::ConnectInfo};
+use axum::{
+    body::Body,
+    extract::ConnectInfo,
+    http::{Request, header::AUTHORIZATION},
+};
 use governor::{clock::QuantaInstant, middleware::NoOpMiddleware};
 use std::env;
-use std::net::{IpAddr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::interval;
-use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder, key_extractor::KeyExtractor};
+use tower_governor::{
+    GovernorLayer, errors::GovernorError, governor::GovernorConfigBuilder,
+    key_extractor::KeyExtractor,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum RateLimitKey {
@@ -29,15 +36,12 @@ impl SmartRateLimitKeyExtractor {
 impl KeyExtractor for SmartRateLimitKeyExtractor {
     type Key = RateLimitKey;
 
-    fn extract<B>(
-        &self,
-        req: &axum::http::Request<B>,
-    ) -> Result<Self::Key, tower_governor::errors::GovernorError> {
+    fn extract<B>(&self, req: &Request<B>) -> Result<Self::Key, GovernorError> {
         let path = req.uri().path().to_string();
 
         let token_claims = req
             .headers()
-            .get(axum::http::header::AUTHORIZATION)
+            .get(AUTHORIZATION)
             .and_then(|h| h.to_str().ok())
             .and_then(|auth_str| auth_str.strip_prefix("Bearer "))
             .and_then(|token| self.auth_service.validate_token(token).ok());
@@ -55,9 +59,9 @@ impl KeyExtractor for SmartRateLimitKeyExtractor {
             .map(|ConnectInfo(addr)| addr.ip())
             .or_else(|| {
                 // Return local IP if connection info is missing (e.g. in tests)
-                Some(IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)))
+                Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)))
             })
-            .ok_or(tower_governor::errors::GovernorError::UnableToExtractKey)?;
+            .ok_or(GovernorError::UnableToExtractKey)?;
 
         Ok(RateLimitKey::Anonymous { ip, path })
     }
@@ -137,7 +141,6 @@ pub fn public_rate_limit_layer(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::http::Request;
 
     const TEST_PRIVATE_KEY: &str = "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgXShTihFbNTSa14xH\nQjKpkLjzdhSP5lwJO2h25FosLEKhRANCAAQMC1J0EtKKYd2XmBnZZJd319Ae/K29\nMRbfOkjiINQ1JCIK7wvITDT4HmytHoBh1F2XcjXWlkoGAsRzcm5dcBD6\n-----END PRIVATE KEY-----\n";
     const TEST_PUBLIC_KEY: &str = "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEDAtSdBLSimHdl5gZ2WSXd9fQHvyt\nvTEW3zpI4iDUNSQiCu8LyEw0+B5srR6AYdRdl3I11pZKBgLEc3JuXXAQ+g==\n-----END PUBLIC KEY-----\n";
@@ -154,7 +157,7 @@ mod tests {
         assert_eq!(
             key,
             RateLimitKey::Anonymous {
-                ip: IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
+                ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
                 path: "/api/test".to_string(),
             }
         );

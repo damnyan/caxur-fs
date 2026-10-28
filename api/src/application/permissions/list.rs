@@ -33,8 +33,8 @@ impl ListPermissionsUseCase {
         Self { scope: None }
     }
 
-    pub fn with_scope(mut self, scope: impl Into<AccessScope>) -> Self {
-        self.scope = Some(scope.into());
+    pub fn with_scope(mut self, scope: AccessScope) -> Self {
+        self.scope = Some(scope);
         self
     }
 

@@ -1,6 +1,6 @@
 ---
 trigger: glob
-globs: ["admin/**/*"]
+globs: "admin/**/*"
 description: "Rules for developing the ReactJS admin portal utilizing Tailwind v4, Shadcn UI, Zustand, and React Query with high code quality."
 ---
 

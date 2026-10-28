@@ -1,6 +1,7 @@
 use crate::infrastructure::db::DbPool;
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde_json::json;
+use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -15,10 +16,8 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
     tag = "Health"
 )]
 pub async fn health_check(State(pool): State<DbPool>) -> impl IntoResponse {
-    let now = time::OffsetDateTime::now_utc();
-    let time_str = now
-        .format(&time::format_description::well_known::Rfc3339)
-        .unwrap_or_else(|_| now.to_string());
+    let now = OffsetDateTime::now_utc();
+    let time_str = now.format(&Rfc3339).unwrap_or_else(|_| now.to_string());
 
     // Test database connectivity
     match sqlx::query("SELECT 1").fetch_one(&pool).await {

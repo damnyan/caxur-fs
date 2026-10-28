@@ -108,7 +108,7 @@ impl JsonApiErrorSource {
 }
 
 /// Validation error for a specific field
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FieldError {
     pub field: String,

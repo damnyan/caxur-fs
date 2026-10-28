@@ -1,9 +1,13 @@
 use async_trait::async_trait;
 use lettre::{
-    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor, message::header::ContentType,
-    transport::smtp::authentication::Credentials,
+    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
+    message::header::ContentType,
+    transport::smtp::{
+        authentication::Credentials,
+        client::{Tls, TlsParameters},
+    },
 };
-use tracing;
+use time::OffsetDateTime;
 
 #[async_trait]
 pub trait EmailService: Send + Sync {
@@ -37,13 +41,13 @@ impl SmtpEmailService {
         let mut builder = AsyncSmtpTransport::<Tokio1Executor>::relay(host)?.port(port);
 
         if host == "localhost" || host == "127.0.0.1" || host == "mailpit" {
-            builder = builder.tls(lettre::transport::smtp::client::Tls::None);
+            builder = builder.tls(Tls::None);
         } else {
             let creds = Credentials::new(username.to_string(), password.to_string());
             builder = builder.credentials(creds);
 
-            let tls_params = lettre::transport::smtp::client::TlsParameters::new(host.to_string())?;
-            builder = builder.tls(lettre::transport::smtp::client::Tls::Required(tls_params));
+            let tls_params = TlsParameters::new(host.to_string())?;
+            builder = builder.tls(Tls::Required(tls_params));
         }
 
         let mailer = builder.build();
@@ -62,7 +66,7 @@ impl SmtpEmailService {
         cta_text: Option<&str>,
         cta_url: Option<&str>,
     ) -> String {
-        let year = time::OffsetDateTime::now_utc().year();
+        let year = OffsetDateTime::now_utc().year();
         let cta_button = if let (Some(text), Some(url)) = (cta_text, cta_url) {
             format!(
                 r#"<div style="margin-top: 32px; text-align: center;">

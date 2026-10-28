@@ -1,11 +1,14 @@
 use crate::domain::storage::StorageService;
 use async_trait::async_trait;
+use aws_sdk_s3::Client;
+use aws_sdk_s3::config::{BehaviorVersion, Builder, Credentials, Region};
 use aws_sdk_s3::presigning::PresigningConfig;
+use std::env;
 use std::time::Duration;
 
 #[derive(Clone)]
 pub struct S3StorageService {
-    client: aws_sdk_s3::Client,
+    client: Client,
     bucket: String,
 }
 
@@ -17,33 +20,31 @@ impl Default for S3StorageService {
 
 impl S3StorageService {
     pub fn new() -> Self {
-        let bucket =
-            std::env::var("STORAGE_BUCKET").unwrap_or_else(|_| "caxur-uploads".to_string());
+        let bucket = env::var("STORAGE_BUCKET").unwrap_or_else(|_| "caxur-uploads".to_string());
 
-        let endpoint = std::env::var("STORAGE_ENDPOINT").ok();
-        let region = aws_sdk_s3::config::Region::new(
-            std::env::var("STORAGE_REGION").unwrap_or_else(|_| "us-east-1".to_string()),
-        );
+        let endpoint = env::var("STORAGE_ENDPOINT").ok();
+        let region =
+            Region::new(env::var("STORAGE_REGION").unwrap_or_else(|_| "us-east-1".to_string()));
 
-        let credentials = aws_sdk_s3::config::Credentials::new(
-            std::env::var("STORAGE_ACCESS_KEY_ID").unwrap_or_else(|_| "minioadmin".to_string()),
-            std::env::var("STORAGE_SECRET_ACCESS_KEY").unwrap_or_else(|_| "minioadmin".to_string()),
+        let credentials = Credentials::new(
+            env::var("STORAGE_ACCESS_KEY_ID").unwrap_or_else(|_| "minioadmin".to_string()),
+            env::var("STORAGE_SECRET_ACCESS_KEY").unwrap_or_else(|_| "minioadmin".to_string()),
             None,
             None,
             "Static",
         );
 
-        let mut config_builder = aws_sdk_s3::config::Builder::new()
+        let mut config_builder = Builder::new()
             .region(region)
             .credentials_provider(credentials)
-            .behavior_version(aws_sdk_s3::config::BehaviorVersion::latest());
+            .behavior_version(BehaviorVersion::latest());
 
         if let Some(ep) = endpoint {
             config_builder = config_builder.endpoint_url(ep);
             config_builder = config_builder.force_path_style(true);
         }
 
-        let client = aws_sdk_s3::Client::from_conf(config_builder.build());
+        let client = Client::from_conf(config_builder.build());
 
         Self { client, bucket }
     }

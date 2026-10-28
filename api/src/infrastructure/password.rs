@@ -4,6 +4,7 @@ use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
+use async_trait::async_trait;
 
 /// Infrastructure service for password hashing and verification
 #[derive(Clone)]
@@ -21,7 +22,7 @@ impl Default for PasswordService {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl PasswordHashingService for PasswordService {
     /// Hash a plain text password using Argon2
     fn hash_password(&self, password: &str) -> Result<String> {

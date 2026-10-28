@@ -1,26 +1,26 @@
+use crate::infrastructure::state::AppState;
 use crate::presentation::admin;
 use crate::presentation::client;
 use crate::presentation::middleware;
 use crate::presentation::openapi::ApiDoc;
 use axum::{Router, routing::get};
+use std::env;
 use tower_http::compression::CompressionLayer;
 use tower_http::trace::TraceLayer;
-use utoipa::OpenApi;
-use utoipa_swagger_ui::SwaggerUi;
-
-use crate::infrastructure::state::AppState;
+use utoipa::{OpenApi, openapi::ServerBuilder};
+use utoipa_swagger_ui::{Config, SwaggerUi};
 
 pub fn app(state: AppState) -> anyhow::Result<Router> {
-    let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
+    let port = env::var("PORT").unwrap_or_else(|_| "3000".to_string());
     let mut openapi = ApiDoc::openapi();
     openapi.servers = Some(vec![
-        utoipa::openapi::ServerBuilder::new()
+        ServerBuilder::new()
             .url(format!("http://localhost:{}", port))
             .description(Some("Local Development Server"))
             .build(),
     ]);
 
-    let swagger_enabled = std::env::var("SWAGGER_ENABLED")
+    let swagger_enabled = env::var("SWAGGER_ENABLED")
         .map(|v| v.trim().to_lowercase() == "true")
         .unwrap_or(false);
 
@@ -30,7 +30,7 @@ pub fn app(state: AppState) -> anyhow::Result<Router> {
             SwaggerUi::new("/swagger-ui")
                 .url("/api-docs/openapi.json", openapi)
                 .config(
-                    utoipa_swagger_ui::Config::new(["/api-docs/openapi.json"])
+                    Config::new(["/api-docs/openapi.json"])
                         .deep_linking(true)
                         .default_models_expand_depth(-1)
                         .display_operation_id(true)

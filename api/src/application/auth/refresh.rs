@@ -3,9 +3,10 @@ use crate::domain::auth::{AuthService, RefreshTokenRepository};
 use crate::shared::error::AppError;
 use serde::Deserialize;
 use std::sync::Arc;
+use utoipa::ToSchema;
 use validator::Validate;
 
-#[derive(Debug, Deserialize, Validate, utoipa::ToSchema)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct RefreshTokenRequest {
     #[validate(length(min = 1, message = "Refresh token is required"))]
@@ -82,8 +83,8 @@ impl RefreshTokenUseCase {
         generate_and_store_tokens(
             user_id,
             claims.user_type,
-            &self.auth_service,
-            &self.refresh_token_repo,
+            self.auth_service.as_ref(),
+            self.refresh_token_repo.as_ref(),
             self.access_token_expiry,
             self.refresh_token_expiry,
         )

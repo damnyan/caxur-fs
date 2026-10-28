@@ -36,7 +36,7 @@ impl UpdateUserRequest {
     /// Custom async validation to check if email already exists (excluding current user)
     pub async fn validate_unique_email(
         &self,
-        repo: &Arc<dyn UserRepository>,
+        repo: &dyn UserRepository,
         current_user_id: Uuid,
     ) -> Result<(), AppError> {
         let email_exists = match &self.email {
@@ -88,7 +88,7 @@ impl UpdateUserUseCase {
             .ok_or_else(|| AppError::NotFound(format!("User with id {} not found", id)))?;
 
         // Validate unique email using custom validator (ignoring current user)
-        req.validate_unique_email(&self.repo, id).await?;
+        req.validate_unique_email(self.repo.as_ref(), id).await?;
 
         // Hash the password if it's being updated
         let password_hash = if let Some(password) = &req.password {

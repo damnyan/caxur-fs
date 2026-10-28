@@ -1,4 +1,5 @@
 use crate::domain::administrators::AdministratorRepository;
+use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -36,14 +37,14 @@ impl DetachRoles {
     }
 }
 
-#[derive(Debug, serde::Deserialize, Validate, ToSchema)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AttachRolesRequest {
     #[validate(length(min = 1, message = "At least one role must be provided"))]
     pub role_ids: Vec<Uuid>,
 }
 
-#[derive(Debug, serde::Deserialize, Validate, ToSchema)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DetachRolesRequest {
     #[validate(length(min = 1, message = "At least one role must be provided"))]
